@@ -9,7 +9,7 @@
       "exercises": [
         {
           "slug": "recovery-line",
-          "title": "Recovery line stepper",
+          "title": "Uncoordinated Checkpointing and the Recovery Line",
           "file": "exercises/distributed-systems/recovery-line.html"
         }
       ]
