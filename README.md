@@ -52,6 +52,16 @@ Create a folder under `content/courses/` and add a course object to `content/cou
 }
 ```
 
+## Edit the About page (Education / Work)
+
+The two timelines on the About page are generated from `content/about.json` — edit that
+file, no HTML needed.
+
+- **Education** entries: `title`, `uni`, `date` (date is free text — "2024 – present", etc.).
+- **Work** entries: `title`, `company`, `date`, and an optional `description`.
+
+Add/remove/reorder items in the arrays and the timeline redraws automatically.
+
 ## Add an interactive exercise
 
 An exercise is just a self-contained HTML page under `exercises/<course>/` (see

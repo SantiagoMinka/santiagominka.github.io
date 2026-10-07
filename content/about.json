@@ -1,0 +1,27 @@
+{
+  "education": [
+    {
+      "title": "MSc — your programme",
+      "uni": "Politecnico di Milano",
+      "date": "2024 – present"
+    },
+    {
+      "title": "BSc — your programme",
+      "uni": "Your previous university",
+      "date": "2019 – 2023"
+    }
+  ],
+  "work": [
+    {
+      "title": "Your current role",
+      "company": "Company",
+      "date": "2023 – present",
+      "description": "A line or two about what you do here. This field is optional."
+    },
+    {
+      "title": "Previous role",
+      "company": "Previous company",
+      "date": "2021 – 2023"
+    }
+  ]
+}
