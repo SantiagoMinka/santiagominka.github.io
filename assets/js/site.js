@@ -13,7 +13,7 @@
 
   const LINKS = {
     github: "https://github.com/SantiagoMinka",
-    email: "santiago@minka.io",
+    linkedin: "https://www.linkedin.com/in/santiagoarego/",
   };
 
   const path = location.pathname;
@@ -44,7 +44,7 @@
           <span>
             <a href="${LINKS.github}" target="_blank" rel="noopener">GitHub</a>
             &nbsp;·&nbsp;
-            <a href="mailto:${LINKS.email}">Email</a>
+            <a href="${LINKS.linkedin}" target="_blank" rel="noopener">LinkedIn</a>
           </span>
         </div>
       </footer>`;
