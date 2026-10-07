@@ -1,0 +1,18 @@
+{
+  "courses": [
+    {
+      "slug": "distributed-systems",
+      "title": "Distributed Systems",
+      "code": "DS",
+      "description": "Coordination, consistency, and failure recovery across machines.",
+      "notes": [],
+      "exercises": [
+        {
+          "slug": "recovery-line",
+          "title": "Recovery line stepper",
+          "file": "exercises/distributed-systems/recovery-line.html"
+        }
+      ]
+    }
+  ]
+}

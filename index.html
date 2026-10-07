@@ -1,197 +1,48 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Horario Semanal</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: system-ui, sans-serif; background: #f8fafc; min-height: 100vh; padding: 20px 16px; }
-  .container { max-width: 600px; margin: 0 auto; }
-  h2 { font-size: 22px; margin-bottom: 4px; }
-  .subtitle { color: #64748b; font-size: 14px; margin-bottom: 16px; }
-  .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
-  .legend-item { border-radius: 20px; padding: 2px 10px; font-size: 12px; font-weight: 600; border: 1px solid; }
-  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
-  .tab { padding: 6px 14px; border-radius: 20px; border: none; cursor: pointer; font-weight: 600; font-size: 13px; background: #f1f5f9; color: #475569; transition: all 0.15s; }
-  .tab.active { background: #1e293b; color: #fff; }
-  .blocks { display: flex; flex-direction: column; gap: 8px; }
-  .block { border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; border: 1px solid; }
-  .block-emoji { font-size: 20px; }
-  .block-time { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; }
-  .block-label { font-size: 14px; color: #1e293b; font-weight: 500; }
-  .priorities { margin-top: 24px; background: white; border-radius: 10px; padding: 14px 16px; font-size: 13px; color: #475569; }
-  .priorities strong { color: #1e293b; }
-  .priorities ul { margin: 8px 0 0; padding-left: 18px; line-height: 1.8; }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Santiago Minka</title>
+  <meta name="description" content="Santiago Minka — personal site, notes, and interactive exercises from Politecnico di Milano." />
+  <link rel="stylesheet" href="/assets/css/style.css" />
 </head>
 <body>
-<div class="container">
-  <h2>📅 Horario Semanal</h2>
-  <p class="subtitle">Trabajo · Universidad · Jiujitsu · Gym · Repaso · Traslados incluidos</p>
-  <div class="legend" id="legend"></div>
-  <div class="tabs" id="tabs"></div>
-  <div class="blocks" id="blocks"></div>
-  <div class="priorities">
-    <strong>🎯 Prioridades inmediatas:</strong>
-    <ul>
-      <li><strong>10 de abril</strong> — Midterm Computing Infrastructures</li>
-      <li><strong>24 de abril</strong> — Examen MIDA 1</li>
-      <li><strong>Junio / Julio / Sep</strong> — Exámenes materias viejas (1h/día de repaso ya)</li>
-    </ul>
-  </div>
-</div>
+  <div id="site-header"></div>
 
-<script>
-const COLOR = {
-  clase:    { bg:"#dbeafe", border:"#3b82f6", text:"#1e40af", emoji:"🎓" },
-  trabajo:  { bg:"#dcfce7", border:"#22c55e", text:"#15803d", emoji:"💼" },
-  gym:      { bg:"#fef9c3", border:"#eab308", text:"#854d0e", emoji:"🏋️" },
-  jiujitsu: { bg:"#fce7f3", border:"#ec4899", text:"#9d174d", emoji:"🥋" },
-  estudio:  { bg:"#ede9fe", border:"#8b5cf6", text:"#5b21b6", emoji:"📖" },
-  descanso: { bg:"#f1f5f9", border:"#94a3b8", text:"#475569", emoji:"😌" },
-  repaso:   { bg:"#ffedd5", border:"#f97316", text:"#9a3412", emoji:"🔄" },
-  hogar:    { bg:"#d1fae5", border:"#10b981", text:"#065f46", emoji:"🧺" },
-  traslado: { bg:"#f9f0ff", border:"#a855f7", text:"#6b21a8", emoji:"🚗" },
-};
+  <main>
+    <div class="wrap">
+      <section class="hero">
+        <p class="eyebrow">Hi, I'm Santiago</p>
+        <h1>I study, build, and keep notes in the open.</h1>
+        <p class="lead">
+          Engineering student at Politecnico di Milano. This site is where I write up
+          course notes and small interactive exercises — mostly for me, but open to anyone.
+        </p>
+        <div class="cta-row">
+          <a class="btn primary" href="/courses.html">Browse courses</a>
+          <a class="btn" href="/me.html">About me</a>
+        </div>
+      </section>
 
-const schedule = {
-  Lunes: [
-    { time:"7:00 - 8:10",  label:"Mañana / Rutina personal", type:"descanso" },
-    { time:"8:10 - 8:30",  label:"Traslado a la U", type:"traslado" },
-    { time:"8:30 - 10:00", label:"MIDA 1 + MIDA 2", type:"clase" },
-    { time:"10:00 - 12:00",label:"Trabajo en la U (bloque 1 — 2h)", type:"trabajo" },
-    { time:"12:00 - 12:30",label:"Almuerzo / pausa", type:"descanso" },
-    { time:"12:30 - 2:30", label:"Trabajo en la U (bloque 2 — 2h)", type:"trabajo" },
-    { time:"2:30 - 4:00",  label:"Computing Infrastructures", type:"clase" },
-    { time:"4:00 - 4:45",  label:"Repaso materias viejas en la U", type:"repaso" },
-    { time:"4:45 - 5:30",  label:"Estudio materias actuales en la U", type:"estudio" },
-    { time:"5:30 - 5:50",  label:"Traslado a casa", type:"traslado" },
-    { time:"5:50 - 6:30",  label:"Tareas del hogar (cocinar, orden)", type:"hogar" },
-    { time:"6:30+",        label:"Descanso y autocuidado", type:"descanso" },
-  ],
-  Martes: [
-    { time:"7:00 - 8:00",  label:"Mañana / Rutina personal", type:"descanso" },
-    { time:"8:00 - 11:00", label:"Trabajo en casa (bloque 1 — 3h)", type:"trabajo" },
-    { time:"11:00 - 12:10",label:"Repaso materias viejas en casa", type:"repaso" },
-    { time:"12:10 - 12:30",label:"Traslado a la U", type:"traslado" },
-    { time:"12:30 - 2:00", label:"Computing Infrastructures", type:"clase" },
-    { time:"2:00 - 2:30",  label:"Almuerzo en la U", type:"descanso" },
-    { time:"2:30 - 3:15",  label:"Estudio materias actuales en la U", type:"estudio" },
-    { time:"3:15 - 4:15",  label:"Trabajo en la U (bloque 2 — 1h)", type:"trabajo" },
-    { time:"4:15 - 4:30",  label:"Pausa / desplazamiento interno U", type:"descanso" },
-    { time:"4:30 - 6:00",  label:"MIDA 1 + MIDA 2", type:"clase" },
-    { time:"6:00 - 6:20",  label:"Traslado a casa", type:"traslado" },
-    { time:"6:20 - 7:00",  label:"Tareas del hogar (cocinar, orden)", type:"hogar" },
-    { time:"7:00+",        label:"Descanso y autocuidado", type:"descanso" },
-  ],
-  Miércoles: [
-    { time:"7:00 - 8:00",  label:"Mañana / Rutina personal", type:"descanso" },
-    { time:"8:00 - 9:40",  label:"Trabajo en casa (bloque 1 — 1h40)", type:"trabajo" },
-    { time:"9:40 - 10:00", label:"Traslado a la U", type:"traslado" },
-    { time:"10:00 - 11:30",label:"Gym 💪", type:"gym" },
-    { time:"11:30 - 12:00",label:"Ducha / pausa", type:"descanso" },
-    { time:"12:00 - 12:30",label:"Almuerzo en la U", type:"descanso" },
-    { time:"12:30 - 1:30", label:"Repaso materias viejas en la U", type:"repaso" },
-    { time:"1:30 - 4:10",  label:"Trabajo en la U (bloque 2 — 2h40)", type:"trabajo" },
-    { time:"4:10 - 4:30",  label:"Desplazamiento interno U", type:"traslado" },
-    { time:"4:30 - 6:00",  label:"MIDA 1 + MIDA 2", type:"clase" },
-    { time:"6:00 - 6:20",  label:"Traslado a casa", type:"traslado" },
-    { time:"6:20 - 7:00",  label:"Tareas del hogar (cocinar, orden)", type:"hogar" },
-    { time:"7:00+",        label:"Descanso y autocuidado", type:"descanso" },
-  ],
-  Jueves: [
-    { time:"7:00 - 8:10",  label:"Mañana / Rutina personal", type:"descanso" },
-    { time:"8:10 - 8:30",  label:"Traslado a la U", type:"traslado" },
-    { time:"8:30 - 10:00", label:"MIDA 1 + MIDA 2", type:"clase" },
-    { time:"10:00 - 10:20",label:"Traslado a casa", type:"traslado" },
-    { time:"10:20 - 12:20",label:"Trabajo en casa (bloque 1 — 2h)", type:"trabajo" },
-    { time:"12:20 - 12:50",label:"Almuerzo / pausa", type:"descanso" },
-    { time:"12:50 - 4:30", label:"Trabajo en casa (bloque 2 — 3h40)", type:"trabajo" },
-    { time:"4:30 - 5:00",  label:"Notas del día / cierre", type:"estudio" },
-    { time:"5:00 - 5:40",  label:"Buffer / descanso antes de jiujitsu", type:"descanso" },
-    { time:"5:40 - 6:00",  label:"Traslado a la U", type:"traslado" },
-    { time:"6:00 - 7:00",  label:"Jiujitsu 🥋", type:"jiujitsu" },
-    { time:"7:00 - 7:20",  label:"Traslado a casa", type:"traslado" },
-    { time:"7:20+",        label:"Descanso y recuperación", type:"descanso" },
-  ],
-  Viernes: [
-    { time:"7:00 - 8:00",  label:"Mañana / Rutina personal", type:"descanso" },
-    { time:"8:00 - 9:40",  label:"Trabajo en casa (bloque 1 — 1h40)", type:"trabajo" },
-    { time:"9:40 - 10:00", label:"Traslado a la U", type:"traslado" },
-    { time:"10:00 - 11:30",label:"Gym 💪", type:"gym" },
-    { time:"11:30 - 11:50",label:"Traslado a casa", type:"traslado" },
-    { time:"11:50 - 12:30",label:"Ducha / almuerzo", type:"descanso" },
-    { time:"12:30 - 3:30", label:"Trabajo en casa (bloque 2 — 3h)", type:"trabajo" },
-    { time:"3:30 - 5:00",  label:"Repaso materias viejas", type:"repaso" },
-    { time:"5:00+",        label:"Tiempo libre y descanso 🎉", type:"descanso" },
-  ],
-  Sábado: [
-    { time:"8:00 - 8:30",  label:"Mañana / Rutina personal", type:"descanso" },
-    { time:"8:40 - 9:00",  label:"Traslado a la U", type:"traslado" },
-    { time:"9:00 - 10:30", label:"Gym 💪", type:"gym" },
-    { time:"10:30 - 10:50",label:"Traslado a casa", type:"traslado" },
-    { time:"10:50 - 11:30",label:"Ducha / pausa", type:"descanso" },
-    { time:"11:30 - 1:00", label:"Tareas del hogar (lavar ropa, limpieza)", type:"hogar" },
-    { time:"1:00 - 3:00",  label:"Repaso materias viejas", type:"repaso" },
-    { time:"3:00+",        label:"Tiempo personal, social, hobbies", type:"descanso" },
-  ],
-  Domingo: [
-    { time:"Todo el día",   label:"Descanso completo 🌿", type:"descanso" },
-    { time:"7:00 - 8:00 PM",label:"Planificación semana siguiente (opcional)", type:"estudio" },
-  ],
-};
+      <section>
+        <div class="grid cols-2">
+          <a class="card" href="/courses.html">
+            <span class="badge">Courses</span>
+            <h3 style="margin-top:12px;">Notes &amp; exercises</h3>
+            <p class="muted">Markdown notes with math and code, plus interactive visualizations for the courses I'm taking.</p>
+          </a>
+          <a class="card" href="/me.html">
+            <span class="badge">About</span>
+            <h3 style="margin-top:12px;">Who I am</h3>
+            <p class="muted">A short intro — what I study, what I work on, and what I do outside of it.</p>
+          </a>
+        </div>
+      </section>
+    </div>
+  </main>
 
-const days = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
-let active = "Lunes";
-
-// Legend
-const legend = document.getElementById("legend");
-Object.entries(COLOR).forEach(([key, val]) => {
-  const s = document.createElement("span");
-  s.className = "legend-item";
-  s.style.background = val.bg;
-  s.style.borderColor = val.border;
-  s.style.color = val.text;
-  s.textContent = val.emoji + " " + key.charAt(0).toUpperCase() + key.slice(1);
-  legend.appendChild(s);
-});
-
-// Tabs
-const tabs = document.getElementById("tabs");
-days.forEach(d => {
-  const btn = document.createElement("button");
-  btn.className = "tab" + (d === active ? " active" : "");
-  btn.textContent = d;
-  btn.onclick = () => {
-    active = d;
-    document.querySelectorAll(".tab").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    renderBlocks();
-  };
-  tabs.appendChild(btn);
-});
-
-function renderBlocks() {
-  const container = document.getElementById("blocks");
-  container.innerHTML = "";
-  schedule[active].forEach(block => {
-    const c = COLOR[block.type];
-    const div = document.createElement("div");
-    div.className = "block";
-    div.style.background = c.bg;
-    div.style.borderColor = c.border;
-    div.innerHTML = `
-      <span class="block-emoji">${c.emoji}</span>
-      <div>
-        <div class="block-time" style="color:${c.text}">${block.time}</div>
-        <div class="block-label">${block.label}</div>
-      </div>`;
-    container.appendChild(div);
-  });
-}
-
-renderBlocks();
-</script>
+  <div id="site-footer"></div>
+  <script src="/assets/js/site.js"></script>
 </body>
 </html>
