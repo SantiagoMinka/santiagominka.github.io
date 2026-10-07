@@ -29,7 +29,7 @@
     header.outerHTML = `
       <header class="site-header">
         <div class="wrap">
-          <a class="brand" href="/">Santiago Minka</a>
+          <a class="brand" href="/">Santiago Arévalo Gómez</a>
           <nav class="nav">${navHTML}</nav>
         </div>
       </header>`;
@@ -40,7 +40,7 @@
     footer.outerHTML = `
       <footer class="site-footer">
         <div class="wrap">
-          <span>© ${year} Santiago Minka</span>
+          <span>© ${year} Santiago Arévalo Gómez</span>
           <span>
             <a href="${LINKS.github}" target="_blank" rel="noopener">GitHub</a>
             &nbsp;·&nbsp;

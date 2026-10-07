@@ -92,6 +92,6 @@
         <ul class="note-list" style="margin-top:14px;">${exercises}</ul>
       </section>` : ""}`;
 
-    document.title = `${course.title} · Santiago Minka`;
+    document.title = `${course.title} · Santiago Arévalo Gómez`;
   }
 })();
