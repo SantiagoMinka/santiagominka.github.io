@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Consistency Checker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Simulator layout: one wide column; controls on top, drawing, step box, then data panels. Light only. */
+:root{
+  color-scheme: light;
+  --paper:#f7f8fb; --sheet:#ffffff; --ink:#16202e; --muted:#5a6578; --faint:#94a0b4; --line:#dde2ec;
+  --accent:#1d4e89; --accent-soft:#e7eef8;
+  --tip:#9a5b00; --tip-soft:#fdf3e2;
+  --good:#1f7a4d; --good-soft:#e2f3ea;
+  --warn:#b4372f; --warn-soft:#fbeceb;
+  --hot:#d85a30; --code-bg:#f1f3f8;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 56px}
+.wrap{max-width:1040px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);line-height:1.15;margin:0;text-wrap:balance}
+header.top{padding-block:32px 16px;display:grid;gap:8px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(26px,5vw,38px)}
+.lede{color:var(--muted);max-width:70ch;margin:0}
+.panel{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:18px;display:grid;gap:14px;min-width:0;align-content:start}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.lbl{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+button,.btn{font:500 13.5px/1 var(--f-body);border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:8px;padding:9px 13px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+select,input,textarea{font:14px var(--f-body);border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--sheet);color:var(--ink)}
+textarea{font-family:var(--f-mono);font-size:13.5px;width:100%;min-height:120px;resize:vertical}
+.cap{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-bottom:-6px}
+.fig{overflow-x:auto}
+.fig svg{width:100%;height:auto;display:block;min-width:520px}
+svg text{font-family:var(--f-body)}
+.step{background:var(--code-bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;min-height:84px}
+.step-n{font-size:12px;color:var(--muted);margin-bottom:4px;font-variant-numeric:tabular-nums}
+.step-tx{font-size:15px;line-height:1.6}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1.5px solid}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:var(--paper);font-weight:600}
+code,.mono{font-family:var(--f-mono);font-size:.9em}
+.ok{color:var(--good);font-weight:600}.bad{color:var(--warn);font-weight:600}
+.pill{display:inline-block;font:600 11.5px/1 var(--f-body);padding:5px 8px;border-radius:999px}
+.pill.ok{background:var(--good-soft)}.pill.bad{background:var(--warn-soft)}
+.note{font-size:13.5px;color:var(--muted)}
+.why{background:var(--accent-soft);border-radius:10px;padding:12px 16px;font-size:14.5px}
+.why b{color:var(--accent)}
+a{color:var(--accent)}
+footer{margin-top:40px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:14px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head><body>
+<div class="wrap">
+<style>
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.card{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:8px;align-content:start;min-width:0}
+.card h3{font-size:17px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.seqline{font-family:var(--f-mono);font-size:12.5px;line-height:1.7;word-break:break-word}
+.seqline b{color:var(--accent)}
+.op{display:inline-block;padding:1px 5px;border-radius:4px;background:var(--code-bg);margin:1px 2px}
+.op.r{background:#eef6f1}
+.sched{font-family:var(--f-mono);font-size:14px;border-collapse:collapse;width:auto}
+.sched td{border:none;padding:3px 10px 3px 0;white-space:nowrap}
+.sched td.pn{font-weight:700;color:var(--accent)}
+.err{color:var(--warn);font-weight:600}
+</style>
+<header class="top">
+  <a class="eyebrow" href="/courses.html?c=distributed-systems" style="text-decoration:none">← Distributed Systems notes</a>
+  <div class="eyebrow">Simulator · Chapter 08 · Replication and consistency</div>
+  <h1>Consistency checker: FIFO, causal, sequential</h1>
+  <p class="lede">Load an exam schedule or type your own. The checker tests the three data-centric models, shows a valid order when one exists, and tells you which single operation to remove. Put <code>?</code> as a read value to see which values are allowed.</p>
+</header>
+
+<div class="panel">
+  <div class="row">
+    <span class="lbl">Schedule</span>
+    <select id="pre" aria-label="Load a schedule"></select>
+    <button id="bCheck" class="primary">Check</button>
+  </div>
+  <textarea id="txt" spellcheck="false" aria-label="Schedule text"></textarea>
+  <p class="note">One line per process: <code>P0: W(x)1 R(y)0 …</code>. Variables start at 0. Each written value must be unique on its variable. Time does not matter: only the order inside each line.</p>
+  <div id="show"></div>
+</div>
+
+<div id="out" style="margin-top:14px;display:grid;gap:14px"></div>
+
+<div class="panel" style="margin-top:14px">
+  <h3 style="font-size:18px">How the checker decides</h3>
+  <div class="why">
+    <p><b>Sequential.</b> Find one interleaving of all operations that keeps the order of each process, where every read returns the last value written before it.</p>
+    <p><b>Causal.</b> For each process P, order all writes plus P's own operations. The order must respect causality: program order, and "a write comes before every read that returns its value", closed transitively. Concurrent writes can appear in different orders for different processes.</p>
+    <p><b>FIFO (PRAM).</b> For each process P, order all writes plus P's own operations. Only the order of writes of the same process must be kept. Writes of different processes can appear in any order.</p>
+    <p>Sequential ⇒ causal ⇒ FIFO. So if a schedule is not FIFO, it is not causal and not sequential.</p>
+  </div>
+</div>
+<footer>Exam schedules from Prof. Cugola's tests (2023–2024) and the replication exercises of Prof. Margara. Results match the official solutions; where the slides forget the initial value 0, the checker includes it.</footer>
+
+<script>
+// Consistency checker core: FIFO (PRAM), causal, sequential. Writes have unique values per variable; 0 = initial value.
+function parseSchedule(text){
+  const procs=[];const lines=text.split(/\n/).map(l=>l.trim()).filter(Boolean);
+  let gid=0;
+  for(const line of lines){
+    const m=line.match(/^(P\s*\d+)\s*:?\s*(.*)$/i); if(!m) throw new Error('Each line must start with a process name, e.g. "P0: W(x)1 R(y)0". Problem in: '+line);
+    const name=m[1].replace(/\s+/g,'').toUpperCase(); const ops=[];
+    const re=/([RW])\s*\(\s*([a-z]\w*)\s*\)\s*(-?\d+|\?)/gi; let t;
+    while((t=re.exec(m[2]))) ops.push({type:t[1].toUpperCase(),v:t[2].toLowerCase(),val:t[3]==='?'?'?':+t[3]});
+    const rest=m[2].replace(re,'').trim(); if(rest) throw new Error('Cannot read "'+rest+'" in line: '+line);
+    procs.push({name,ops});
+  }
+  procs.forEach((p,pi)=>p.ops.forEach((o,k)=>{o.p=pi;o.k=k;o.id=gid++;o.label=`${o.type}(${o.v})${o.val}`;}));
+  return procs;
+}
+function allOps(procs){return procs.flatMap(p=>p.ops);}
+function writeOf(procs,v,val){return allOps(procs).find(o=>o.type==='W'&&o.v===v&&o.val===val);}
+function validate(procs){
+  const errs=[];const seen={};
+  allOps(procs).forEach(o=>{if(o.type==='W'){const k=o.v+'='+o.val;if(seen[k])errs.push(`Value ${o.val} is written twice on ${o.v}. Use unique values.`);seen[k]=1;if(o.val===0)errs.push('Do not write 0: 0 is the initial value.');}});
+  allOps(procs).forEach(o=>{if(o.type==='R'&&o.val!=='?'&&o.val!==0&&!writeOf(procs,o.v,o.val))errs.push(`${procs[o.p].name} reads ${o.v}=${o.val}, but nobody writes that value.`);});
+  return errs;
+}
+// generic search: seqs = array of op arrays (each in required order) + extra precedence (map id->[ids]); returns order or null
+function search(seqs,pred){
+  const n=seqs.length, pos=new Array(n).fill(0), vals={}, order=[], placed=new Set(), memo=new Set();
+  const total=seqs.reduce((a,s)=>a+s.length,0);
+  function key(){return pos.join(',')+'|'+Object.keys(vals).sort().map(k=>k+':'+vals[k]).join(',');}
+  function rec(){
+    if(order.length===total) return true;
+    const k=key(); if(memo.has(k)) return false;
+    for(let i=0;i<n;i++){ if(pos[i]>=seqs[i].length) continue; const o=seqs[i][pos[i]];
+      if(pred&&pred[o.id]&&pred[o.id].some(x=>!placed.has(x))) continue;
+      const cur=vals[o.v]===undefined?0:vals[o.v];
+      if(o.type==='R'&&o.val!==cur) continue;
+      const old=vals[o.v]; if(o.type==='W') vals[o.v]=o.val;
+      pos[i]++; order.push(o); placed.add(o.id);
+      if(rec()) return true;
+      pos[i]--; order.pop(); placed.delete(o.id); if(o.type==='W'){ if(old===undefined) delete vals[o.v]; else vals[o.v]=old; }
+    }
+    memo.add(k); return false;
+  }
+  return rec()?order.slice():null;
+}
+function checkSequential(procs){ const o=search(procs.map(p=>p.ops)); return {ok:!!o, order:o}; }
+function checkFIFO(procs){
+  const views=[];
+  for(let i=0;i<procs.length;i++){
+    const seqs=procs.map((p,j)=>j===i?p.ops:p.ops.filter(o=>o.type==='W'));
+    const o=search(seqs); views.push({p:i,order:o}); }
+  return {ok:views.every(v=>v.order), views};
+}
+function happensBefore(procs){
+  // direct edges: program order + reads-from
+  const ops=allOps(procs); const succ={}; ops.forEach(o=>succ[o.id]=[]);
+  procs.forEach(p=>p.ops.forEach((o,k)=>{if(k>0)succ[p.ops[k-1].id].push(o.id);}));
+  ops.forEach(o=>{if(o.type==='R'&&o.val!==0){const w=writeOf(procs,o.v,o.val);if(w)succ[w.id].push(o.id);}});
+  const reach={}; ops.forEach(o=>{const s=new Set();const st=[...succ[o.id]];while(st.length){const x=st.pop();if(!s.has(x)){s.add(x);st.push(...succ[x]);}}reach[o.id]=s;});
+  return reach; // reach[a] has b  <=> a -> b
+}
+function checkCausal(procs){
+  const reach=happensBefore(procs); const ops=allOps(procs); const views=[];
+  for(let i=0;i<procs.length;i++){
+    const inView=ops.filter(o=>o.type==='W'||o.p===i); const ids=new Set(inView.map(o=>o.id));
+    const pred={}; inView.forEach(b=>{pred[b.id]=inView.filter(a=>a.id!==b.id&&reach[a.id].has(b.id)).map(a=>a.id);});
+    const seqs=procs.map((p,j)=>j===i?p.ops:p.ops.filter(o=>o.type==='W'));
+    const o=search(seqs,pred); views.push({p:i,order:o}); }
+  return {ok:views.every(v=>v.order), views};
+}
+function checkAll(procs){ return {fifo:checkFIFO(procs),causal:checkCausal(procs),seq:checkSequential(procs)}; }
+// constraints for explanation
+function writeOrders(procs){ // FIFO: per-process write order
+  return procs.map(p=>p.ops.filter(o=>o.type==='W')).filter(w=>w.length>1).map(w=>w.map(o=>o.label));
+}
+function causalWritePairs(procs){
+  const reach=happensBefore(procs); const W=allOps(procs).filter(o=>o.type==='W'); const pairs=[];
+  W.forEach(a=>W.forEach(b=>{ if(a!==b&&reach[a.id].has(b.id)&&a.p!==b.p) pairs.push([a.label,b.label]); }));
+  // keep only pairs across processes (same-process are FIFO); dedupe transitive not needed
+  return pairs;
+}
+function observed(procs){ // per process: order of values it sees on each variable
+  return procs.map((p,i)=>{const seq={};p.ops.forEach(o=>{ if(o.val==='?')return; (seq[o.v]=seq[o.v]||[]); const last=seq[o.v][seq[o.v].length-1]; if(last!==o.val) seq[o.v].push(o.val); });
+    return {p:i,seq};});
+}
+function removalAnalysis(procs,model){
+  const res=[];
+  procs.forEach((p,pi)=>p.ops.forEach((o,k)=>{
+    const cp=procs.map((q,qi)=>({name:q.name,ops:q.ops.filter((x,kk)=>!(qi===pi&&kk===k)).map(x=>({...x}))}));
+    // reads of the removed write become invalid -> skip removing writes that someone reads
+    if(o.type==='W'&&allOps(procs).some(r=>r.type==='R'&&r.v===o.v&&r.val===o.val)) return;
+    cp.forEach((q,qi)=>q.ops.forEach((x,kk)=>{x.p=qi;x.k=kk;}));
+    const ok=(model==='seq'?checkSequential(cp):model==='causal'?checkCausal(cp):checkFIFO(cp)).ok;
+    if(ok) res.push(`${p.name} ${o.label}`);
+  }));
+  return res;
+}
+function questionAnalysis(procs){
+  const q=allOps(procs).find(o=>o.val==='?'); if(!q) return null;
+  const cands=[0,...new Set(allOps(procs).filter(o=>o.type==='W'&&o.v===q.v).map(o=>o.val))];
+  const out={fifo:[],causal:[],seq:[]};
+  cands.forEach(c=>{const cp=procs.map(p=>({name:p.name,ops:p.ops.map(o=>({...o,val:o===q?c:o.val}))}));
+    if(checkFIFO(cp).ok)out.fifo.push(c); if(checkCausal(cp).ok)out.causal.push(c); if(checkSequential(cp).ok)out.seq.push(c);});
+  return {op:q,cands,out};
+}
+if(typeof module!=='undefined') module.exports={parseSchedule,validate,checkAll,removalAnalysis,questionAnalysis,writeOrders,causalWritePairs,observed};
+
+(function(){
+const PRE=[
+ ["Exam 18 Nov 2023",`P0: W(x)2 W(x)5 R(x)4 W(y)3\nP1: W(y)1 W(x)4 R(y)1 R(y)3 R(x)4\nP2: R(y)1 R(x)4 R(x)5 R(y)3`],
+ ["Exam 17 Jan 2024 (value of x at ?)",`P0: W(x)2 W(x)5 R(x)4 W(y)3\nP1: W(y)1 W(x)4 R(y)1 R(y)3 R(x)4\nP2: R(y)3 R(x)4 R(x)?`],
+ ["Exam 17 Jan 2024 (value of y at ?)",`P0: W(x)2 W(x)5 R(x)4 W(y)3\nP1: W(y)1 W(x)4 R(y)1 R(y)3 R(x)4\nP2: R(y)3 R(x)4 R(y)?`],
+ ["Exam 18 Jun 2024",`P0: W(x)2 W(x)5 R(x)4 W(y)3\nP1: W(y)1 W(x)4 R(y)1 R(y)3\nP2: R(y)1 R(x)2 R(y)3 R(x)5 R(x)4`],
+ ["Exam 18 Jun 2024 without the last R(x)4",`P0: W(x)2 W(x)5 R(x)4 W(y)3\nP1: W(y)1 W(x)4 R(y)1 R(y)3\nP2: R(y)1 R(x)2 R(y)3 R(x)5`],
+ ["Exam 12 Jul 2024",`P0: W(x)2 W(x)5 R(x)4 W(y)3\nP1: W(y)1 W(x)4 R(y)1 R(y)3\nP2: R(y)1 R(x)2 R(y)3 R(x)4 R(x)5`],
+ ["Exam 12 Jul 2024 without the last R(x)5",`P0: W(x)2 W(x)5 R(x)4 W(y)3\nP1: W(y)1 W(x)4 R(y)1 R(y)3\nP2: R(y)1 R(x)2 R(y)3 R(x)4`],
+ ["Exam 6 Sep 2024",`P0: W(y)1 W(x)2 R(y)3 W(x)6 R(y)5\nP1: R(y)1 W(y)3 R(x)2 R(x)4 R(y)5\nP2: R(x)6 W(y)5 R(x)6 W(x)4 R(x)2`],
+ ["Exam 6 Sep 2024 without the last R(x)2",`P0: W(y)1 W(x)2 R(y)3 W(x)6 R(y)5\nP1: R(y)1 W(y)3 R(x)2 R(x)4 R(y)5\nP2: R(x)6 W(y)5 R(x)6 W(x)4`],
+ ["Exam 13 Jul 2015",`P0: W(x)1 R(y)2 R(x)2 W(y)3\nP1: R(y)0 W(y)1 R(y)2 R(y)3\nP2: W(x)2 R(x)2 R(x)3 R(y)2\nP3: R(y)1 W(y)2 W(x)3 R(y)3`],
+ ["Exercise 1 (Margara)",`P0: W(x)1 R(x)2 W(x)3\nP1: W(x)2 W(x)4\nP2: R(x)1 R(x)2 R(x)4 R(x)3\nP3: R(x)1 R(x)2 R(x)3 R(x)4`],
+ ["Exercise 2 (Margara)",`P0: W(x)1 R(x)2 W(x)3\nP1: W(x)2 W(x)4\nP2: R(x)1 R(x)2 R(x)4 R(x)3\nP3: R(x)1 R(x)2 R(x)3 R(x)4\nP4: R(x)1 R(x)3 R(x)2`],
+ ["Exercise 3, K = 2 (Margara)",`P0: W(x)1 R(x)2 W(x)3\nP1: R(x)1 W(x)2 R(x)3\nP2: R(x)2 R(x)?`],
+ ["Exercise 4, K = 4 (Margara)",`P0: R(x)2 W(y)3 W(x)4\nP1: W(x)1 W(x)2 W(x)5 R(y)3\nP2: R(x)2 R(x)5 R(y)3 R(x)4\nP3: R(x)4 R(y)3 R(x)?`],
+ ["Exercise 5, P3 (Margara)",`P0: W(x)1 W(x)3 W(y)2 W(y)4\nP1: R(y)4 W(x)5\nP2: R(y)2 R(x)3\nP3: R(x)5 R(y)?`],
+ ["Exercise 6 (Margara)",`P0: W(x)1 W(y)4 R(x)1 R(x)3\nP1: W(y)2 R(y)4 W(x)3 R(y)4\nP2: R(x)1 R(x)3 R(y)2 R(y)4`]];
+const sel=document.getElementById("pre");
+PRE.forEach((p,i)=>{const o=document.createElement("option");o.value=i;o.textContent=p[0];sel.appendChild(o);});
+const txt=document.getElementById("txt");
+sel.onchange=()=>{txt.value=PRE[+sel.value][1];run();};
+document.getElementById("bCheck").onclick=run;
+const opH=(o,procs)=>`<span class="op ${o.type==="R"?"r":""}">${procs?procs[o.p].name+" ":""}${o.label}</span>`;
+function seqHTML(order,procs){return `<div class="seqline">${order.map(o=>opH(o,procs)).join(" → ")}</div>`;}
+function viewsHTML(views,procs){return views.map(v=>`<div><b>${procs[v.p].name}'s view:</b> ${v.order?seqHTML(v.order,procs):'<span class="bad">no valid order exists</span>'}</div>`).join("");}
+function run(){
+  const out=document.getElementById("out");let procs;
+  try{procs=parseSchedule(txt.value);}catch(e){out.innerHTML=`<div class="panel"><p class="err">${e.message}</p></div>`;document.getElementById("show").innerHTML="";return;}
+  document.getElementById("show").innerHTML=`<div class="fig" style="overflow-x:auto"><table class="sched">${procs.map(p=>`<tr><td class="pn">${p.name}</td>${p.ops.map(o=>`<td>${o.type}(${o.v})${o.val}</td>`).join("")}</tr>`).join("")}</table></div>`;
+  const errs=validate(procs);if(errs.length){out.innerHTML=`<div class="panel">${errs.map(e=>`<p class="err">${e}</p>`).join("")}</div>`;return;}
+  const q=questionAnalysis(procs);let h="";
+  if(q){
+    h+=`<div class="panel"><h3 style="font-size:18px">Which values can ${procs[q.op.p].name} read at <code>R(${q.op.v})?</code></h3><div class="tbl"><table><tr><th>Model</th><th>Allowed values</th></tr>`+
+      [["FIFO","fifo"],["Causal","causal"],["Sequential","seq"]].map(([n,k])=>`<tr><td>${n}</td><td><b>${q.out[k].length?"{ "+q.out[k].sort((a,b)=>a-b).join(", ")+" }":"none"}</b></td></tr>`).join("")+
+      `</table></div><p class="note">Candidates tested: ${q.cands.join(", ")} (0 is the initial value). For each candidate, the checker replaces <code>?</code> and runs the full test. Stronger models allow fewer values.</p>${whyQ(q,procs)}</div>`;
+    out.innerHTML=h;return;
+  }
+  const r=checkAll(procs);
+  h+=`<div class="cards">`;
+  h+=card("FIFO",r.fifo.ok,r.fifo.ok?viewsHTML(r.fifo.views,procs):viewsHTML(r.fifo.views,procs)+removeHTML(procs,"fifo"));
+  h+=card("Causal",r.causal.ok,(r.fifo.ok||r.causal.ok)?viewsHTML(r.causal.views,procs)+(r.causal.ok?"":removeHTML(procs,"causal")):'<p class="note">Not FIFO, so it cannot be causal.</p>');
+  h+=card("Sequential",r.seq.ok,r.seq.ok?`<div>One valid global order:</div>${seqHTML(r.seq.order,procs)}`:(r.causal.ok?'<p class="note">No single interleaving of all operations works.</p>':'<p class="note">Not causal, so it cannot be sequential.</p>')+removeHTML(procs,"seq"));
+  h+=`</div>`;
+  h+=`<div class="panel"><h3 style="font-size:18px">Constraints to write in your answer</h3>${constraintsHTML(procs)}</div>`;
+  out.innerHTML=h;
+}
+function card(name,ok,body){return `<div class="card"><h3>${name} <span class="pill ${ok?"ok":"bad"}">${ok?"consistent":"not consistent"}</span></h3>${body}</div>`;}
+function removeHTML(procs,model){const r=removalAnalysis(procs,model);
+  return `<div class="note"><b>Remove one operation?</b> ${r.length?"The schedule becomes "+({fifo:"FIFO",causal:"causal",seq:"sequential"})[model]+" if you remove one of: "+r.map(x=>`<code>${x}</code>`).join(", ")+".":"No single removal is enough (there are at least two independent conflicts)."}</div>`;}
+function constraintsHTML(procs){
+  const w=writeOrders(procs),c=causalWritePairs(procs),ob=observed(procs);
+  let h=`<p><b>FIFO</b> (writes of the same process, in program order):</p><ul>${w.length?w.map(x=>`<li><code>${x.join(" → ")}</code></li>`).join(""):"<li>none</li>"}</ul>`;
+  h+=`<p><b>Causal</b> (extra orders between writes of different processes, through program order and reads):</p><ul>${c.length?c.map(x=>`<li><code>${x[0]} → ${x[1]}</code></li>`).join(""):"<li>none</li>"}</ul>`;
+  h+=`<p><b>What each process observes</b> (successive values it reads on each variable, after its own writes):</p><ul>`+
+    ob.map(o=>`<li>${procs[o.p].name}: ${Object.keys(o.seq).map(v=>`<code>${v}: ${o.seq[v].join(" → ")}</code>`).join(" · ")}</li>`).join("")+`</ul>`;
+  h+=`<p class="note">Method for the exam: list the required orders, then look for a process that observes two writes in the opposite order. For sequential consistency, all processes must also observe all writes in the <i>same</i> order.</p>`;
+  return h;}
+function whyQ(q,procs){return `<p class="note">Tip: write the constraints first. Under FIFO only the writer's program order counts; under causal also the writes the writer had already read; under sequential every process must agree on one order of all writes.</p>`;}
+sel.value=0;txt.value=PRE[0][1];run();
+})();
+</script>
+
+</div>
+</body></html>

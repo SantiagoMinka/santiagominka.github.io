@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fault Tolerance Exam Drill</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; each chapter section opens with a "core idea" note, then question cards with hidden answers. Light only, by request. */
+:root{
+  color-scheme: light;
+  --paper:#f7f8fb;
+  --sheet:#ffffff;
+  --ink:#16202e;
+  --muted:#5a6578;
+  --line:#dde2ec;
+  --accent:#1d4e89;      /* exam-pen blue */
+  --accent-soft:#e7eef8;
+  --tip:#9a5b00;
+  --tip-soft:#fdf3e2;
+  --good:#1f7a4d;
+  --good-soft:#e5f4ec;
+  --warn:#b4372f;
+  --warn-soft:#fbeceb;
+  --code-bg:#f1f3f8;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:0 64px}
+.wrap{max-width:820px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15;margin:0}
+header.top{padding-block:40px 20px;display:grid;gap:12px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(30px,6vw,44px)}
+.lede{color:var(--muted);max-width:62ch;margin:0}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 0;border-block:1px solid var(--line);margin-block:8px 28px}
+.chip,.btn{font:500 13px/1 var(--f-body);border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:999px;padding:8px 13px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.ghost{border-radius:8px}
+.chip:focus-visible,.btn:focus-visible,.reveal:focus-visible,.mark:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.spacer{flex:1}
+.progress{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:8px}
+.bar{width:90px;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--good);transition:width .3s}
+
+.exam-map{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-bottom:40px}
+.exam-map h2{font-size:20px;margin-bottom:8px}
+.exam-map ul{margin:8px 0 0;padding-left:18px}
+.exam-map li{margin:4px 0}
+.date{font-family:var(--f-mono);font-size:12px;color:var(--accent);white-space:nowrap}
+
+section.topic{margin-top:48px;display:grid;gap:18px}
+.topic-head{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.topic-head .num{font-family:var(--f-mono);color:var(--accent);font-size:14px}
+.topic-head h2{font-size:clamp(22px,4vw,28px)}
+.core{border-left:3px solid var(--accent);background:var(--accent-soft);padding:14px 18px;border-radius:0 10px 10px 0}
+.core b{color:var(--accent)}
+.core p{margin:.4em 0}
+
+article.q{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:grid;gap:12px;min-width:0}
+article.q.known{border-color:#b9dcc8}
+article.q.review{border-color:#efc4c0}
+.q-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.qid{font-family:var(--f-mono);font-size:12.5px;color:var(--muted)}
+.tag{font:600 11px/1 var(--f-body);letter-spacing:.06em;text-transform:uppercase;padding:5px 8px;border-radius:5px;background:var(--code-bg);color:var(--muted)}
+.tag.describe{background:#eaf0fb;color:#24508f}
+.tag.compare{background:#efe9fa;color:#5b3a99}
+.tag.scenario{background:#fdf0e3;color:#94520a}
+.tag.exercise{background:#e6f4f1;color:#18695a}
+.tag.code{background:#eceef2;color:#333d4d}
+.seen{font-family:var(--f-mono);font-size:11.5px;color:var(--tip);background:var(--tip-soft);padding:4px 8px;border-radius:5px}
+.prompt{font-size:16.5px;font-weight:500;margin:0}
+.q-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.reveal{font:600 13.5px/1 var(--f-body);background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px 14px;cursor:pointer}
+.reveal[aria-expanded="true"]{background:var(--sheet);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.mark{font:500 13px/1 var(--f-body);background:transparent;border:1px solid var(--line);border-radius:8px;padding:9px 12px;cursor:pointer;color:var(--muted)}
+.mark.k[aria-pressed="true"]{background:var(--good-soft);border-color:var(--good);color:var(--good)}
+.mark.r[aria-pressed="true"]{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
+.answer{border-top:1px dashed var(--line);padding-top:14px;display:grid;gap:12px;min-width:0}
+.answer h4{font:600 12px/1 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}
+.answer p{margin:.35em 0}
+.answer ul,.answer ol{margin:.3em 0;padding-left:20px}
+.answer li{margin:3px 0}
+.why{background:var(--accent-soft);border-radius:10px;padding:12px 16px}
+.why h4{color:var(--accent)}
+.tipbox{background:var(--tip-soft);border-radius:10px;padding:12px 16px}
+.tipbox h4{color:var(--tip)}
+code{font-family:var(--f-mono);font-size:.88em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+pre{font-family:var(--f-mono);font-size:13px;line-height:1.5;background:var(--code-bg);padding:14px;border-radius:8px;overflow-x:auto;margin:0}
+pre code{background:none;padding:0;font-size:inherit}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:480px}
+th,td{border-bottom:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+th{font-weight:600;background:var(--paper)}
+svg text{font-family:var(--f-body)}
+.figure{overflow-x:auto}
+.simbox{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;border:1px solid #b9dcc8;background:var(--good-soft);border-radius:10px;padding:10px 14px;color:var(--ink);text-decoration:none}
+.simbox b{color:var(--good)}
+.simbox:hover{border-color:var(--good)}
+.simbox span{color:var(--muted);font-size:14px}
+footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+
+</head><body>
+<div class="wrap">
+<header class="top">
+  <a class="eyebrow" href="/courses.html?c=distributed-systems" style="text-decoration:none">← Distributed Systems notes</a>
+  <div class="eyebrow">Distributed Systems · Prof. Cugola · Chapter 06</div>
+  <h1>Fault tolerance</h1>
+  <p class="lede">Exam drill for the fault tolerance chapter: failure semantics of RPC, process groups, consensus with crashes and traitors, reliable group communication, virtual synchrony, checkpointing and logging.</p>
+</header>
+<div class="toolbar" role="toolbar" aria-label="Filter and controls">
+  <button class="chip" data-filter="all" aria-pressed="true">All</button>
+  <button class="chip" data-filter="describe" aria-pressed="false">Describe</button>
+  <button class="chip" data-filter="compare" aria-pressed="false">Compare</button>
+  <button class="chip" data-filter="scenario" aria-pressed="false">Scenario</button>
+  <button class="chip" data-filter="exercise" aria-pressed="false">Exercise</button>
+  <button class="chip" data-filter="code" aria-pressed="false">Code</button>
+  <button class="chip" data-filter="review" aria-pressed="false">To review</button>
+  <span class="spacer"></span>
+  <button class="btn ghost" id="revealAll">Show all answers</button>
+  <button class="btn ghost" id="resetMarks">Reset marks</button>
+  <span class="progress"><span class="bar"><i id="barFill"></i></span><span id="progText">0 / 0 known</span></span>
+</div>
+
+<div class="exam-map">
+  <h2>How the exam asks about this chapter</h2>
+  <p>Two fixed items: the <b>recovery line exercise</b> (question 3 in most exams) and an open question on <b>FloodSet</b> or <b>reliable multicast</b>. Real examples:</p>
+  <ul>
+    <li>"Calculate the recovery line for the two diagrams using the rollback-dependency graph for the first one and the checkpoint-dependency graph for the second one. Explain when these graphs are used and how the data to build them is collected." <span class="date">17 Jan 2024</span> <span class="date">14 Feb 2024</span> <span class="date">6 Sep 2024</span> <span class="date">13 Jul 2015</span> <span class="date">3 Dec 2014</span></li>
+    <li>"Describe the FloodSet algorithm. Which problem does it solve? Under which assumptions? Why are they fundamental (counterexamples)? Prove its correctness." <span class="date">17 Jan 2024</span> <span class="date">13 Feb 2015</span> <span class="date">9 Sep 2015</span> <span class="date">1 Feb 2013</span></li>
+    <li>"Describe how to efficiently provide reliable multicast among reliable processes. How do things change if processes may fail?" <span class="date">14 Feb 2024</span> · scalable reliable multicast <span class="date">6 Sep 2024</span> · links unreliable <span class="date">23 Sep 2015</span></li>
+    <li>"Classify the types of failures with a practical example of each." <span class="date">6 Sep 2024</span> (see chapter 02)</li>
+  </ul>
+</div>
+
+<section class="topic">
+  <div class="topic-head"><span class="num">§1</span><h2>Basics and client/server failures</h2></div>
+  <div class="core"><p><b>Core idea.</b> A <b>fault</b> causes an <b>error</b>, which can cause a <b>failure</b> (the service is not delivered). Fault tolerance masks faults with <b>redundancy</b>: information (codes), time (retry), physical (replicas, e.g. triple modular redundancy). Even RPC cannot fully hide failures.</p></div>
+
+  <article class="q" data-type="describe" data-id="f-b1">
+    <div class="q-head"><span class="qid">Q1</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Define availability, reliability, safety and maintainability. Give an example of a system that is highly available but not reliable. Classify faults by frequency.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul><li><b>Availability:</b> ready for use when needed.</li><li><b>Reliability:</b> runs continuously for a long time without failure.</li><li><b>Safety:</b> nothing bad happens when it fails.</li><li><b>Maintainability:</b> easy to repair.</li></ul>
+        <p>Example: a system that goes down for 1 ms every hour is 99.999% available, but it is not reliable: it never runs for more than an hour.</p>
+        <p>Faults: <b>transient</b> (happen once and disappear), <b>intermittent</b> (appear and vanish with no clear reason), <b>permanent</b> (stay until repaired).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Availability is a fraction of time; reliability is the length of uninterrupted operation. The two can differ a lot, so a requirement must say which one matters.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="f-b2">
+    <div class="q-head"><span class="qid">Q2</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">A print server does two things: print (P) and send a confirmation (M). It can crash (C) at any moment. The client knows that the server crashed and can choose: always reissue, never reissue, reissue only if it got the confirmation, reissue only if it did not. Which strategy gives exactly-once printing?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>Client strategy</th><th>M→P: MPC</th><th>MC(P)</th><th>C(MP)</th><th>P→M: PMC</th><th>PC(M)</th><th>C(PM)</th></tr>
+          <tr><td>Always reissue</td><td>DUP</td><td>OK</td><td>OK</td><td>DUP</td><td>DUP</td><td>OK</td></tr>
+          <tr><td>Never reissue</td><td>OK</td><td>ZERO</td><td>ZERO</td><td>OK</td><td>OK</td><td>ZERO</td></tr>
+          <tr><td>Only when ACKed</td><td>DUP</td><td>OK</td><td>ZERO</td><td>DUP</td><td>OK</td><td>ZERO</td></tr>
+          <tr><td>Only when not ACKed</td><td>OK</td><td>ZERO</td><td>OK</td><td>OK</td><td>DUP</td><td>OK</td></tr></table></div>
+        <p>(Parentheses = events that do not happen because of the crash.) <b>No strategy</b> is OK in all six cases. You can get at-most-once or at-least-once, never exactly-once.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The client cannot tell whether the crash came before or after the print. The confirmation and the print are two separate actions, and the crash can fall between them in either order. That missing information is exactly what exactly-once would need.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="f-b3">
+    <div class="q-head"><span class="qid">Q3</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">How do you handle lost replies and client crashes (orphans)? Compare extermination, reincarnation, gentle reincarnation and expiration.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Lost replies.</b> The client cannot tell a lost request from a lost reply. Retrying is safe for <b>idempotent</b> requests. For others, the server caches requests with sequence numbers and detects duplicates (open question: how long to keep them).</p>
+        <p><b>Orphans</b> = computations started by a crashed client.</p>
+        <ul>
+          <li><b>Extermination:</b> the client logs each RPC; after reboot it asks to kill the orphans. Costly logging; problems with grand-orphans and partitions.</li>
+          <li><b>Reincarnation:</b> after reboot the client starts a new <b>epoch</b> and broadcasts it; servers kill computations of old epochs (grand-orphans too); replies with an old epoch are discarded.</li>
+          <li><b>Gentle reincarnation:</b> like reincarnation, but kill only if the owner cannot be found.</li>
+          <li><b>Expiration:</b> each remote computation has a time limit; the client waits that long before rebooting.</li>
+        </ul>
+        <p>None is perfect: killed orphans may leave open files or locks.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The lesson: a remote call is not a local call. Some failure cases cannot be masked, only made rarer or less harmful.</p></div>
+    </div>
+  </article>
+</section>
+
+<section class="topic">
+  <div class="topic-head"><span class="num">§2</span><h2>Process groups and agreement</h2></div>
+  <div class="core"><p><b>Core idea.</b> Replicate a process in a group, so that the group survives some failures. Size: k + 1 members tolerate k fail-silent faults; 2k + 1 tolerate k Byzantine faults with voting. When members must <b>agree</b> among themselves (no external voter), you need consensus: FloodSet for crashes, Lamport's algorithm with 3m + 1 generals for traitors.</p></div>
+  <a class="simbox" href="/exercises/distributed-systems/sim-floodset.html" target="_blank" rel="noopener"><b>Open the FloodSet simulator</b><span>Run the counterexamples: f rounds, more than f crashes.</span></a>
+
+  <article class="q" data-type="describe" data-id="f-a1">
+    <div class="q-head"><span class="qid">Q4</span><span class="tag describe">Describe</span><span class="seen">Exam 17 Jan 2024 · 13 Feb 2015 · 9 Sep 2015 · 1 Feb 2013</span></div>
+    <p class="prompt">Describe the FloodSet algorithm. Which problem does it solve? Under which assumptions? Why are those assumptions fundamental (use counterexamples)? Optional: prove its correctness.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Problem: consensus.</b> Each process starts with a value; all non-faulty processes must decide. <b>Agreement:</b> no two processes decide differently. <b>Validity:</b> if all start with v, v is the only possible decision. <b>Termination:</b> all non-faulty processes eventually decide.</p>
+        <p><b>Assumptions:</b> synchronous rounds (a message is received in the same round); reliable channels; at most f processes fail, by <b>crash</b> (they stop, possibly in the middle of a send).</p>
+        <p><b>Algorithm.</b> Each process keeps W, initially {its value}. For f + 1 rounds: send W to all, add the received sets to W. Then decide: if |W| = 1, its element; else a default v<sub>0</sub> (or the same deterministic function, e.g. max(W)).</p>
+        <p><b>Proof.</b> Lemma 1: if no process fails in round r, all processes active after r have the same W (each received the W of all others). Lemma 2: if all W are equal after r, they stay equal in all later rounds (no new values appear). With at most f crashes, at least one of the f + 1 rounds has no crash. So all W are equal at the end, and the decision is the same. Validity: if all start with v, W = {v} always.</p>
+        <p><b>Counterexamples.</b></p>
+        <ul>
+          <li><b>Only f rounds</b> (f = 1, 1 round): P1 = 0, P2 = P3 = 1. P1 crashes after sending only to P2. P2 has {0, 1} → v<sub>0</sub>, P3 has {1} → 1. Disagreement. (Chain of f crashes for general f.)</li>
+          <li><b>Asynchronous system:</b> a process cannot tell a slow message from a crash, so it cannot end a round. FLP says no deterministic algorithm exists.</li>
+          <li><b>Lossy channels:</b> a lost message acts like an extra crash at every round: the two-generals problem shows that agreement is impossible.</li>
+          <li><b>Byzantine processes:</b> a traitor sends {0} to some and {1} to others in the last round; correct processes end with different W.</li>
+        </ul>
+        <p><b>Optimization:</b> broadcast W in round 1, then broadcast again only when you learn a new value.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The heart of the proof is the clean round. The algorithm does not know which round is clean; it only needs one to exist, and f + 1 rounds guarantee it by the pigeonhole principle.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="f-a2">
+    <div class="q-head"><span class="qid">Q5</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Describe the Byzantine generals problem and Lamport's algorithm for 4 generals with 1 traitor. Why are 3m + 1 generals needed for m traitors?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>n generals announce their troop strengths; communication is perfect; some generals are traitors. <b>Agreement:</b> loyal generals learn the same values. <b>Validity:</b> if a loyal general announces v, all loyal generals learn v for him. <b>Termination.</b></p>
+        <p><b>Algorithm (4 generals, 1 traitor).</b> (1) Each general sends its value to all. (2) Each forms a vector of received values. (3) Each sends its vector to all. (4) For each position, take the majority of the values reported by the others; no majority → "unknown". Loyal generals get the same vector, with correct values for loyal positions.</p>
+        <p><b>3m + 1.</b> With 3 generals and 1 traitor, a loyal general cannot tell "the commander lied" from "the other lieutenant lied": both scenarios give him the same messages. In general, with m traitors you need 2m + 1 loyal generals so that the loyal majority wins every vote: 3m + 1 in total.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A traitor can send different values to different processes, so a single report proves nothing. Only a majority of independent reports, from more loyal than traitorous sources, can outvote the lies.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="f-a3">
+    <div class="q-head"><span class="qid">Q6</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">How large must a replicated group be? Compare: k fail-silent faults with replicated writes, k Byzantine faults with an external voter, consensus with crashes (FloodSet), consensus with traitors, and consensus in an asynchronous system.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>Setting</th><th>Requirement</th></tr>
+          <tr><td>k fail-silent faults, client reads from any live replica</td><td>k + 1 replicas</td></tr>
+          <tr><td>k Byzantine faults, client votes on the answers</td><td>2k + 1 replicas (majority of correct answers)</td></tr>
+          <tr><td>Consensus, synchronous, f crashes</td><td>f + 1 rounds; any n (even one correct process is enough)</td></tr>
+          <tr><td>Consensus, synchronous, m traitors</td><td>3m + 1 processes, m + 1 rounds</td></tr>
+          <tr><td>Consensus, asynchronous, even 1 crash</td><td>Impossible (FLP); Byzantine is harder, so also impossible</td></tr></table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>An external voter (the client) can count answers. When the group must agree among itself, there is no trusted counter, so it needs more processes or more rounds. FLP covers Byzantine too: a traitor can simulate a crash.</p></div>
+    </div>
+  </article>
+</section>
+
+<section class="topic">
+  <div class="topic-head"><span class="num">§3</span><h2>Reliable group communication</h2></div>
+  <div class="core"><p><b>Core idea.</b> With fixed groups and correct processes, reliable multicast is about efficiency: avoid <b>ack implosion</b>. With faulty processes and changing groups, you need <b>virtual synchrony</b>: a message is delivered to all correct members or to none, and view changes are ordered with respect to messages.</p></div>
+
+  <article class="q" data-type="compare" data-id="f-r1">
+    <div class="q-head"><span class="qid">Q7</span><span class="tag compare">Compare</span><span class="seen">Exam 14 Feb 2024 · 6 Sep 2024 · 5 Sep 2013 · 23 Sep 2015</span></div>
+    <p class="prompt">Describe how to efficiently provide reliable multicast among reliable processes (positive acks, negative acks, scalable reliable multicast, hierarchical feedback control). Which problem does each solve and which assumptions does it make?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Setting:</b> fixed group, correct processes, unreliable multicast underneath. Goal: every member receives every message (any order).</p>
+        <ul>
+          <li><b>Positive acks:</b> each receiver acks each message; the sender retransmits until all ack. Problem: <b>ack implosion</b> at the sender with large groups.</li>
+          <li><b>Negative acks:</b> a receiver sends a NACK only when it detects a gap (sequence numbers). Fewer messages, but the sender must buffer messages, without knowing when it can delete them.</li>
+          <li><b>Scalable Reliable Multicast</b> (non-hierarchical feedback control): NACKs are <b>multicast</b> to the group after a <b>random delay</b>. If a receiver hears another NACK for the same message, it suppresses its own. One retransmission serves all. Cost: everyone must process all NACKs, including members that did not lose the message.</li>
+          <li><b>Hierarchical feedback control:</b> receivers form local groups with a coordinator, and coordinators form a tree rooted at the sender. Each coordinator handles retransmissions in its group with any strategy, and asks its parent when it lacks a message. It removes a message from its buffer when all its receivers and child coordinators have acked it. Problem: build and maintain the tree.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>Each step moves the feedback work away from the sender: first by sending less feedback (NACK), then by sharing it (multicast NACK with suppression), then by distributing it (hierarchy). For faulty processes the problem changes completely: see the next question.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="f-r2">
+    <div class="q-head"><span class="qid">Q8</span><span class="tag describe">Describe</span><span class="seen">Exam 14 Feb 2024 (second part)</span></div>
+    <p class="prompt">How does the problem change if processes may fail? Define virtual synchrony and describe its implementation in ISIS.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Now a message must reach <b>all correct members or none</b>, and the members must agree on who is in the group (<b>atomic multicast</b> also adds the same order everywhere). Close synchrony (instantaneous delivery to all) is impossible with failures.</p>
+        <p><b>Virtual synchrony.</b> Distinguish receive (by the communication layer) and deliver (to the application). A <b>group view</b> is the set of members seen by the sender. View changes are multicast too, and every message is delivered entirely within one view: before or after a view change, never across it. Crashed processes leave the view and must rejoin. Messages of a correct process are delivered to all correct processes; messages of a crashing sender are delivered to all or dropped.</p>
+        <p><b>ISIS implementation</b> (reliable FIFO point-to-point channels). A process keeps each message until it is <b>stable</b> (all members received it). On a view change message: stop sending, multicast all unstable messages to the members of the new view, then multicast a <b>flush</b>. Install the new view after receiving a flush from every member of the new view. So all survivors have the same messages before the new view starts.</p>
+        <div class="tbl"><table><tr><th>Multicast</th><th>Basic ordering</th><th>Total order</th></tr>
+          <tr><td>Reliable</td><td>None</td><td>No</td></tr><tr><td>FIFO</td><td>FIFO</td><td>No</td></tr><tr><td>Causal</td><td>Causal</td><td>No</td></tr>
+          <tr><td>Atomic</td><td>None</td><td>Yes</td></tr><tr><td>FIFO atomic</td><td>FIFO</td><td>Yes</td></tr><tr><td>Causal atomic</td><td>Causal</td><td>Yes</td></tr></table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>Because of FLP, you cannot know if a crashed process received a message. Virtual synchrony avoids the question: the crashed process is simply removed, and the survivors make sure they all have the same set of messages before they move on.</p></div>
+    </div>
+  </article>
+</section>
+
+<section class="topic">
+  <div class="topic-head"><span class="num">§4</span><h2>Recovery: checkpointing and logging</h2></div>
+  <div class="core"><p><b>Core idea.</b> <b>Backward recovery</b> returns to a saved correct state; <b>forward recovery</b> moves to a new correct state (e.g. error-correcting codes). Checkpoints must form a <b>recovery line</b>: a consistent cut. Independent checkpoints risk the <b>domino effect</b>; coordinated checkpoints avoid it; logging lets you replay messages.</p></div>
+  <a class="simbox" href="/exercises/distributed-systems/sim-recovery-line.html" target="_blank" rel="noopener"><b>Open the recovery line simulator</b><span>Both Sep 2024 diagrams, both graphs, step by step.</span></a>
+
+  <article class="q" data-type="exercise" data-id="f-c1">
+    <div class="q-head"><span class="qid">Q9</span><span class="tag exercise">Exercise</span><span class="seen">Exam 6 Sep 2024</span></div>
+    <p class="prompt">Exam diagram 1 (P1 crashes; checkpoints 3 per process; messages as in the figure). Compute the recovery line with the rollback-dependency graph. Then diagram 2 (P4 crashes) with the checkpoint-dependency graph.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Diagram 1, rollback-dependency graph.</b> Mark the failure state of P1. The message P1 → P2 sent after c<sub>1,3</sub> marks c<sub>2,3</sub>; from there the marks spread through P3 and P4 and come back to P1 and P2 (domino effect). Result: <b>c<sub>1,1</sub>, c<sub>2,1</sub>, c<sub>3,1</sub>, c<sub>4,2</sub></b>. In-transit messages to resend: the first message P2 → P1 and the first message P4 → P3.</p>
+        <p><b>Diagram 2, checkpoint-dependency graph.</b> Root set: c<sub>4,3</sub> (last checkpoint of the crashed P4) and the current states of P1, P2, P3. Iterate: a root reached from another root is replaced with its previous checkpoint. Result: <b>c<sub>1,2</sub>, c<sub>2,2</sub>, c<sub>3,3</sub>, c<sub>4,3</sub></b>.</p>
+        <p>Open the simulator to see each edge and each marking step.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Rollback-dependency: an edge c<sub>i,x</sub> → c<sub>j,y</sub> says "if the interval ending at c<sub>i,x</sub> is undone, the interval ending at c<sub>j,y</sub> must be undone too", because it received a message from it. Marking follows "undone" through the graph. The checkpoint graph says the same with the edge starting at the checkpoint that <i>begins</i> the sending interval. Both give the same line.</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>Name the checkpoints first (c<sub>i,1</sub>, c<sub>i,2</sub>, …) and list the messages as "sent in I<sub>i,x</sub>, received in I<sub>j,y</sub>". Then draw the graph. Finish by checking for orphan messages on your line.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="f-c2">
+    <div class="q-head"><span class="qid">Q10</span><span class="tag describe">Describe</span><span class="seen">Exam 17 Jan 2024 · 14 Feb 2024 · 13 Jul 2015 · 3 Dec 2014</span></div>
+    <p class="prompt">When are rollback-dependency and checkpoint-dependency graphs used, and how is the data to build them collected?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>When:</b> with <b>independent (uncoordinated) checkpointing</b>, after a failure, to find the most recent consistent set of checkpoints (the recovery line).</p>
+        <p><b>Data collection:</b></p>
+        <ul>
+          <li>Each process numbers its checkpoint intervals: I<sub>i,x</sub> lies between c<sub>i,x−1</sub> and c<sub>i,x</sub>.</li>
+          <li>Each message piggybacks the sender's current interval.</li>
+          <li>The receiver records the dependency I<sub>i,x</sub> → I<sub>j,y</sub> with its recovery information (on stable storage, with the checkpoint).</li>
+          <li>After a failure, the recovering process broadcasts a dependency request; all processes stop and send their dependency information.</li>
+          <li>The recovering process computes the recovery line and sends the rollback requests.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>Independent checkpoints are cheap to take but expensive to use: you need this extra bookkeeping on every message, you may need a domino rollback, and some checkpoints are useless. That is why coordinated checkpointing is preferred.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="f-c3">
+    <div class="q-head"><span class="qid">Q11</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">Compare independent, coordinated (blocking and snapshot-based), incremental and communication-induced checkpointing.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><b>Independent:</b> each process checkpoints alone. Cheap, but domino effect, useless checkpoints, dependency tracking.</li>
+          <li><b>Coordinated, blocking:</b> the coordinator sends CHKP-REQ; each process takes a checkpoint, queues outgoing application messages, and acks; the coordinator sends CHKP-DONE. No useless checkpoints; processes block during the protocol.</li>
+          <li><b>Incremental:</b> ask a checkpoint only from processes that depend on the coordinator's recovery (they received messages causally dependent on one sent by the coordinator after its last checkpoint).</li>
+          <li><b>Coordinated with a global snapshot</b> (Chandy–Lamport): processes are not blocked; the algorithm is more complex.</li>
+          <li><b>Communication-induced:</b> independent checkpoints, plus information piggybacked on messages that forces a process to take an extra checkpoint when needed to avoid the domino effect.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>The trade-off is coordination cost at checkpoint time vs complexity and lost work at recovery time.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="f-c4">
+    <div class="q-head"><span class="qid">Q12</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">Describe message logging. Define stable message, DEP(m), COPY(m) and orphan process. Compare pessimistic and optimistic logging.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Start from a checkpoint and replay logged messages. It works if the system is <b>piecewise deterministic</b>: execution between two receipts is deterministic.</p>
+        <ul>
+          <li><b>Stable</b> message: written to stable storage; it can no longer be lost.</li>
+          <li><b>DEP(m):</b> processes to which m, or a message that depends on m, was delivered.</li>
+          <li><b>COPY(m):</b> processes that hold a copy of m, not yet in stable storage.</li>
+          <li><b>Orphan:</b> a surviving process Q in DEP(m) when every process in COPY(m) has crashed. m can never be replayed, but Q depends on it.</li>
+        </ul>
+        <p>To avoid orphans: every process in DEP(m) must also be in COPY(m).</p>
+        <p><b>Pessimistic:</b> an unstable message is delivered to at most one process, and the receiver sends nothing until it writes m to stable storage. No orphans ever; slower. (A variant logs at the sender.)</p>
+        <p><b>Optimistic:</b> log asynchronously, hoping it finishes before a crash. If COPY(m) all crash, roll back DEP(m) until they no longer depend on m. Faster in normal operation; complex recovery.</p>
+        <p>Combining coordinated checkpointing with logging gives the best performance.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The same trade-off as pessimistic vs optimistic concurrency control: pay always to prevent the problem, or pay only when it happens.</p></div>
+    </div>
+  </article>
+</section>
+<footer>Source: lecture slides "06 – Fault tolerance" (Cugola) and the past exams in your course folder (2013–2024). Your "Got it" and "Review again" marks stay only in this browser.</footer>
+</div>
+
+<script>
+(function(){
+  const KEY = "ds-faulttol-marks-v1";
+  let marks = {};
+  try { marks = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e) { marks = {}; }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(marks)); } catch(e) {} };
+  const cards = Array.from(document.querySelectorAll("article.q"));
+
+  function applyMark(card){
+    const m = marks[card.dataset.id];
+    card.classList.toggle("known", m === "k");
+    card.classList.toggle("review", m === "r");
+    card.querySelector(".mark.k").setAttribute("aria-pressed", m === "k");
+    card.querySelector(".mark.r").setAttribute("aria-pressed", m === "r");
+  }
+  function updateProgress(){
+    const known = cards.filter(c => marks[c.dataset.id] === "k").length;
+    document.getElementById("progText").textContent = known + " / " + cards.length + " known";
+    document.getElementById("barFill").style.width = (100 * known / cards.length) + "%";
+  }
+  function setOpen(card, open){
+    const btn = card.querySelector(".reveal");
+    card.querySelector(".answer").hidden = !open;
+    btn.setAttribute("aria-expanded", open);
+    btn.textContent = open ? "Hide answer" : "Show answer";
+  }
+
+  cards.forEach(card => {
+    applyMark(card);
+    card.querySelector(".reveal").addEventListener("click", () => {
+      setOpen(card, card.querySelector(".answer").hidden);
+    });
+    card.querySelectorAll(".mark").forEach(b => b.addEventListener("click", () => {
+      const v = b.classList.contains("k") ? "k" : "r";
+      if (marks[card.dataset.id] === v) delete marks[card.dataset.id]; else marks[card.dataset.id] = v;
+      save(); applyMark(card); updateProgress(); applyFilter();
+    }));
+  });
+
+  let filter = "all";
+  function applyFilter(){
+    cards.forEach(c => {
+      const show = filter === "all" ? true : filter === "review" ? marks[c.dataset.id] === "r" : c.dataset.type === filter;
+      c.hidden = !show;
+    });
+    document.querySelectorAll("section.topic").forEach(s => {
+      s.hidden = !s.querySelector("article.q:not([hidden])");
+    });
+  }
+  document.querySelectorAll(".chip").forEach(ch => ch.addEventListener("click", () => {
+    filter = ch.dataset.filter;
+    document.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", x === ch));
+    applyFilter();
+  }));
+
+  const revealBtn = document.getElementById("revealAll");
+  revealBtn.addEventListener("click", () => {
+    const anyClosed = cards.some(c => c.querySelector(".answer").hidden);
+    cards.forEach(c => setOpen(c, anyClosed));
+    revealBtn.textContent = anyClosed ? "Hide all answers" : "Show all answers";
+  });
+  document.getElementById("resetMarks").addEventListener("click", () => {
+    marks = {}; save(); cards.forEach(applyMark); updateProgress(); applyFilter();
+  });
+  updateProgress();
+})();
+</script>
+
+</body></html>

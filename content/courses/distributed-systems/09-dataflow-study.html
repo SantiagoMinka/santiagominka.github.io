@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dataflow Exam Drill</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; each chapter section opens with a "core idea" note, then question cards with hidden answers. Light only, by request. */
+:root{
+  color-scheme: light;
+  --paper:#f7f8fb;
+  --sheet:#ffffff;
+  --ink:#16202e;
+  --muted:#5a6578;
+  --line:#dde2ec;
+  --accent:#1d4e89;      /* exam-pen blue */
+  --accent-soft:#e7eef8;
+  --tip:#9a5b00;
+  --tip-soft:#fdf3e2;
+  --good:#1f7a4d;
+  --good-soft:#e5f4ec;
+  --warn:#b4372f;
+  --warn-soft:#fbeceb;
+  --code-bg:#f1f3f8;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:0 64px}
+.wrap{max-width:820px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15;margin:0}
+header.top{padding-block:40px 20px;display:grid;gap:12px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(30px,6vw,44px)}
+.lede{color:var(--muted);max-width:62ch;margin:0}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 0;border-block:1px solid var(--line);margin-block:8px 28px}
+.chip,.btn{font:500 13px/1 var(--f-body);border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:999px;padding:8px 13px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.ghost{border-radius:8px}
+.chip:focus-visible,.btn:focus-visible,.reveal:focus-visible,.mark:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.spacer{flex:1}
+.progress{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:8px}
+.bar{width:90px;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--good);transition:width .3s}
+
+.exam-map{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-bottom:40px}
+.exam-map h2{font-size:20px;margin-bottom:8px}
+.exam-map ul{margin:8px 0 0;padding-left:18px}
+.exam-map li{margin:4px 0}
+.date{font-family:var(--f-mono);font-size:12px;color:var(--accent);white-space:nowrap}
+
+section.topic{margin-top:48px;display:grid;gap:18px}
+.topic-head{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.topic-head .num{font-family:var(--f-mono);color:var(--accent);font-size:14px}
+.topic-head h2{font-size:clamp(22px,4vw,28px)}
+.core{border-left:3px solid var(--accent);background:var(--accent-soft);padding:14px 18px;border-radius:0 10px 10px 0}
+.core b{color:var(--accent)}
+.core p{margin:.4em 0}
+
+article.q{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:grid;gap:12px;min-width:0}
+article.q.known{border-color:#b9dcc8}
+article.q.review{border-color:#efc4c0}
+.q-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.qid{font-family:var(--f-mono);font-size:12.5px;color:var(--muted)}
+.tag{font:600 11px/1 var(--f-body);letter-spacing:.06em;text-transform:uppercase;padding:5px 8px;border-radius:5px;background:var(--code-bg);color:var(--muted)}
+.tag.describe{background:#eaf0fb;color:#24508f}
+.tag.compare{background:#efe9fa;color:#5b3a99}
+.tag.scenario{background:#fdf0e3;color:#94520a}
+.tag.exercise{background:#e6f4f1;color:#18695a}
+.tag.code{background:#eceef2;color:#333d4d}
+.seen{font-family:var(--f-mono);font-size:11.5px;color:var(--tip);background:var(--tip-soft);padding:4px 8px;border-radius:5px}
+.prompt{font-size:16.5px;font-weight:500;margin:0}
+.q-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.reveal{font:600 13.5px/1 var(--f-body);background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px 14px;cursor:pointer}
+.reveal[aria-expanded="true"]{background:var(--sheet);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.mark{font:500 13px/1 var(--f-body);background:transparent;border:1px solid var(--line);border-radius:8px;padding:9px 12px;cursor:pointer;color:var(--muted)}
+.mark.k[aria-pressed="true"]{background:var(--good-soft);border-color:var(--good);color:var(--good)}
+.mark.r[aria-pressed="true"]{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
+.answer{border-top:1px dashed var(--line);padding-top:14px;display:grid;gap:12px;min-width:0}
+.answer h4{font:600 12px/1 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}
+.answer p{margin:.35em 0}
+.answer ul,.answer ol{margin:.3em 0;padding-left:20px}
+.answer li{margin:3px 0}
+.why{background:var(--accent-soft);border-radius:10px;padding:12px 16px}
+.why h4{color:var(--accent)}
+.tipbox{background:var(--tip-soft);border-radius:10px;padding:12px 16px}
+.tipbox h4{color:var(--tip)}
+code{font-family:var(--f-mono);font-size:.88em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+pre{font-family:var(--f-mono);font-size:13px;line-height:1.5;background:var(--code-bg);padding:14px;border-radius:8px;overflow-x:auto;margin:0}
+pre code{background:none;padding:0;font-size:inherit}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:480px}
+th,td{border-bottom:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+th{font-weight:600;background:var(--paper)}
+svg text{font-family:var(--f-body)}
+.figure{overflow-x:auto}
+.simbox{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;border:1px solid #b9dcc8;background:var(--good-soft);border-radius:10px;padding:10px 14px;color:var(--ink);text-decoration:none}
+.simbox b{color:var(--good)}
+.simbox:hover{border-color:var(--good)}
+.simbox span{color:var(--muted);font-size:14px}
+footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+
+</head><body>
+<div class="wrap">
+<header class="top">
+  <a class="eyebrow" href="/courses.html?c=distributed-systems" style="text-decoration:none">← Distributed Systems notes</a>
+  <div class="eyebrow">Distributed Systems · Prof. Margara · Chapter 09</div>
+  <h1>Dataflow systems</h1>
+  <p class="lede">Exam drill for MapReduce, the dataflow model, scheduling vs pipelining (Spark vs Flink), and stream processing with windows and watermarks.</p>
+</header>
+<div class="toolbar" role="toolbar" aria-label="Filter and controls">
+  <button class="chip" data-filter="all" aria-pressed="true">All</button>
+  <button class="chip" data-filter="describe" aria-pressed="false">Describe</button>
+  <button class="chip" data-filter="compare" aria-pressed="false">Compare</button>
+  <button class="chip" data-filter="scenario" aria-pressed="false">Scenario</button>
+  <button class="chip" data-filter="exercise" aria-pressed="false">Exercise</button>
+  <button class="chip" data-filter="code" aria-pressed="false">Code</button>
+  <button class="chip" data-filter="review" aria-pressed="false">To review</button>
+  <span class="spacer"></span>
+  <button class="btn ghost" id="revealAll">Show all answers</button>
+  <button class="btn ghost" id="resetMarks">Reset marks</button>
+  <span class="progress"><span class="bar"><i id="barFill"></i></span><span id="progText">0 / 0 known</span></span>
+</div>
+
+<div class="exam-map">
+  <h2>How the exam asks about this chapter</h2>
+  <p>The same question appeared three times in 2024 (question 6 or 7):</p>
+  <ul>
+    <li>"Consider the dataflow model for big data processing. (a) Describe the key characteristics of the model. (b) Describe the two architectures to implement it: scheduling of tasks and pipelining of tasks." <span class="date">14 Feb 2024</span> <span class="date">18 Jun 2024</span> <span class="date">6 Sep 2024</span> (also in the p2p exercise slides)</li>
+  </ul>
+  <p>Learn Q3 and Q4 below by heart; the others prepare you for variations.</p>
+</div>
+
+<section class="topic">
+  <div class="topic-head"><span class="num">§1</span><h2>MapReduce</h2></div>
+  <div class="core"><p><b>Core idea.</b> Data-intensive problems (terabytes, commodity clusters that fail often) need a different approach: move from global mutable state to <b>transformations of immutable data</b>. The programmer writes <code>map</code> and <code>reduce</code>; the platform handles scheduling, data distribution, and fault tolerance.</p></div>
+
+  <article class="q" data-type="exercise" data-id="d-m1">
+    <div class="q-head"><span class="qid">Q1</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Word count on "All you need is love / All you need is love / All you need is love, love / Love is all you need", split into 4 map tasks (one per line) and 3 reducers by key range (a–h, i–p, q–z). Show the map output, what each reducer receives, and the final result. Words are case-insensitive.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Map</b> (each mapper counts locally): lines 1, 2, 4 emit ⟨all,1⟩ ⟨you,1⟩ ⟨need,1⟩ ⟨is,1⟩ ⟨love,1⟩; line 3 emits ⟨all,1⟩ ⟨you,1⟩ ⟨need,1⟩ ⟨is,1⟩ ⟨love,2⟩.</p>
+        <p><b>Shuffle</b> (same key → same reducer): a–h gets all; i–p gets is, love, need; q–z gets you.</p>
+        <p><b>Reduce</b> (sum the list): ⟨all, [1,1,1,1]⟩ → 4; ⟨is, [1,1,1,1]⟩ → 4; ⟨need, [1,1,1,1]⟩ → 4; ⟨love, [1,1,2,1]⟩ → <b>5</b>; ⟨you, [1,1,1,1]⟩ → 4.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Map is stateless per element (here, per block). The platform guarantees that all pairs with the same key reach the same reducer (partition by hash(k) mod R or by range). The reducer gets an iterator, so it reads its input sequentially and only once.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="d-m2">
+    <div class="q-head"><span class="qid">Q2</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">How does MapReduce schedule tasks, exploit data locality, and tolerate failures and stragglers? What are its strengths and limits?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><b>Scheduling:</b> one master, many workers. Input split into M map tasks (~64 MB); R reduce tasks. The master assigns tasks to free workers dynamically. Mappers write R local files; reducers fetch their part from all mappers, sort, and reduce.</li>
+          <li><b>Locality:</b> GFS stores 3 replicas of each 64 MB block; the master puts a map task on a machine with a replica (or in the same rack), so input is read at local disk speed.</li>
+          <li><b>Worker failure</b> (heartbeats): re-run its completed <i>and</i> in-progress map tasks (their output is on its local disk); re-run only in-progress reduce tasks (completed output is in the global file system). Reducers are told about re-executed maps. <b>Master failure:</b> state checkpointed to GFS; a new master continues.</li>
+          <li><b>Stragglers:</b> near the end, launch backup copies of the remaining tasks; take the first to finish.</li>
+        </ul>
+        <p><b>Strengths:</b> simple functions, the system handles the hard parts, very general, good for large-scale analysis. <b>Limits:</b> high overhead, lower raw performance than HPC, rigid two-step paradigm: each step must complete before the next starts.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Immutable intermediate data is the key to simple fault tolerance: a lost result can always be recomputed from its input. This idea carries over to Spark's lineage.</p></div>
+    </div>
+  </article>
+</section>
+
+<section class="topic">
+  <div class="topic-head"><span class="num">§2</span><h2>The dataflow model and its two architectures</h2></div>
+  <div class="core"><p><b>Core idea.</b> Generalize MapReduce from two steps to an arbitrary <b>directed acyclic graph</b> of transformations, each run as many parallel tasks, with one abstraction for batch and streams. Two ways to run it: <b>scheduling</b> of tasks (Spark) and <b>pipelining</b> of tasks (Flink).</p></div>
+
+  <article class="q" data-type="describe" data-id="d-f1">
+    <div class="q-head"><span class="qid">Q3</span><span class="tag describe">Describe</span><span class="seen">Exam 14 Feb 2024 · 18 Jun 2024 · 6 Sep 2024 (part a)</span></div>
+    <p class="prompt">Describe the key characteristics of the dataflow model for big data processing.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li>A job is a <b>graph of operators</b> (transformations such as map, filter, join, group/reduce) connected by data channels: an arbitrary DAG, not only map + reduce.</li>
+          <li>Operators work on <b>immutable data</b>: each one consumes input elements and produces new elements; no global shared mutable state.</li>
+          <li><b>Data parallelism:</b> each operator is split into many tasks working on partitions of the data; data is repartitioned by key between operators when needed (shuffle).</li>
+          <li>The <b>runtime</b>, not the programmer, handles parallelization, distribution, scheduling, load balancing, communication and fault tolerance.</li>
+          <li>The same abstraction covers <b>batch</b> (static data) and <b>stream</b> processing (continuous data with windows).</li>
+          <li>Channels between operators can be a distributed file system, messages (TCP), or queues (Kafka).</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>A declarative graph tells the system what can run in parallel and what must be exchanged. That is what lets the system scale to thousands of machines and recover from failures transparently.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="d-f2">
+    <div class="q-head"><span class="qid">Q4</span><span class="tag compare">Compare</span><span class="seen">Exam 14 Feb 2024 · 18 Jun 2024 · 6 Sep 2024 (part b)</span></div>
+    <p class="prompt">Describe the two architectures to implement the dataflow model: scheduling of tasks and pipelining of tasks.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Scheduling (Apache Spark).</b> Like MapReduce, but with any number of stages. The job is split into stages; tasks of a stage are scheduled on workers when their input is ready, close to the data. Intermediate results go to storage (memory, cached if reused, or disk).</p>
+        <ul>
+          <li><b>Elasticity:</b> decisions at run time can size stage B on the data produced by stage A.</li>
+          <li><b>Load balancing:</b> data of stage A can be redistributed across the tasks of B.</li>
+          <li><b>Fault tolerance:</b> fine-grained, by <b>lineage</b>: re-run only the tasks needed to rebuild the lost intermediate data.</li>
+          <li><b>Cost:</b> scheduling decisions and storage access add latency: not ideal for low-latency streaming.</li>
+        </ul>
+        <p><b>Pipelining (Apache Flink).</b> All tasks are deployed when the job starts and stay active; they talk over TCP channels. A task processes data as soon as it arrives, so operators of different stages run at the same time.</p>
+        <ul>
+          <li><b>Low latency:</b> no scheduling overhead, no storage between stages.</li>
+          <li><b>No elasticity or dynamic load balancing:</b> allocation is fixed at start.</li>
+          <li><b>Fault tolerance:</b> distributed <b>snapshots</b> (Chandy–Lamport style): sources inject markers; a task that got a marker on one input stops that input until it has markers on all inputs, then saves its state, forwards the marker, resumes. On failure: redeploy the whole graph, restore the last complete snapshot, replay the input after it (needs durable input and state storage).</li>
+          <li><b>Adaptation:</b> snapshot, stop, restart with different resources, resume: possible but expensive.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>Everything follows from one choice: decouple stages through storage (scheduling) or connect them directly (pipelining). Decoupling buys flexibility and cheap recovery; direct connection buys latency.</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>Structure your answer as a two-column comparison: how tasks are allocated, latency, elasticity, load balancing, fault tolerance, best use (batch vs low-latency streaming).</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="d-f3">
+    <div class="q-head"><span class="qid">Q5</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">Choose an architecture: (a) a nightly job over 50 TB of logs on a shared cluster whose free resources change; (b) fraud detection on card payments with a 50 ms latency target; (c) an hourly dashboard that tolerates a few seconds of delay but has bursty load.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li><b>Scheduling.</b> Batch, latency irrelevant; elasticity uses whatever resources are free; lineage recovery is cheap for a long job.</li>
+          <li><b>Pipelining.</b> Each payment must be processed in milliseconds; scheduling and storage overhead would break the target.</li>
+          <li><b>Scheduling with micro-batches</b> is acceptable (hundreds of ms – seconds of latency) and adapts resources between micro-batches to the bursts.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>Decide on two axes: required latency, and how much resources or load change over time.</p></div>
+    </div>
+  </article>
+</section>
+
+<section class="topic">
+  <div class="topic-head"><span class="num">§3</span><h2>Stream processing</h2></div>
+  <div class="core"><p><b>Core idea.</b> Static job, dynamic data: results are updated continuously. <b>Windows</b> give precise semantics (count- or time-based, size and slide). <b>Event time</b> with <b>watermarks</b> gives correct order despite network and processing delays.</p></div>
+
+  <article class="q" data-type="exercise" data-id="d-s1">
+    <div class="q-head"><span class="qid">Q6</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Stream: 1 3 1 3 3 5 0 0 0 4. Compute the average (a) in a count-based window of size 4, slide 2; (b) in a tumbling window of size 5. Which one is sliding and which tumbling?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>(a) Windows [1 3 1 3] → 2; [1 3 3 5] → 3; [3 5 0 0] → 2; [0 0 0 4] → 1. Results: <b>2, 3, 2, 1</b>. Slide &lt; size: <b>sliding</b> (overlapping) window.</p>
+        <p>(b) [1 3 1 3 3] → 2.2; [5 0 0 0 4] → 1.8. Slide = size: <b>tumbling</b> window (no overlap).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The slide decides when a result is produced; the size decides how much data each result uses. Count-based windows are "physical" (number of elements); time-based are "logical".</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="d-s2">
+    <div class="q-head"><span class="qid">Q7</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">Compare processing time and event time. What is a watermark and how does it propagate in a distributed job?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Processing time:</b> the wall clock of the machine that computes. Easy, but out of the application's control: with overload, multiple sources, or distributed processing, the order and grouping depend on queues, network delays and executor speed. A receiver cannot tell how up to date its results are.</p>
+        <p><b>Event time:</b> a timestamp attached to each element by the source (or the ingestion system). The application controls the order, but elements can arrive out of order, so the processor must buffer them.</p>
+        <p><b>Watermark:</b> a contract from a source: "a watermark with time t means no element with time ≤ t will follow". When a processor has a watermark ≥ t from <b>all</b> its inputs, it can safely process all elements with time ≤ t, then forward the watermark downstream.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A watermark plays the role of a token: it separates "complete" from "still incomplete" data, like the marker in Chandy–Lamport. Waiting for all inputs is what makes the result deterministic.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="d-s3">
+    <div class="q-head"><span class="qid">Q8</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">"Average temperature over a sliding time window of 1 hour, slide 5 minutes": how is it implemented with pipelining, and with micro-batches?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Pipelining:</b> operator A is always active and keeps the last hour of readings in its local state; every 5 minutes it emits the new average. Results with no batching overhead.</p>
+        <p><b>Micro-batch:</b> the system cuts the input into batches that divide both size and slide (e.g. 5 minutes each). A separate job runs per micro-batch; the window state is saved to external storage after each batch and read back at the next one. Latency of hundreds of ms to seconds; resources can change between batches.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Micro-batching turns a stream into many small batch jobs, so it inherits the strengths (elasticity) and weaknesses (latency) of the scheduling architecture.</p></div>
+    </div>
+  </article>
+</section>
+<footer>Source: lecture slides "09 – Dataflow" (Margara) and the past exams in your course folder (2024). Your "Got it" and "Review again" marks stay only in this browser.</footer>
+</div>
+
+<script>
+(function(){
+  const KEY = "ds-dataflow-marks-v1";
+  let marks = {};
+  try { marks = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e) { marks = {}; }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(marks)); } catch(e) {} };
+  const cards = Array.from(document.querySelectorAll("article.q"));
+
+  function applyMark(card){
+    const m = marks[card.dataset.id];
+    card.classList.toggle("known", m === "k");
+    card.classList.toggle("review", m === "r");
+    card.querySelector(".mark.k").setAttribute("aria-pressed", m === "k");
+    card.querySelector(".mark.r").setAttribute("aria-pressed", m === "r");
+  }
+  function updateProgress(){
+    const known = cards.filter(c => marks[c.dataset.id] === "k").length;
+    document.getElementById("progText").textContent = known + " / " + cards.length + " known";
+    document.getElementById("barFill").style.width = (100 * known / cards.length) + "%";
+  }
+  function setOpen(card, open){
+    const btn = card.querySelector(".reveal");
+    card.querySelector(".answer").hidden = !open;
+    btn.setAttribute("aria-expanded", open);
+    btn.textContent = open ? "Hide answer" : "Show answer";
+  }
+
+  cards.forEach(card => {
+    applyMark(card);
+    card.querySelector(".reveal").addEventListener("click", () => {
+      setOpen(card, card.querySelector(".answer").hidden);
+    });
+    card.querySelectorAll(".mark").forEach(b => b.addEventListener("click", () => {
+      const v = b.classList.contains("k") ? "k" : "r";
+      if (marks[card.dataset.id] === v) delete marks[card.dataset.id]; else marks[card.dataset.id] = v;
+      save(); applyMark(card); updateProgress(); applyFilter();
+    }));
+  });
+
+  let filter = "all";
+  function applyFilter(){
+    cards.forEach(c => {
+      const show = filter === "all" ? true : filter === "review" ? marks[c.dataset.id] === "r" : c.dataset.type === filter;
+      c.hidden = !show;
+    });
+    document.querySelectorAll("section.topic").forEach(s => {
+      s.hidden = !s.querySelector("article.q:not([hidden])");
+    });
+  }
+  document.querySelectorAll(".chip").forEach(ch => ch.addEventListener("click", () => {
+    filter = ch.dataset.filter;
+    document.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", x === ch));
+    applyFilter();
+  }));
+
+  const revealBtn = document.getElementById("revealAll");
+  revealBtn.addEventListener("click", () => {
+    const anyClosed = cards.some(c => c.querySelector(".answer").hidden);
+    cards.forEach(c => setOpen(c, anyClosed));
+    revealBtn.textContent = anyClosed ? "Hide all answers" : "Show all answers";
+  });
+  document.getElementById("resetMarks").addEventListener("click", () => {
+    marks = {}; save(); cards.forEach(applyMark); updateProgress(); applyFilter();
+  });
+  updateProgress();
+})();
+</script>
+
+</body></html>

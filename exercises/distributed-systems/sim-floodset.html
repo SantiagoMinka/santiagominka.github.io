@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FloodSet Simulator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Simulator layout: one wide column; controls on top, drawing, step box, then data panels. Light only. */
+:root{
+  color-scheme: light;
+  --paper:#f7f8fb; --sheet:#ffffff; --ink:#16202e; --muted:#5a6578; --faint:#94a0b4; --line:#dde2ec;
+  --accent:#1d4e89; --accent-soft:#e7eef8;
+  --tip:#9a5b00; --tip-soft:#fdf3e2;
+  --good:#1f7a4d; --good-soft:#e2f3ea;
+  --warn:#b4372f; --warn-soft:#fbeceb;
+  --hot:#d85a30; --code-bg:#f1f3f8;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 56px}
+.wrap{max-width:1040px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);line-height:1.15;margin:0;text-wrap:balance}
+header.top{padding-block:32px 16px;display:grid;gap:8px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(26px,5vw,38px)}
+.lede{color:var(--muted);max-width:70ch;margin:0}
+.panel{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:18px;display:grid;gap:14px;min-width:0;align-content:start}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.lbl{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+button,.btn{font:500 13.5px/1 var(--f-body);border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:8px;padding:9px 13px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+select,input,textarea{font:14px var(--f-body);border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--sheet);color:var(--ink)}
+textarea{font-family:var(--f-mono);font-size:13.5px;width:100%;min-height:120px;resize:vertical}
+.cap{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-bottom:-6px}
+.fig{overflow-x:auto}
+.fig svg{width:100%;height:auto;display:block;min-width:520px}
+svg text{font-family:var(--f-body)}
+.step{background:var(--code-bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;min-height:84px}
+.step-n{font-size:12px;color:var(--muted);margin-bottom:4px;font-variant-numeric:tabular-nums}
+.step-tx{font-size:15px;line-height:1.6}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1.5px solid}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:var(--paper);font-weight:600}
+code,.mono{font-family:var(--f-mono);font-size:.9em}
+.ok{color:var(--good);font-weight:600}.bad{color:var(--warn);font-weight:600}
+.pill{display:inline-block;font:600 11.5px/1 var(--f-body);padding:5px 8px;border-radius:999px}
+.pill.ok{background:var(--good-soft)}.pill.bad{background:var(--warn-soft)}
+.note{font-size:13.5px;color:var(--muted)}
+.why{background:var(--accent-soft);border-radius:10px;padding:12px 16px;font-size:14.5px}
+.why b{color:var(--accent)}
+a{color:var(--accent)}
+footer{margin-top:40px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:14px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head><body>
+<div class="wrap">
+<style>
+.wset{font-family:var(--f-mono);font-weight:600}
+.cell-dead{color:var(--faint);text-decoration:line-through}
+.plan td{vertical-align:middle}
+.plan label{display:inline-flex;gap:3px;align-items:center;margin-right:8px;font-size:13px}
+.vbtn{min-width:2.6em;font-family:var(--f-mono)}
+</style>
+<header class="top">
+  <a class="eyebrow" href="/courses.html?c=distributed-systems" style="text-decoration:none">← Distributed Systems notes</a>
+  <div class="eyebrow">Simulator · Chapter 06 · Fault tolerance</div>
+  <h1>FloodSet consensus with crash failures</h1>
+  <p class="lede">A synchronous system with at most f crash failures. Each process floods its set W of known values for f + 1 rounds, then decides. Run the counterexamples to see why f rounds are not enough, and why the assumptions matter.</p>
+</header>
+<div class="panel">
+  <div class="row"><span class="lbl">Scenario</span><select id="scn" aria-label="Scenario">
+    <option value="0">n = 3, f = 1: P1 crashes in round 1 and reaches only P2</option>
+    <option value="1">n = 4, f = 2: a chain of two crashes</option>
+    <option value="2">n = 4, f = 1: no crash at all</option>
+    <option value="3">n = 4, f = 1: two crashes (more than f)</option></select></div>
+  <div class="row"><span class="lbl">Rounds</span><button id="rF1" aria-pressed="true">f + 1 (correct)</button><button id="rF" aria-pressed="false">only f (wrong)</button></div>
+  <div class="tbl"><table class="plan" id="plan"></table></div>
+  <p class="note">Click a value to switch it between 0 and 1. A crashing process sends its W in that round only to the ticked receivers, then stops. Decision rule: if |W| = 1, decide its element; else decide the default v<sub>0</sub> = 0.</p>
+  <div class="tbl"><table id="grid"></table></div>
+  <div class="step"><div class="step-n" id="sn"></div><div class="step-tx" id="st"></div></div>
+  <div class="row"><button id="bBack">← Back</button><button id="bNext" class="primary">Next →</button><button id="bEnd">Go to the end</button></div>
+</div>
+<div class="panel" style="margin-top:14px"><div class="why">
+  <p><b>Why f + 1 rounds.</b> With at most f crashes, among f + 1 rounds at least one round has no crash. In that round every live process sends its W to every other live process, so all live processes end the round with the same W (lemma 1). After that, the sets stay equal (lemma 2). So all decide the same value.</p>
+  <p><b>Why the assumptions.</b> The proof needs synchronous rounds (a missing message means a crash, not a slow channel), reliable channels (a message from a live process always arrives), and crash failures only (a Byzantine process could send different sets to different processes). Scenario 4 shows that with more than f crashes the guarantee is lost.</p>
+</div></div>
+<footer>Algorithm from the slides "06 – Fault tolerance" (Prof. Cugola), exam questions of Jan 2024, Feb 2015, Sep 2015, Feb 2013.</footer>
+<script>
+(function(){
+const SC=[{n:3,f:1,v:[0,1,1],crash:{0:{r:1,to:[1]}}},
+ {n:4,f:2,v:[0,1,1,1],crash:{0:{r:1,to:[1]},1:{r:2,to:[2]}}},
+ {n:4,f:1,v:[0,1,1,0],crash:{}},
+ {n:4,f:1,v:[0,1,1,1],crash:{0:{r:1,to:[1]},1:{r:2,to:[2]}}}];
+let S,fewer=false,steps=[],idx=0;const $=id=>document.getElementById(id);
+const R=()=>fewer?S.f:S.f+1;
+function plan(){let h=`<tr><th>Process</th><th>Initial value</th><th>Crash in round</th><th>Sends to (in that round)</th></tr>`;
+  for(let p=0;p<S.n;p++){const c=S.crash[p];
+    h+=`<tr><td><b>P${p+1}</b></td><td><button class="vbtn" data-v="${p}">${S.v[p]}</button></td><td><select data-c="${p}" aria-label="Crash round of P${p+1}"><option value="0">never</option>${Array.from({length:S.f+1},(_,r)=>`<option value="${r+1}" ${c&&c.r===r+1?"selected":""}>${r+1}</option>`).join("")}</select></td><td>${c?Array.from({length:S.n},(_,q)=>q===p?"":`<label><input type="checkbox" data-t="${p},${q}" ${c.to.includes(q)?"checked":""}>P${q+1}</label>`).join(""):'<span class="note">–</span>'}</td></tr>`;}
+  $("plan").innerHTML=h;
+  $("plan").querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>{const p=+b.dataset.v;S.v[p]=1-S.v[p];plan();run();});
+  $("plan").querySelectorAll("[data-c]").forEach(s=>s.onchange=()=>{const p=+s.dataset.c,r=+s.value;if(r)S.crash[p]={r,to:S.crash[p]?S.crash[p].to:[]};else delete S.crash[p];plan();run();});
+  $("plan").querySelectorAll("[data-t]").forEach(c=>c.onchange=()=>{const[p,q]=c.dataset.t.split(",").map(Number);const t=S.crash[p].to;if(c.checked)t.push(q);else t.splice(t.indexOf(q),1);run();});}
+function run(){
+  const n=S.n,W=S.v.map(v=>new Set([v])),alive=Array(n).fill(true);
+  const snap=()=>W.map(w=>[...w].sort());
+  steps=[{r:0,W:snap(),alive:alive.slice(),text:`Each process starts with W = {its initial value}. f = ${S.f}, so the algorithm runs ${R()} round${R()>1?"s":""}${fewer?" (one round too few)":""}.`}];
+  const nCr=Object.keys(S.crash).length;
+  for(let r=1;r<=R();r++){const send=[];const notes=[];
+    for(let p=0;p<n;p++){if(!alive[p])continue;const c=S.crash[p];
+      if(c&&c.r===r){send.push([p,c.to.filter(q=>q!==p)]);notes.push(`P${p+1} crashes during the send: only ${c.to.length?c.to.map(q=>"P"+(q+1)).join(", "):"nobody"} get${c.to.length===1?"s":""} its W`);}
+      else send.push([p,Array.from({length:n},(_,q)=>q).filter(q=>q!==p)]);}
+    const before=snap();
+    send.forEach(([p,to])=>to.forEach(q=>{if(alive[q])before[p].forEach(v=>W[q].add(v));}));
+    send.forEach(([p])=>{const c=S.crash[p];if(c&&c.r===r)alive[p]=false;});
+    steps.push({r,W:snap(),alive:alive.slice(),text:`Round ${r}: every live process sends W to all others. `+(notes.length?notes.join(". ")+".":"No crash in this round, so after it all live processes have the same W.")});}
+  const dec=W.map(w=>w.size===1?[...w][0]:0);const live=alive.map((a,p)=>a?p:-1).filter(p=>p>=0);
+  const vals=[...new Set(live.map(p=>dec[p]))];
+  const ok=vals.length===1;
+  steps.push({r:R(),W:snap(),alive:alive.slice(),dec,text:`Decide: ${live.map(p=>`P${p+1} has W = {${[...W[p]].sort().join(", ")}} → ${dec[p]}`).join("; ")}. `+(ok?`Agreement holds: every live process decides ${vals[0]}.`:`Agreement is violated: live processes decide different values.`)+
+    (!ok&&fewer?" Run f + 1 rounds to fix it.":"")+(nCr>S.f?` Note: ${nCr} crashes but f = ${S.f}. The algorithm only guarantees agreement with at most f crashes.`:"")});
+  idx=Math.min(idx,steps.length-1);render();}
+function render(){const s=steps[idx];
+  let h=`<tr><th>Process</th>${Array.from({length:R()+1},(_,r)=>`<th>${r===0?"Start":"After round "+r}</th>`).join("")}<th>Decision</th></tr>`;
+  for(let p=0;p<S.n;p++){h+=`<tr><td><b>P${p+1}</b></td>`;
+    for(let r=0;r<=R();r++){const st=steps[Math.min(r,steps.length-2)];const shown=r<=s.r;const dead=!st.alive[p]&&r>0&&(S.crash[p]&&r>=S.crash[p].r);
+      h+=`<td class="wset ${dead?"cell-dead":""}">${shown?(dead?"crashed":"{"+st.W[p].join(", ")+"}"):""}</td>`;}
+    h+=`<td class="wset">${s.dec?(s.alive[p]?s.dec[p]:"–"):""}</td></tr>`;}
+  $("grid").innerHTML=h;$("st").textContent=s.text;$("sn").textContent=`Step ${idx+1} of ${steps.length}`;
+  $("bBack").disabled=idx===0;$("bNext").disabled=idx===steps.length-1;}
+function load(i){S=JSON.parse(JSON.stringify(SC[i]));idx=0;plan();run();}
+$("scn").onchange=e=>load(+e.target.value);
+$("rF1").onclick=()=>{fewer=false;$("rF1").setAttribute("aria-pressed","true");$("rF").setAttribute("aria-pressed","false");idx=0;plan();run();};
+$("rF").onclick=()=>{fewer=true;$("rF").setAttribute("aria-pressed","true");$("rF1").setAttribute("aria-pressed","false");idx=0;plan();run();};
+$("bBack").onclick=()=>{idx=Math.max(0,idx-1);render();};$("bNext").onclick=()=>{idx=Math.min(steps.length-1,idx+1);render();};$("bEnd").onclick=()=>{idx=steps.length-1;render();};
+load(0);
+})();
+</script>
+
+</div>
+</body></html>

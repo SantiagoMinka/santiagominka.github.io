@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Replication Exam Drill</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; each chapter section opens with a "core idea" note, then question cards with hidden answers. Light only, by request. */
+:root{
+  color-scheme: light;
+  --paper:#f7f8fb;
+  --sheet:#ffffff;
+  --ink:#16202e;
+  --muted:#5a6578;
+  --line:#dde2ec;
+  --accent:#1d4e89;      /* exam-pen blue */
+  --accent-soft:#e7eef8;
+  --tip:#9a5b00;
+  --tip-soft:#fdf3e2;
+  --good:#1f7a4d;
+  --good-soft:#e5f4ec;
+  --warn:#b4372f;
+  --warn-soft:#fbeceb;
+  --code-bg:#f1f3f8;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:0 64px}
+.wrap{max-width:820px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15;margin:0}
+header.top{padding-block:40px 20px;display:grid;gap:12px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(30px,6vw,44px)}
+.lede{color:var(--muted);max-width:62ch;margin:0}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 0;border-block:1px solid var(--line);margin-block:8px 28px}
+.chip,.btn{font:500 13px/1 var(--f-body);border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:999px;padding:8px 13px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.ghost{border-radius:8px}
+.chip:focus-visible,.btn:focus-visible,.reveal:focus-visible,.mark:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.spacer{flex:1}
+.progress{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:8px}
+.bar{width:90px;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--good);transition:width .3s}
+
+.exam-map{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-bottom:40px}
+.exam-map h2{font-size:20px;margin-bottom:8px}
+.exam-map ul{margin:8px 0 0;padding-left:18px}
+.exam-map li{margin:4px 0}
+.date{font-family:var(--f-mono);font-size:12px;color:var(--accent);white-space:nowrap}
+
+section.topic{margin-top:48px;display:grid;gap:18px}
+.topic-head{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.topic-head .num{font-family:var(--f-mono);color:var(--accent);font-size:14px}
+.topic-head h2{font-size:clamp(22px,4vw,28px)}
+.core{border-left:3px solid var(--accent);background:var(--accent-soft);padding:14px 18px;border-radius:0 10px 10px 0}
+.core b{color:var(--accent)}
+.core p{margin:.4em 0}
+
+article.q{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:grid;gap:12px;min-width:0}
+article.q.known{border-color:#b9dcc8}
+article.q.review{border-color:#efc4c0}
+.q-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.qid{font-family:var(--f-mono);font-size:12.5px;color:var(--muted)}
+.tag{font:600 11px/1 var(--f-body);letter-spacing:.06em;text-transform:uppercase;padding:5px 8px;border-radius:5px;background:var(--code-bg);color:var(--muted)}
+.tag.describe{background:#eaf0fb;color:#24508f}
+.tag.compare{background:#efe9fa;color:#5b3a99}
+.tag.scenario{background:#fdf0e3;color:#94520a}
+.tag.exercise{background:#e6f4f1;color:#18695a}
+.tag.code{background:#eceef2;color:#333d4d}
+.seen{font-family:var(--f-mono);font-size:11.5px;color:var(--tip);background:var(--tip-soft);padding:4px 8px;border-radius:5px}
+.prompt{font-size:16.5px;font-weight:500;margin:0}
+.q-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.reveal{font:600 13.5px/1 var(--f-body);background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px 14px;cursor:pointer}
+.reveal[aria-expanded="true"]{background:var(--sheet);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.mark{font:500 13px/1 var(--f-body);background:transparent;border:1px solid var(--line);border-radius:8px;padding:9px 12px;cursor:pointer;color:var(--muted)}
+.mark.k[aria-pressed="true"]{background:var(--good-soft);border-color:var(--good);color:var(--good)}
+.mark.r[aria-pressed="true"]{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
+.answer{border-top:1px dashed var(--line);padding-top:14px;display:grid;gap:12px;min-width:0}
+.answer h4{font:600 12px/1 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}
+.answer p{margin:.35em 0}
+.answer ul,.answer ol{margin:.3em 0;padding-left:20px}
+.answer li{margin:3px 0}
+.why{background:var(--accent-soft);border-radius:10px;padding:12px 16px}
+.why h4{color:var(--accent)}
+.tipbox{background:var(--tip-soft);border-radius:10px;padding:12px 16px}
+.tipbox h4{color:var(--tip)}
+code{font-family:var(--f-mono);font-size:.88em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+pre{font-family:var(--f-mono);font-size:13px;line-height:1.5;background:var(--code-bg);padding:14px;border-radius:8px;overflow-x:auto;margin:0}
+pre code{background:none;padding:0;font-size:inherit}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:480px}
+th,td{border-bottom:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+th{font-weight:600;background:var(--paper)}
+svg text{font-family:var(--f-body)}
+.figure{overflow-x:auto}
+.simbox{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;border:1px solid #b9dcc8;background:var(--good-soft);border-radius:10px;padding:10px 14px;color:var(--ink);text-decoration:none}
+.simbox b{color:var(--good)}
+.simbox:hover{border-color:var(--good)}
+.simbox span{color:var(--muted);font-size:14px}
+footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+
+</head><body>
+<div class="wrap">
+<header class="top">
+  <a class="eyebrow" href="/courses.html?c=distributed-systems" style="text-decoration:none">← Distributed Systems notes</a>
+  <div class="eyebrow">Distributed Systems · Prof. Margara · Chapter 08</div>
+  <h1>Replication and consistency</h1>
+  <p class="lede">Exam drill for replication protocols, data-centric and client-centric consistency models, and design strategies. The schedule exercise is in every exam: practice it with the checker.</p>
+</header>
+<div class="toolbar" role="toolbar" aria-label="Filter and controls">
+  <button class="chip" data-filter="all" aria-pressed="true">All</button>
+  <button class="chip" data-filter="describe" aria-pressed="false">Describe</button>
+  <button class="chip" data-filter="compare" aria-pressed="false">Compare</button>
+  <button class="chip" data-filter="scenario" aria-pressed="false">Scenario</button>
+  <button class="chip" data-filter="exercise" aria-pressed="false">Exercise</button>
+  <button class="chip" data-filter="code" aria-pressed="false">Code</button>
+  <button class="chip" data-filter="review" aria-pressed="false">To review</button>
+  <span class="spacer"></span>
+  <button class="btn ghost" id="revealAll">Show all answers</button>
+  <button class="btn ghost" id="resetMarks">Reset marks</button>
+  <span class="progress"><span class="bar"><i id="barFill"></i></span><span id="progText">0 / 0 known</span></span>
+</div>
+
+<div class="exam-map">
+  <h2>How the exam asks about this chapter</h2>
+  <p>Question 5 of every recent exam is a <b>schedule of reads and writes</b>. Real examples:</p>
+  <ul>
+    <li>"Is the schedule consistent with FIFO, causal, sequential? How do your answers change if you remove the last read?" <span class="date">18 Jun 2024</span> <span class="date">12 Jul 2024</span> <span class="date">6 Sep 2024</span> · "what can we infer about the store?" <span class="date">18 Nov 2023</span></li>
+    <li>"Which values of x and y can P2 read at '?' under FIFO, causal, sequential?" <span class="date">17 Jan 2024</span></li>
+    <li>"The application requires FIFO consistency, the store provides eventual consistency. Is it enough? Can you build FIFO on top? How?" <span class="date">14 Feb 2024</span></li>
+    <li>Older: primary-based protocols <span class="date">13 Feb 2015</span>; update propagation <span class="date">13 Jul 2015</span>; synchronization variables <span class="date">25 Feb 2015</span> <span class="date">23 Sep 2015</span></li>
+  </ul>
+</div>
+<a class="simbox" href="/exercises/distributed-systems/sim-consistency.html" target="_blank" rel="noopener"><b>Open the consistency checker</b><span>All exam schedules and Margara's exercises, with valid orders and "remove one operation".</span></a>
+
+<section class="topic">
+  <div class="topic-head"><span class="num">§1</span><h2>Why replicate, and how: protocols</h2></div>
+  <div class="core"><p><b>Core idea.</b> Replication gives fault tolerance, availability and performance (latency does not improve like other metrics; the speed of light is a hard limit). The cost is keeping replicas consistent. Three protocol families: <b>single leader</b>, <b>multi leader</b>, <b>leaderless</b> (quorums).</p></div>
+
+  <article class="q" data-type="compare" data-id="r-p1">
+    <div class="q-head"><span class="qid">Q1</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">Describe and compare single leader, multi leader and leaderless replication protocols.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th></th><th>Single leader</th><th>Multi leader</th><th>Leaderless</th></tr>
+          <tr><td>Writes</td><td>Only the leader; it propagates to followers</td><td>Several replicas accept writes concurrently</td><td>Client (or coordinator) writes to many replicas</td></tr>
+          <tr><td>Propagation</td><td>Synchronous, asynchronous or semi-synchronous (k replies)</td><td>Asynchronous between leaders</td><td>Quorums + read repair + anti-entropy</td></tr>
+          <tr><td>Conflicts</td><td>No write-write; read-write possible with async followers</td><td>Write-write possible; resolution depends on the model</td><td>Avoided by quorum rules</td></tr>
+          <tr><td>Leader failure</td><td>Failover: needs consensus</td><td>Others continue</td><td>No leader to lose</td></tr>
+          <tr><td>Typical use</td><td>One data center: PostgreSQL, MySQL, MongoDB</td><td>Geo-replication across data centers</td><td>Dynamo, Riak, Cassandra</td></tr></table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>The question is always "who decides the order of writes?". One leader: the leader. Many leaders: nobody, so conflicts must be resolved. Leaderless: a quorum vote.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="r-p2">
+    <div class="q-head"><span class="qid">Q2</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">A leaderless store has N = 5 replicas. Which (N<sub>R</sub>, N<sub>W</sub>) choices are correct: (2, 4), (3, 3), (1, 5), (3, 2), (4, 2)? What is ROWA?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Rules: N<sub>R</sub> + N<sub>W</sub> &gt; N (avoids read-write conflicts: every read quorum meets the last write quorum), and N<sub>W</sub> &gt; N/2 (avoids write-write conflicts: two write quorums meet).</p>
+        <ul>
+          <li>(2, 4): 6 &gt; 5, 4 &gt; 2.5 → correct.</li>
+          <li>(3, 3): 6 &gt; 5, 3 &gt; 2.5 → correct.</li>
+          <li>(1, 5): 6 &gt; 5, 5 &gt; 2.5 → correct. This is <b>ROWA</b>: read one, write all. Fast reads, but a write fails if any replica is down.</li>
+          <li>(3, 2): 5 is not &gt; 5 → a read can miss the last write; and 2 &lt; 2.5 → write-write conflicts. Wrong.</li>
+          <li>(4, 2): 6 &gt; 5, but N<sub>W</sub> = 2 → two concurrent writes can use disjoint quorums. Wrong.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>It is the pigeonhole principle: two sets whose sizes add up to more than N must share an element. That shared replica carries the latest version number.</p></div>
+    </div>
+  </article>
+</section>
+
+<section class="topic">
+  <div class="topic-head"><span class="num">§2</span><h2>Data-centric consistency models</h2></div>
+  <div class="core"><p><b>Core idea.</b> From strongest to weakest: <b>linearizable</b> (one copy, real time) ⇒ <b>sequential</b> (one interleaving, no time) ⇒ <b>causal</b> (causally related writes in the same order) ⇒ <b>FIFO</b> (writes of one process in order). Eventual consistency only promises convergence.</p></div>
+
+  <article class="q" data-type="exercise" data-id="r-d1">
+    <div class="q-head"><span class="qid">Q3</span><span class="tag exercise">Exercise</span><span class="seen">Exam 18 Jun 2024</span></div>
+    <p class="prompt">P0: W(x)2 W(x)5 R(x)4 W(y)3 · P1: W(y)1 W(x)4 R(y)1 R(y)3 · P2: R(y)1 R(x)2 R(y)3 R(x)5 R(x)4. Is it FIFO, causal, sequential? How do the answers change without the last R(x)4 of P2?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Constraints.</b> FIFO: W(x)2 → W(x)5 → W(y)3 (P0); W(y)1 → W(x)4 (P1). Causal adds: P0 reads x = 4 before writing y = 3, so W(x)4 → W(y)3, and also W(y)1 → W(y)3.</p>
+        <p><b>Full schedule.</b></p>
+        <ul>
+          <li><b>FIFO: yes.</b> P2 sees y: 1 → 3, x: 2 → 5 → 4. P0's writes in order (2, 5, then y3), P1's in order (y1, then x4). A valid view for P2: W(y)1, W(x)2, R(y)1, R(x)2, W(x)5, W(y)3, R(y)3, R(x)5, W(x)4, R(x)4.</li>
+          <li><b>Causal: no.</b> W(x)5 and W(x)4 both causally precede W(y)3 (W(x)5 by P0's program order; W(x)4 because P0 read 4 before writing y). So when P2 reads y = 3, both x writes are already in its view, and no other x write exists. All later reads of x must return the same value, but P2 reads 5 and then 4. Contradiction.</li>
+          <li><b>Sequential: no</b> (not causal).</li>
+        </ul>
+        <p><b>Without the last R(x)4:</b> P2 sees y: 1 → 3 and x: 2 → 5. View: W(x)2, W(y)1, W(x)4, W(x)5, W(y)3 respects causality (4 before y3, 5 before y3) → <b>causal: yes</b>, FIFO: yes. <b>Sequential: no.</b> P0 reads 4 after writing 5, so the global order needs W(x)5 → W(x)4 → W(y)3. P2 reads y = 3 and then x = 5: but after W(y)3 the latest x is 4. No global order works. Remove P2's R(y)3 or R(x)5 (or P0's R(x)4) and it becomes sequential.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Method: (1) write FIFO pairs; (2) add causal pairs created by reads followed by writes; (3) for each process, write the order in which it observes values; (4) look for an observation that contradicts a required order (causal) or two processes that observe two writes in opposite orders (sequential). Check every answer with the checker.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="r-d2">
+    <div class="q-head"><span class="qid">Q4</span><span class="tag exercise">Exercise</span><span class="seen">Margara, exercise 3</span></div>
+    <p class="prompt">P0: W(x)1 R(x)2 W(x)3 · P1: R(x)1 W(x)2 R(x)3 · P2: R(x)K R(x)?. For K = 1, 2, 3, which values can the last read return under FIFO and under sequential consistency?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>The schedule itself forces W(x)1 → W(x)2 → W(x)3 globally (P1 reads 1 before writing 2; P0 reads 2 before writing 3).</p>
+        <div class="tbl"><table><tr><th>K</th><th>FIFO</th><th>Sequential</th></tr>
+          <tr><td>1</td><td>{1, 2, 3}</td><td>{1, 2, 3}</td></tr>
+          <tr><td>2</td><td>{1, 2, 3}</td><td>{2, 3}</td></tr>
+          <tr><td>3</td><td>{2, 3}</td><td>{3}</td></tr></table></div>
+        <p>FIFO only keeps P0's order (1 before 3). So after seeing 2, P2 can still see 1 later (1 and 2 come from different processes). After seeing 3, it cannot see 1 (P0's order), but it can see 2. Sequential uses the global order 1 → 2 → 3, so values never go back.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Under weak models, "going back" to an older value is allowed when the two writes have no required order. Ask for each candidate: does seeing it now break a required order?</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="r-d3">
+    <div class="q-head"><span class="qid">Q5</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">Define sequential consistency and linearizability. Write (or describe) a schedule that is sequentially consistent but not linearizable. How can a single-leader protocol give each of them?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Sequential:</b> "the result is the same as if all operations were executed in some sequential order, and the operations of each process appear in the order of its program". No time. <b>Linearizable:</b> each operation appears to take effect instantaneously at some moment between its start and its completion: a recency guarantee, the illusion of one copy. It is composable (per variable ⇒ global).</p>
+        <p><b>Example.</b> A writes x = 1 on the leader. The leader updates follower 1, then follower 2. In real time: B reads x = 1 from follower 1; <i>after that</i>, C reads x = 0 from follower 2. Sequential order R<sub>C</sub>(x)0 → W(x)1 → R<sub>B</sub>(x)1 exists, so it is sequential. It is not linearizable: C's read starts after B's read ended and still returns the old value.</p>
+        <p><b>Single leader, sequential:</b> writes go to the leader, FIFO links, sticky clients, synchronous propagation. <b>Linearizable:</b> in addition, make the update atomic across replicas, e.g. lock the followers while a write is in progress so no one reads the old value after anyone read the new one. With failures, you need consensus (Raft).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>If B and C talk on another channel, C can learn that it read a stale value: that breaks the single-copy illusion. Linearizability forbids it; sequential consistency does not care about real time.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="r-d4">
+    <div class="q-head"><span class="qid">Q6</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Define causal and FIFO consistency, and describe a protocol for each. Which models allow a highly available implementation (a client can read and write while disconnected from other replicas)?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Causal:</b> potentially causally related writes are seen by all in the same order; concurrent writes in any order. Causal order: a write is after every earlier operation of the same process; a read is after the write it reads; transitive. <b>Protocol:</b> multi-leader; writes carry vector clocks; a replica applies an update only after all its potential causes. <b>FIFO</b> (PRAM): writes of one process are seen by all in issue order. <b>Protocol:</b> per-process sequence numbers; apply update S from P only after all of P's updates with smaller numbers.</p>
+        <div class="tbl"><table><tr><th>Model</th><th>Highly available?</th></tr>
+          <tr><td>FIFO</td><td>Yes (sticky clients): read the local replica, write locally, propagate later</td></tr>
+          <tr><td>Causal</td><td>Yes, only if clients are sticky; reads may return old values, never causally inconsistent ones</td></tr>
+          <tr><td>Sequential</td><td>No: needs synchronous coordination with the leader or a quorum</td></tr>
+          <tr><td>Linearizable</td><td>No</td></tr></table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>Causal and FIFO constrain only the order of things a replica already knows. Sequential and linearizable need agreement with replicas you cannot reach during a partition (CAP).</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="r-d5">
+    <div class="q-head"><span class="qid">Q7</span><span class="tag scenario">Scenario</span><span class="seen">Exam 14 Feb 2024</span></div>
+    <p class="prompt">Your application requires FIFO consistency, but the data store provides only eventual consistency. Assuming no failures, does the store satisfy the requirement? If not, can you implement FIFO on top of the eventually consistent store? How?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>No.</b> Eventual consistency guarantees only that replicas converge when updates stop. A process can see P's second write before its first, or see a value and then an older one. Eventual does not imply FIFO (nor causal, nor sequential).</p>
+        <p><b>Yes, you can build it</b> in a layer on top of the store:</p>
+        <ul>
+          <li>Each process tags its writes with (process id, sequence number), e.g. store the value together with the tag, or keep per-process version counters.</li>
+          <li>The reading layer keeps, for each writer, the last sequence number applied. When it reads a value with tag (P, s), it accepts it only if all of P's writes with number &lt; s were already seen; otherwise it returns the previously accepted value (or waits/retries).</li>
+          <li>Since the store eventually delivers every write, the missing ones arrive, so the layer progresses.</li>
+        </ul>
+        <p>Alternative: append-only per-process logs in the store, read in sequence-number order.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>FIFO is the same mechanism as FIFO multicast: sequence numbers per sender and a hold-back buffer. Eventual consistency gives "everything arrives eventually"; the sequence numbers add "in order".</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="r-d6">
+    <div class="q-head"><span class="qid">Q8</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Does eventual consistency imply sequential, causal or FIFO consistency? What are CRDTs, why are they useful, and what are their limits?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>No to all three: eventual consistency says nothing about the order of intermediate values, only that replicas converge.</p>
+        <p><b>CRDTs</b> (conflict-free replicated data types) converge even when updates arrive in different orders, because operations <b>commute</b>. Example: a counter stores the set of increments/decrements, not the last value. An append-only list with last-write-wins on timestamps converges to the same order.</p>
+        <p><b>Useful:</b> no coordination, high availability, automatic convergence. <b>Limits:</b> only for data types with commutative semantics; temporary "wrong" values; cannot express invariants that need coordination (e.g. a balance that must stay ≥ 0).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Eventual consistency is popular because conflicts are rare in practice (users mostly write to one replica) and networks are fast. CRDTs make the rare conflicts harmless.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="r-d7">
+    <div class="q-head"><span class="qid">Q9</span><span class="tag compare">Compare</span><span class="seen">Exam 25 Feb 2015 · 23 Sep 2015</span></div>
+    <p class="prompt">Why were consistency models with synchronization variables introduced? How do they work?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>FIFO consistency still makes every write visible to every process, even processes that do not care, and even writes inside a critical section that nobody should see yet. Models with <b>synchronization variables</b> make writes visible only when a process asks for it through the variable (e.g. <code>synchronize</code>, acquire/release). The programmer forces consistency only where needed: at the end of a critical section (to distribute writes) and at the beginning of a reading session (to see others' writes).</p>
+        <p>(Classic variants in the literature: weak consistency with one synchronize operation; release consistency with acquire/release; entry consistency with one lock per data item.)</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Most programs already synchronize with locks. Tying propagation to synchronization points removes useless traffic between them, at the cost of putting the responsibility on the programmer.</p></div>
+    </div>
+  </article>
+</section>
+
+<section class="topic">
+  <div class="topic-head"><span class="num">§3</span><h2>Client-centric models and design strategies</h2></div>
+  <div class="core"><p><b>Core idea.</b> When a client moves between replicas, client-centric models give guarantees for that client only: monotonic reads, monotonic writes, read your writes, writes follow reads. Design choices: where to place replicas, what to propagate, push or pull.</p></div>
+
+  <article class="q" data-type="describe" data-id="r-c1">
+    <div class="q-head"><span class="qid">Q10</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">In which context are client-centric models relevant? Describe the four properties and how a protocol can enforce them.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Context: mostly-read data, few concurrent updates, eventual consistency, and clients that connect to <b>different replicas</b> over time (mobile users).</p>
+        <ul>
+          <li><b>Monotonic reads:</b> after reading x, later reads return the same or a newer value.</li>
+          <li><b>Monotonic writes:</b> a write on x completes before any later write on x by the same process (FIFO for one process).</li>
+          <li><b>Read your writes:</b> a read sees the effect of the process's earlier writes (e.g. a changed password, an updated web page).</li>
+          <li><b>Writes follow reads:</b> a write after a read of x happens on the same or a newer value (a reply is shown only after the original post).</li>
+        </ul>
+        <p><b>Protocol.</b> Each write has an id (replica id + sequence number). Each client keeps a <b>read-set</b> (writes relevant to its reads) and a <b>write-set</b> (its writes), encodable as vector clocks. Monotonic reads: before reading at L2, L2 must have applied the read-set. Monotonic writes and read your writes: same with the write-set. Writes follow reads: bring the server up to date with the read-set, then add the write to the write-set.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The client carries its own history from replica to replica. A replica that is behind must catch up before serving the client.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="r-c2">
+    <div class="q-head"><span class="qid">Q11</span><span class="tag compare">Compare</span><span class="seen">Exam 13 Jul 2015 · 19 Feb 2013</span></div>
+    <p class="prompt">Describe the strategies for propagating updates among replicas: what to propagate, push vs pull, and propagation in leader-based and leaderless protocols.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>What:</b> a notification only (invalidation; good when reads ≪ writes); the modified data (good when reads ≫ writes); the operation (active replication: tiny messages, but every replica recomputes; beware side effects).</p>
+        <div class="tbl"><table><tr><th></th><th>Push</th><th>Pull</th></tr>
+          <tr><td>Server state</td><td>List of client replicas and caches</td><td>None</td></tr>
+          <tr><td>Messages</td><td>Update (and maybe fetch later)</td><td>Poll and update</td></tr>
+          <tr><td>Response time at client</td><td>Immediate</td><td>Fetch time</td></tr>
+          <tr><td>Use</td><td>High consistency</td><td>Client caches; reads ≪ writes</td></tr></table></div>
+        <p><b>Leases</b> combine them: push during the lease, then pull.</p>
+        <p><b>Leader-based:</b> synchronous, asynchronous, semi-synchronous. <b>Leaderless:</b> read repair (a client that sees stale replicas updates them) and anti-entropy (background exchange; push, pull or both; gossip/epidemic strategies).</p>
+        <p><b>Replica placement:</b> permanent (DNS, CDN), server-initiated (to follow load), client-initiated (caches).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Every choice depends on the read/write ratio: send data where it will be read, and do not push data that will be overwritten before anyone reads it.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="r-c3">
+    <div class="q-head"><span class="qid">Q12</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">NoSQL vs NewSQL: how do Spanner, Calvin and VoltDB provide strong guarantees at reasonable cost?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>NoSQL</b> (2000s): single-item operations, no multi-item transactions, asynchronous or multi-leader replication → high availability. <b>NewSQL</b> (2010s): relational, serializable transactions, atomic commit, sequential/linearizable replication, with new techniques to cut cost:</p>
+        <ul>
+          <li><b>Spanner:</b> Paxos per partition, 2PC across partitions, timestamps. <b>TrueTime</b> (atomic clocks + GPS) returns an uncertainty interval; a transaction commits only after the interval has surely passed, so timestamp order = real-time order → linearizable. Read-only transactions read at a timestamp without locks.</li>
+          <li><b>Calvin:</b> a replicated sequencing layer (Paxos log) orders all transactions <i>before</i> execution; transactions are deterministic and run in that order everywhere. No 2PC; less lock contention; a failed participant recovers by replaying the log.</li>
+          <li><b>VoltDB:</b> developers partition tables and transactions (e.g. by city); single-partition transactions run sequentially without coordination.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>Each system removes one expensive piece: Spanner replaces clock uncertainty with waiting, Calvin removes 2PC with determinism, VoltDB avoids coordination with smart partitioning.</p></div>
+    </div>
+  </article>
+</section>
+<footer>Source: lecture slides "08 – Replication and consistency" and the replication exercises (Margara), and the past exams in your course folder. Your "Got it" and "Review again" marks stay only in this browser.</footer>
+</div>
+
+<script>
+(function(){
+  const KEY = "ds-replication-marks-v1";
+  let marks = {};
+  try { marks = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e) { marks = {}; }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(marks)); } catch(e) {} };
+  const cards = Array.from(document.querySelectorAll("article.q"));
+
+  function applyMark(card){
+    const m = marks[card.dataset.id];
+    card.classList.toggle("known", m === "k");
+    card.classList.toggle("review", m === "r");
+    card.querySelector(".mark.k").setAttribute("aria-pressed", m === "k");
+    card.querySelector(".mark.r").setAttribute("aria-pressed", m === "r");
+  }
+  function updateProgress(){
+    const known = cards.filter(c => marks[c.dataset.id] === "k").length;
+    document.getElementById("progText").textContent = known + " / " + cards.length + " known";
+    document.getElementById("barFill").style.width = (100 * known / cards.length) + "%";
+  }
+  function setOpen(card, open){
+    const btn = card.querySelector(".reveal");
+    card.querySelector(".answer").hidden = !open;
+    btn.setAttribute("aria-expanded", open);
+    btn.textContent = open ? "Hide answer" : "Show answer";
+  }
+
+  cards.forEach(card => {
+    applyMark(card);
+    card.querySelector(".reveal").addEventListener("click", () => {
+      setOpen(card, card.querySelector(".answer").hidden);
+    });
+    card.querySelectorAll(".mark").forEach(b => b.addEventListener("click", () => {
+      const v = b.classList.contains("k") ? "k" : "r";
+      if (marks[card.dataset.id] === v) delete marks[card.dataset.id]; else marks[card.dataset.id] = v;
+      save(); applyMark(card); updateProgress(); applyFilter();
+    }));
+  });
+
+  let filter = "all";
+  function applyFilter(){
+    cards.forEach(c => {
+      const show = filter === "all" ? true : filter === "review" ? marks[c.dataset.id] === "r" : c.dataset.type === filter;
+      c.hidden = !show;
+    });
+    document.querySelectorAll("section.topic").forEach(s => {
+      s.hidden = !s.querySelector("article.q:not([hidden])");
+    });
+  }
+  document.querySelectorAll(".chip").forEach(ch => ch.addEventListener("click", () => {
+    filter = ch.dataset.filter;
+    document.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", x === ch));
+    applyFilter();
+  }));
+
+  const revealBtn = document.getElementById("revealAll");
+  revealBtn.addEventListener("click", () => {
+    const anyClosed = cards.some(c => c.querySelector(".answer").hidden);
+    cards.forEach(c => setOpen(c, anyClosed));
+    revealBtn.textContent = anyClosed ? "Hide all answers" : "Show all answers";
+  });
+  document.getElementById("resetMarks").addEventListener("click", () => {
+    marks = {}; save(); cards.forEach(applyMark); updateProgress(); applyFilter();
+  });
+  updateProgress();
+})();
+</script>
+
+</body></html>

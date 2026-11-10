@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recovery Line Simulator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Simulator layout: one wide column; controls on top, drawing, step box, then data panels. Light only. */
+:root{
+  color-scheme: light;
+  --paper:#f7f8fb; --sheet:#ffffff; --ink:#16202e; --muted:#5a6578; --faint:#94a0b4; --line:#dde2ec;
+  --accent:#1d4e89; --accent-soft:#e7eef8;
+  --tip:#9a5b00; --tip-soft:#fdf3e2;
+  --good:#1f7a4d; --good-soft:#e2f3ea;
+  --warn:#b4372f; --warn-soft:#fbeceb;
+  --hot:#d85a30; --code-bg:#f1f3f8;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 56px}
+.wrap{max-width:1040px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);line-height:1.15;margin:0;text-wrap:balance}
+header.top{padding-block:32px 16px;display:grid;gap:8px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(26px,5vw,38px)}
+.lede{color:var(--muted);max-width:70ch;margin:0}
+.panel{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:18px;display:grid;gap:14px;min-width:0;align-content:start}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.lbl{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+button,.btn{font:500 13.5px/1 var(--f-body);border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:8px;padding:9px 13px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+select,input,textarea{font:14px var(--f-body);border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--sheet);color:var(--ink)}
+textarea{font-family:var(--f-mono);font-size:13.5px;width:100%;min-height:120px;resize:vertical}
+.cap{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-bottom:-6px}
+.fig{overflow-x:auto}
+.fig svg{width:100%;height:auto;display:block;min-width:520px}
+svg text{font-family:var(--f-body)}
+.step{background:var(--code-bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;min-height:84px}
+.step-n{font-size:12px;color:var(--muted);margin-bottom:4px;font-variant-numeric:tabular-nums}
+.step-tx{font-size:15px;line-height:1.6}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1.5px solid}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:var(--paper);font-weight:600}
+code,.mono{font-family:var(--f-mono);font-size:.9em}
+.ok{color:var(--good);font-weight:600}.bad{color:var(--warn);font-weight:600}
+.pill{display:inline-block;font:600 11.5px/1 var(--f-body);padding:5px 8px;border-radius:999px}
+.pill.ok{background:var(--good-soft)}.pill.bad{background:var(--warn-soft)}
+.note{font-size:13.5px;color:var(--muted)}
+.why{background:var(--accent-soft);border-radius:10px;padding:12px 16px;font-size:14.5px}
+.why b{color:var(--accent)}
+a{color:var(--accent)}
+footer{margin-top:40px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:14px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head><body>
+<div class="wrap">
+<header class="top">
+  <a class="eyebrow" href="/courses.html?c=distributed-systems" style="text-decoration:none">← Distributed Systems notes</a>
+  <div class="eyebrow">Simulator · Chapter 06 · Fault tolerance</div>
+  <h1>Recovery line with independent checkpointing</h1>
+  <p class="lede">Step through how the recovery line is found, first with the rollback-dependency graph and then with the checkpoint-dependency graph. The first two scenarios are the two diagrams of the exam of 6 September 2024. Black bars are checkpoints. An × is a crash.</p>
+</header>
+
+<div class="panel">
+  <div class="row">
+    <span class="lbl">Scenario</span>
+    <select id="scn" aria-label="Scenario">
+      <option value="0">Exam 6 Sep 2024 – diagram 1 (P1 crashes)</option>
+      <option value="1">Exam 6 Sep 2024 – diagram 2 (P4 crashes)</option>
+      <option value="2">Practice – two processes crash (P1, P2)</option>
+    </select>
+  </div>
+  <div class="row">
+    <span class="lbl">Method</span>
+    <button id="mRD" aria-pressed="true">Rollback-dependency graph</button>
+    <button id="mCD" aria-pressed="false">Checkpoint-dependency graph</button>
+  </div>
+  <div class="cap">Timeline</div>
+  <div class="fig"><svg id="tl" viewBox="0 0 760 210" role="img" aria-label="Process timelines with checkpoints and messages"></svg></div>
+  <div class="cap" id="gcap">Graph</div>
+  <div class="fig"><svg id="gr" viewBox="0 0 760 260" role="img" aria-label="Dependency graph"></svg></div>
+  <div class="legend">
+    <span><i class="sw" style="background:#fde8e8;border-color:#dc2626"></i>Initially marked (failure state)</span>
+    <span><i class="sw" style="background:#fef3c7;border-color:#b45309"></i>Marked (not usable)</span>
+    <span><svg width="14" height="14"><circle cx="7" cy="7" r="6" fill="none" stroke="#378ADD" stroke-width="1.5" stroke-dasharray="2 2"/></svg>Root set</span>
+    <span><i class="sw" style="background:#d1fae5;border-color:#0f766e"></i>Recovery line</span>
+    <span><svg width="22" height="10"><line x1="1" y1="5" x2="21" y2="5" stroke="#d85a30" stroke-width="2.4"/></svg>Active edge or message</span>
+  </div>
+  <div class="step"><div class="step-n" id="sn"></div><div class="step-tx" id="st"></div></div>
+  <div class="row">
+    <button id="bBack">← Back</button>
+    <button id="bNext" class="primary">Next →</button>
+    <button id="bAlg">Skip to the algorithm</button>
+    <button id="bEnd">Show the result</button>
+    <button id="bRestart">Restart</button>
+  </div>
+</div>
+
+<div class="grid2" style="margin-top:14px">
+  <div class="panel">
+    <h3 style="font-size:18px">How to build the edges</h3>
+    <div class="why">
+      <p><b>Notation.</b> c<sub>i,x</sub> is the x-th checkpoint of P<sub>i</sub>; c<sub>i,0</sub> is the initial state. I<sub>i,x</sub> is the interval between c<sub>i,x−1</sub> and c<sub>i,x</sub>.</p>
+      <p><b>Rollback-dependency graph.</b> Edge c<sub>i,x</sub> → c<sub>i,x+1</sub> on each process. For a message sent in I<sub>i,x</sub> and received in I<sub>j,y</sub>: edge c<sub>i,x</sub> → c<sub>j,y</sub> (the checkpoints that <i>end</i> the two intervals). Mark the failure states, then everything reachable. Each process rolls back to its last unmarked node.</p>
+      <p><b>Checkpoint-dependency graph.</b> For the same message: edge from the checkpoint that <i>starts</i> the send interval (c<sub>i,x−1</sub>) to the checkpoint that ends the receive interval (c<sub>j,y</sub>). Start from the root set (last checkpoint of failed processes, current state of the others). If a root is reachable from another root, replace it with the previous checkpoint and repeat.</p>
+    </div>
+  </div>
+  <div class="panel">
+    <h3 style="font-size:18px">Result</h3>
+    <div id="res" class="note">Go to the end to see the recovery line.</div>
+  </div>
+</div>
+<footer>Exam diagrams of 6 September 2024 (Prof. Cugola), transcribed by hand. Algorithm from the slides "06 – Fault tolerance". Interaction modeled on your recovery-line reference page.</footer>
+
+<script>
+(function(){
+const SC=[
+ {CK:[[180,458,657],[213,525,793],[148,430,675],[213,440,810]],FAIL:[1,0,0,0],T:930,
+  M:[[1,100,0,230],[1,265,0,358],[0,362,2,398],[2,265,1,358],[3,258,2,350],[2,465,1,497],[2,560,0,627],[3,530,2,627],[0,688,1,750],[2,722,1,755],[2,722,3,757],[1,838,2,903]]},
+ {CK:[[297,480,777],[328,563,853],[267,583,870],[328,543,718]],FAIL:[0,0,0,1],T:1000,
+  M:[[1,220,0,248],[0,375,2,525],[1,365,2,453],[3,255,2,342],[0,572,1,602],[1,708,0,716],[3,470,2,556],[2,623,3,680],[3,762,1,828],[1,888,2,948]]},
+ {CK:[[110,335,635,995],[115,340,690,915],[115,400,525,960],[115,360,640,840]],FAIL:[1,1,0,0],T:1100,
+  M:[[0,140,1,300],[0,405,2,490],[1,495,0,580],[0,715,1,775],[1,945,0,970],[2,145,3,250],[2,430,3,525],[2,580,1,670],[3,870,2,910],[2,1015,1,1050],[3,1025,2,1070]]}];
+let S=SC[0], mode="rd", steps=[], step=0, algStart=0;
+const N=()=>S.CK.length, K=p=>S.CK[p].length, END=p=>K(p)+1;
+const iv=(p,t)=>S.CK[p].filter(c=>c<t).length;
+const id=(p,x)=>p+","+x, sp=s=>s.split(",").map(Number);
+const nm=s=>{const[p,x]=sp(s);if(x===0)return `c${p+1},0 (initial state)`;if(x===END(p))return S.FAIL[p]?`the failure state of P${p+1}`:`the current state of P${p+1}`;return `c${p+1},${x}`;};
+const short=s=>{const[p,x]=sp(s);return x===END(p)?(S.FAIL[p]?"failed":"now"):`c${p+1},${x}`;};
+function nodes(){const a=[];for(let p=0;p<N();p++)for(let x=0;x<=END(p);x++){if(mode==="cd"&&S.FAIL[p]&&x===END(p))continue;a.push(id(p,x));}return a;}
+function procEdges(){const e=[];for(let p=0;p<N();p++){const top=(mode==="cd"&&S.FAIL[p])?K(p):END(p);for(let x=0;x<top;x++)e.push([id(p,x),id(p,x+1)]);}return e;}
+function msgEdge(i){const[p,s,q,r]=S.M[i];let a=iv(p,s)+1,b=iv(q,r)+1;
+  if(mode==="cd"){a=a-1;if(S.FAIL[q]&&b===END(q))return null;}return [id(p,a),id(q,b)];}
+const lineT=(p,x)=>x===0?-1:x===END(p)?1e9:S.CK[p][x-1];
+function build(){
+  steps=[];const st=o=>steps.push(Object.assign({n:0,proc:true,hi:-1,marked:[],init:[],root:[],rl:[],act:[],cut:false},o));
+  if(mode==="rd"){
+    st({proc:false,text:`Each checkpoint ends one interval: I(i,x) ends at c(i,x). The last interval of a process ends at its end state. ${crashTxt()}`});
+    st({text:"Make one node for each checkpoint, one for the initial state c(i,0), and one for the end state of each process. Connect c(i,x) → c(i,x+1) on each process."});
+  } else {
+    st({proc:false,text:`Each interval starts at one checkpoint. ${crashTxt()} A failed process loses its volatile state, so it gets no end node. The other processes keep their current state.`});
+    st({text:"Make one node for each checkpoint and for the initial state c(i,0). Add a node for the current state of each live process. Connect c(i,x) → c(i,x+1) on each process."});
+  }
+  S.M.forEach((m,i)=>{const[p,,q]=m;const e=msgEdge(i);
+    if(!e){st({n:i+1,hi:i,text:`Message m${i+1}: P${q+1} receives it in its last interval, which is lost in the crash. This receipt can never make an orphan, so the checkpoint-dependency graph gets no edge for it.`});return;}
+    const w=mode==="rd"?"ends at":"starts at";
+    st({n:i+1,hi:i,text:`Message m${i+1}: P${p+1} sends it in the interval that ${w} ${nm(e[0])}. P${q+1} receives it in the interval that ends at ${nm(e[1])}. Add the edge ${short(e[0])} → ${short(e[1])}.`});});
+  algStart=steps.length;
+  const E=procEdges().concat(S.M.map((_,i)=>msgEdge(i)).filter(Boolean));
+  const A={n:S.M.length};let RL;
+  if(mode==="rd"){
+    const init=[];for(let p=0;p<N();p++)if(S.FAIL[p])init.push(id(p,END(p)));
+    let marked=init.slice(),front=init.slice();
+    st({...A,init,marked:marked.slice(),text:`Mark the failure states: ${init.map(nm).join(", ")}. These nodes are "initially marked".`});
+    while(front.length){const act=[],nw=[];
+      E.forEach(([a,b])=>{if(front.includes(a)){act.push([a,b]);if(!marked.includes(b)&&!nw.includes(b))nw.push(b);}});
+      if(!act.length)break;
+      if(nw.length){marked=marked.concat(nw);
+        st({...A,init,marked:marked.slice(),act,text:`Follow the edges from ${front.map(nm).join(", ")}. They reach ${nw.map(short).join(", ")}. Mark ${nw.length>1?"these nodes":"this node"}.`});}
+      else st({...A,init,marked:marked.slice(),act,text:`Follow the edges from ${front.map(nm).join(", ")}. Every node they reach already has a mark. No new mark: stop.`});
+      front=nw;}
+    RL=[];for(let p=0;p<N();p++){let x=END(p);while(marked.includes(id(p,x)))x--;RL.push(id(p,x));}
+    st({...A,init,marked,rl:RL,cut:true,text:`On each process, take the last node with no mark. The recovery line is ${RL.map(short).join(", ")}.`});
+    steps.push(Object.assign({},steps[steps.length-1],{text:checkTxt(RL),hi:-2}));
+  } else {
+    let root=[];for(let p=0;p<N();p++)root.push(id(p,S.FAIL[p]?K(p):END(p)));
+    st({...A,root:root.slice(),text:`Make the root set: the last checkpoint of each failed process and the current state of each live process: ${root.map(short).join(", ")}.`});
+    let marked=[];
+    for(let it=0;it<20;it++){
+      const reach=[],act=[];let stack=root.slice();
+      while(stack.length){const u=stack.pop();E.forEach(([a,b])=>{if(a===u){act.push([a,b]);if(!reach.includes(b)){reach.push(b);stack.push(b);}}});}
+      marked=Array.from(new Set(marked.concat(reach)));
+      const bad=root.filter(r=>reach.includes(r));
+      st({...A,root:root.slice(),marked:marked.slice(),act,text:`Mark every node that the root set reaches through one or more edges: ${reach.length?reach.map(short).join(", "):"none"}.`+(bad.length?` The root ${bad.map(short).join(", ")} ${bad.length>1?"are":"is"} marked.`:" No node of the root set is marked: stop.")});
+      if(!bad.length)break;
+      root=root.map(r=>{if(!bad.includes(r))return r;const[p,x]=sp(r);let y=x-1;while(y>0&&marked.includes(id(p,y)))y--;return id(p,y);});
+      st({...A,root:root.slice(),marked:marked.slice(),text:`Replace each marked root with the last unmarked checkpoint of its process. New root set: ${root.map(short).join(", ")}.`});
+    }
+    RL=root;
+    st({...A,root:RL,marked,rl:RL,cut:true,text:`The root set is the recovery line: ${RL.map(short).join(", ")}. The rollback-dependency graph gives the same line.`});
+    steps.push(Object.assign({},steps[steps.length-1],{text:checkTxt(RL),hi:-2}));
+  }
+  S.RL=RL;
+}
+function crashTxt(){const f=[];S.FAIL.forEach((v,p)=>{if(v)f.push("P"+(p+1));});return f.join(" and ")+(f.length>1?" crash.":" crashes.");}
+function check(RL){const tr=[],orph=[];S.M.forEach(([p,s,q,r],i)=>{const lp=lineT(...sp(RL[p])),lq=lineT(...sp(RL[q]));
+  if(s>lp&&r<lq)orph.push(i);if(s<lp&&r>lq)tr.push(i);});return{tr,orph};}
+function checkTxt(RL){const{tr,orph}=check(RL);
+  return `Check the line. ${orph.length?"Orphan messages: "+orph.map(i=>"m"+(i+1)).join(", ")+" (this should not happen).":"No message is received before the line and sent after it, so there is no orphan message."} `+
+  (tr.length?`In-transit messages (sent before the line, received after it): ${tr.map(i=>"m"+(i+1)).join(", ")}. They are lost on rollback unless they are logged or sent again.`:"No message crosses the line forward, so nothing is in transit.");}
+// drawing
+const W=760, TL=x=>70+(x/S.T)*(W-110);
+const TY=p=>28+p*48;
+function rlX(s){const[p,x]=sp(s);if(x===0)return TL(0)+4;if(x===END(p))return TL(S.T)-6;return TL(S.CK[p][x-1]);}
+const DEF='<defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>';
+function render(){
+  const s=steps[step];let t=DEF;
+  document.getElementById("tl").setAttribute("viewBox",`0 0 ${W} ${TY(N()-1)+30}`);
+  for(let p=0;p<N();p++){const y=TY(p);const xe=TL(S.T);
+    t+=`<text x="20" y="${y+4}" font-size="13" font-weight="600" fill="#16202e">P${p+1}</text><line x1="${TL(0)}" y1="${y}" x2="${xe}" y2="${y}" stroke="#5a6578" stroke-width="1.2" ${S.FAIL[p]?"":'marker-end="url(#ar)"'}/>`;
+    if(S.FAIL[p])t+=`<path d="M${xe-7} ${y-7}L${xe+7} ${y+7}M${xe+7} ${y-7}L${xe-7} ${y+7}" stroke="#dc2626" stroke-width="2"/>`;
+    S.CK[p].forEach((c,k)=>{t+=`<rect x="${TL(c)-4}" y="${y-10}" width="8" height="20" fill="#16202e"/><text x="${TL(c)}" y="${y-14}" font-size="10.5" text-anchor="middle" fill="#5a6578">c${p+1},${k+1}</text>`;});}
+  const tr=s.hi===-2?check(S.RL).tr:[];
+  S.M.forEach(([p,a,q,b],i)=>{const on=i===s.hi||tr.includes(i);const y1=TY(p),y2=TY(q)+(q>p?-3:3);
+    t+=`<line x1="${TL(a)}" y1="${y1}" x2="${TL(b)}" y2="${y2}" stroke="${on?"#d85a30":"#94a0b4"}" stroke-width="${on?2.2:1.1}" marker-end="url(#ar)"/>`;
+    if(on){t+=`<text x="${(TL(a)+TL(b))/2+7}" y="${(y1+y2)/2}" font-size="11.5" font-weight="600" fill="#d85a30">m${i+1}</text>`;}});
+  if(s.cut){const pts=s.rl.map(r=>[rlX(r),TY(sp(r)[0])]);
+    t+=`<polyline points="${pts[0][0]},6 ${pts.map(a=>a[0].toFixed(1)+","+a[1]).join(" ")} ${pts[pts.length-1][0]},${TY(N()-1)+24}" fill="none" stroke="#1D9E75" stroke-width="2.2" stroke-dasharray="6 4"/>`;}
+  document.getElementById("tl").innerHTML=t;
+  // graph
+  const maxK=Math.max(...S.CK.map(c=>c.length))+1, GX=x=>90+x*((W-150)/maxK), GY=p=>32+p*58;
+  document.getElementById("gr").setAttribute("viewBox",`0 0 ${W} ${GY(N()-1)+44}`);
+  let g=DEF;const NS=nodes(),act=s.act.map(e=>e.join(">"));
+  const pos=sid=>{const[p,x]=sp(sid);return[GX(x===END(p)?maxK:x),GY(p)];};
+  const path=(a,b)=>{const[x1,y1]=pos(a),[x2,y2]=pos(b);if(sp(a)[0]===sp(b)[0])return `M${x1+12} ${y1}L${x2-14} ${y2}`;
+    const dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy),cx=(x1+x2)/2-dy/L*30,cy=(y1+y2)/2+dx/L*30;
+    const sh=(x,y,ax,ay,r)=>{const d=Math.hypot(ax-x,ay-y);return[(x+(ax-x)/d*r).toFixed(1),(y+(ay-y)/d*r).toFixed(1)];};
+    const a1=sh(x1,y1,cx,cy,12),b1=sh(x2,y2,cx,cy,15);return `M${a1[0]} ${a1[1]}Q${cx.toFixed(1)} ${cy.toFixed(1)} ${b1[0]} ${b1[1]}`;};
+  for(let p=0;p<N();p++)g+=`<text x="20" y="${GY(p)+4}" font-size="13" font-weight="600" fill="#16202e">P${p+1}</text>`;
+  if(s.proc)procEdges().forEach(([a,b])=>{const on=act.includes(a+">"+b);g+=`<path d="${path(a,b)}" fill="none" stroke="${on?"#d85a30":"#5a6578"}" stroke-width="${on?2.2:1}" marker-end="url(#ar)"/>`;});
+  for(let i=0;i<s.n;i++){const e=msgEdge(i);if(!e)continue;const on=(i===s.hi)||act.includes(e.join(">"));
+    g+=`<path d="${path(e[0],e[1])}" fill="none" stroke="${on?"#d85a30":"#8a94a8"}" stroke-width="${on?2.2:1}" marker-end="url(#ar)"/>`;}
+  NS.forEach(sid=>{const[p,x]=sp(sid);const[cx,cy]=pos(sid);let f="#ffffff",k="#5a6578";
+    if(s.rl.includes(sid)){f="#d1fae5";k="#0f766e";}else if(s.init.includes(sid)){f="#fde8e8";k="#dc2626";}else if(s.marked.includes(sid)){f="#fef3c7";k="#b45309";}
+    g+=x===END(p)?`<ellipse cx="${cx}" cy="${cy}" rx="9" ry="13" fill="${f}" stroke="${k}" stroke-width="1.5"/>`:`<circle cx="${cx}" cy="${cy}" r="${x===0?8:11}" fill="${f}" stroke="${k}" stroke-width="1.5"/>`;
+    if(s.root.includes(sid))g+=`<circle cx="${cx}" cy="${cy}" r="17" fill="none" stroke="#378ADD" stroke-width="1.6" stroke-dasharray="3 3"/>`;
+    g+=`<text x="${cx}" y="${cy+28}" font-size="11" text-anchor="middle" fill="#5a6578">${x===0?"c"+(p+1)+",0":short(sid)}</text>`;});
+  document.getElementById("gr").innerHTML=g;
+  document.getElementById("st").textContent=s.text;
+  document.getElementById("sn").textContent=`Step ${step+1} of ${steps.length}`;
+  document.getElementById("gcap").textContent=mode==="rd"?"Rollback-dependency graph":"Checkpoint-dependency graph";
+  const last=step===steps.length-1;
+  document.getElementById("res").innerHTML=last||s.cut?resultHTML():"Go to the end to see the recovery line.";
+  document.getElementById("bBack").disabled=step===0;document.getElementById("bNext").disabled=last;
+}
+function resultHTML(){const{tr}=check(S.RL);let h='<div class="tbl"><table><tr><th>Process</th><th>Rolls back to</th></tr>';
+  S.RL.forEach((r,p)=>{const[,x]=sp(r);h+=`<tr><td>P${p+1}</td><td>${x===END(p)?"no rollback (current state)":x===0?"initial state c"+(p+1)+",0":"c"+(p+1)+","+x}</td></tr>`;});
+  h+=`</table></div><p class="note">In-transit messages to log or resend: ${tr.length?tr.map(i=>"m"+(i+1)).join(", "):"none"}.</p>`;
+  const moved=S.RL.filter((r,p)=>sp(r)[1]<K(p)).length;
+  if(moved>0)h+=`<p class="note">Note the <b>domino effect</b>: ${moved} process${moved>1?"es":""} must go back further than ${moved>1?"their":"its"} latest checkpoint because of message dependencies.</p>`;
+  return h;}
+function setMode(m){mode=m;document.getElementById("mRD").setAttribute("aria-pressed",m==="rd");document.getElementById("mCD").setAttribute("aria-pressed",m==="cd");step=0;build();render();}
+document.getElementById("mRD").onclick=()=>setMode("rd");document.getElementById("mCD").onclick=()=>setMode("cd");
+document.getElementById("scn").onchange=e=>{S=SC[+e.target.value];setMode(+e.target.value===1?"cd":"rd");};
+document.getElementById("bBack").onclick=()=>{step=Math.max(0,step-1);render();};
+document.getElementById("bNext").onclick=()=>{step=Math.min(steps.length-1,step+1);render();};
+document.getElementById("bAlg").onclick=()=>{step=algStart;render();};
+document.getElementById("bEnd").onclick=()=>{step=steps.length-1;render();};
+document.getElementById("bRestart").onclick=()=>{step=0;render();};
+setMode("rd");
+})();
+</script>
+
+</div>
+</body></html>

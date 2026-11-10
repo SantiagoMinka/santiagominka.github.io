@@ -20,6 +20,41 @@
           "slug": "04-naming-study",
           "title": "Naming: exam drill",
           "file": "04-naming-study.html"
+        },
+        {
+          "slug": "05-synchronization-study",
+          "title": "Synchronization: exam drill",
+          "file": "05-synchronization-study.html"
+        },
+        {
+          "slug": "06-fault-tolerance-study",
+          "title": "Fault tolerance: exam drill",
+          "file": "06-fault-tolerance-study.html"
+        },
+        {
+          "slug": "07-agreement-study",
+          "title": "Distributed agreement in practice: exam drill",
+          "file": "07-agreement-study.html"
+        },
+        {
+          "slug": "08-replication-study",
+          "title": "Replication and consistency: exam drill",
+          "file": "08-replication-study.html"
+        },
+        {
+          "slug": "09-dataflow-study",
+          "title": "Dataflow systems: exam drill",
+          "file": "09-dataflow-study.html"
+        },
+        {
+          "slug": "10-p2p-study",
+          "title": "Peer-to-peer: exam drill",
+          "file": "10-p2p-study.html"
+        },
+        {
+          "slug": "11-simulation-study",
+          "title": "Simulating distributed systems: exam drill",
+          "file": "11-simulation-study.html"
         }
       ],
       "exercises": [
@@ -27,6 +62,36 @@
           "slug": "recovery-line",
           "title": "Uncoordinated Checkpointing and the Recovery Line",
           "file": "exercises/distributed-systems/recovery-line.html"
+        },
+        {
+          "slug": "sim-clocks",
+          "title": "Scalar and vector clocks",
+          "file": "exercises/distributed-systems/sim-clocks.html"
+        },
+        {
+          "slug": "sim-snapshot",
+          "title": "Distributed snapshot (Chandy–Lamport)",
+          "file": "exercises/distributed-systems/sim-snapshot.html"
+        },
+        {
+          "slug": "sim-floodset",
+          "title": "FloodSet consensus with crash failures",
+          "file": "exercises/distributed-systems/sim-floodset.html"
+        },
+        {
+          "slug": "sim-recovery-line",
+          "title": "Recovery line simulator (exam diagrams)",
+          "file": "exercises/distributed-systems/sim-recovery-line.html"
+        },
+        {
+          "slug": "sim-consistency",
+          "title": "Consistency checker: FIFO, causal, sequential",
+          "file": "exercises/distributed-systems/sim-consistency.html"
+        },
+        {
+          "slug": "sim-chord",
+          "title": "Chord lookup and query flooding",
+          "file": "exercises/distributed-systems/sim-chord.html"
         }
       ]
     }

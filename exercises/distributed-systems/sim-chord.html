@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chord and Flooding Simulator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Simulator layout: one wide column; controls on top, drawing, step box, then data panels. Light only. */
+:root{
+  color-scheme: light;
+  --paper:#f7f8fb; --sheet:#ffffff; --ink:#16202e; --muted:#5a6578; --faint:#94a0b4; --line:#dde2ec;
+  --accent:#1d4e89; --accent-soft:#e7eef8;
+  --tip:#9a5b00; --tip-soft:#fdf3e2;
+  --good:#1f7a4d; --good-soft:#e2f3ea;
+  --warn:#b4372f; --warn-soft:#fbeceb;
+  --hot:#d85a30; --code-bg:#f1f3f8;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 56px}
+.wrap{max-width:1040px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);line-height:1.15;margin:0;text-wrap:balance}
+header.top{padding-block:32px 16px;display:grid;gap:8px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(26px,5vw,38px)}
+.lede{color:var(--muted);max-width:70ch;margin:0}
+.panel{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:18px;display:grid;gap:14px;min-width:0;align-content:start}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.lbl{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+button,.btn{font:500 13.5px/1 var(--f-body);border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:8px;padding:9px 13px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+select,input,textarea{font:14px var(--f-body);border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--sheet);color:var(--ink)}
+textarea{font-family:var(--f-mono);font-size:13.5px;width:100%;min-height:120px;resize:vertical}
+.cap{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-bottom:-6px}
+.fig{overflow-x:auto}
+.fig svg{width:100%;height:auto;display:block;min-width:520px}
+svg text{font-family:var(--f-body)}
+.step{background:var(--code-bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;min-height:84px}
+.step-n{font-size:12px;color:var(--muted);margin-bottom:4px;font-variant-numeric:tabular-nums}
+.step-tx{font-size:15px;line-height:1.6}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1.5px solid}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:var(--paper);font-weight:600}
+code,.mono{font-family:var(--f-mono);font-size:.9em}
+.ok{color:var(--good);font-weight:600}.bad{color:var(--warn);font-weight:600}
+.pill{display:inline-block;font:600 11.5px/1 var(--f-body);padding:5px 8px;border-radius:999px}
+.pill.ok{background:var(--good-soft)}.pill.bad{background:var(--warn-soft)}
+.note{font-size:13.5px;color:var(--muted)}
+.why{background:var(--accent-soft);border-radius:10px;padding:12px 16px;font-size:14.5px}
+.why b{color:var(--accent)}
+a{color:var(--accent)}
+footer{margin-top:40px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:14px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head><body>
+<div class="wrap">
+<style>
+.ft{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.ft table{font-family:var(--f-mono);font-size:12.5px}
+.ft .cur th{background:var(--accent-soft)}
+.ft tr.use td{background:#fde9df;font-weight:600}
+.ft h4{margin:0 0 4px;font-size:14px}
+.ft .box{border:1px solid var(--line);border-radius:10px;padding:8px}
+.ft .box.cur{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.inp{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+.inp label{display:grid;gap:4px;font-size:12px;color:var(--muted);font-weight:600}
+.inp input{width:7.5em}.inp input.wide{width:12em}
+</style>
+<header class="top">
+  <a class="eyebrow" href="/courses.html?c=distributed-systems" style="text-decoration:none">← Distributed Systems notes</a>
+  <div class="eyebrow">Simulator · Chapters 04 and 10 · Naming, peer-to-peer</div>
+  <h1>Chord lookup and query flooding</h1>
+  <p class="lede">The Chord exercise appears in almost every exam: build the finger tables, then route a lookup. Load an exam preset or enter your own peers. The second tab shows Gnutella-style flooding with hops-to-live.</p>
+</header>
+
+<div class="row" style="margin-bottom:12px"><button id="tC" aria-pressed="true">Chord</button><button id="tF" aria-pressed="false">Query flooding</button></div>
+
+<section id="chord">
+<div class="panel">
+  <div class="row"><span class="lbl">Preset</span><select id="pre" aria-label="Preset"></select></div>
+  <div class="inp">
+    <label>Bits m<input id="m" type="number" min="2" max="6"></label>
+    <label>Peer IDs<input id="ids" class="wide"></label>
+    <label>Start peer<input id="from" type="number"></label>
+    <label>Key<input id="key" type="number"></label>
+    <button id="go" class="primary">Build and route</button>
+  </div>
+  <p class="note" id="err"></p>
+  <div class="fig"><svg id="ring" viewBox="0 0 520 520" role="img" aria-label="Chord ring" style="max-width:520px;margin:auto;min-width:300px"></svg></div>
+  <div class="step"><div class="step-n" id="sn"></div><div class="step-tx" id="st"></div></div>
+  <div class="row"><button id="bBack">← Back</button><button id="bNext" class="primary">Next →</button><button id="bEnd">Go to the end</button></div>
+</div>
+<div class="panel" style="margin-top:14px">
+  <h3 style="font-size:18px">Finger tables</h3>
+  <p class="note">Row i: start = n + 2<sup>i</sup> mod 2<sup>m</sup>; interval = [start<sub>i</sub>, start<sub>i+1</sub>); succ = first peer ≥ start (wrap around 0). The highlighted row is the one the current node uses.</p>
+  <div class="ft" id="ft"></div>
+</div>
+<div class="panel" style="margin-top:14px"><div class="why">
+  <p><b>Routing rule (slides of both professors).</b> A node that receives a query for key k first checks if it stores k (k is in (predecessor, node]). If not, it forwards the query to the succ of the row whose interval contains k. This is the same as "the largest start that does not exceed k", counted clockwise from the node.</p>
+  <p><b>Exam method.</b> (1) Write which keys each peer stores. (2) Build the tables, careful with the wrap-around. (3) For each hop, name the row you use. (4) The reply goes back to the requester.</p>
+</div></div>
+</section>
+
+<section id="flood" hidden>
+<div class="panel">
+  <div class="inp">
+    <label>Source<select id="fs"></select></label>
+    <label>Hops to live<input id="fh" type="number" min="1" max="6" value="3"></label>
+    <label>Peers that hold the item<input id="fx" class="wide" value="0, 6"></label>
+    <button id="fgo" class="primary">Start search</button>
+  </div>
+  <div class="fig"><svg id="fg" viewBox="0 0 560 360" role="img" aria-label="Unstructured overlay network" style="min-width:320px"></svg></div>
+  <div class="step"><div class="step-n" id="fsn"></div><div class="step-tx" id="fst"></div></div>
+  <div class="row"><button id="fBack">← Back</button><button id="fNext" class="primary">Next →</button></div>
+  <div class="tbl"><table id="flog"></table></div>
+  <div class="why"><p><b>Flooding.</b> Each peer forwards the query to all its neighbors except the one it came from. Each hop decrements hops-to-live (HTL); at 0 the query stops. A peer drops a query it has already seen (same query id). A hit is sent back along the reverse path (or directly to the requester). With C neighbors on average and HTL D, one search can cost up to C<sup>D</sup> messages, and it can miss items beyond D hops.</p></div>
+</div>
+</section>
+<footer>Presets: Chord exercises of Prof. Cugola's exams (Nov 2023 – Jun 2024) and Prof. Margara's peer-to-peer exercises.</footer>
+
+<script>
+(function(){
+const PRE=[["Exam 18 Nov 2023: peers 2, 9, 12; 4 bits; peer 2 looks up key 10",4,[2,9,12],2,10],
+ ["Exam 17 Jan 2024: peers 4, 9, 12; 4 bits; peer 4 looks up key 5",4,[4,9,12],4,5],
+ ["Exam 14 Feb 2024: peers 2, 3, 4, 6; 3 bits; peer 3 looks up key 5",3,[2,3,4,6],3,5],
+ ["Exam 18 Jun 2024: peers 2, 6, 11; 4 bits; peer 2 looks up key 7",4,[2,6,11],2,7],
+ ["Exercise 2 (Margara): peers 0–7; 3 bits; peer 2 looks up key 1",3,[0,1,2,3,4,5,6,7],2,1],
+ ["Exercise 3a (Margara): peers 0, 1, 4; 3 bits; peer 4 looks up key 1",3,[0,1,4],4,1],
+ ["Exercise 3b (Margara): peers 0, 1, 4; peer 0 looks up key 6",3,[0,1,4],0,6],
+ ["Exercise 3c (Margara): peers 0, 1, 4; peer 0 looks up key 3",3,[0,1,4],0,3],
+ ["Practice: 6 peers, 5 bits; peer 27 looks up key 13 (wrap-around)",5,[1,5,8,14,20,27],27,13]];
+const $=id=>document.getElementById(id);
+PRE.forEach((p,i)=>{const o=document.createElement("option");o.value=i;o.textContent=p[0];$("pre").appendChild(o);});
+let M,IDS,steps=[],idx=0;
+const succ=x=>{const s=IDS.find(n=>n>=x);return s===undefined?IDS[0]:s;};
+const pred=n=>{const i=IDS.indexOf(n);return IDS[(i-1+IDS.length)%IDS.length];};
+const dist=(a,b,R)=>((b-a)%R+R)%R;
+const stores=(n,k,R)=>succ(k)===n;
+function table(n){const R=1<<M;return Array.from({length:M},(_,i)=>{const st=(n+(1<<i))%R,nx=(n+(1<<(i+1)))%R;return{i,st,end:i===M-1?n:nx,s:succ(st)};});}
+function load(i){const p=PRE[i];$("m").value=p[1];$("ids").value=p[2].join(", ");$("from").value=p[3];$("key").value=p[4];go();}
+function go(){
+  M=+$("m").value;const R=1<<M;
+  IDS=[...new Set($("ids").value.split(/[ ,;]+/).filter(Boolean).map(Number))].sort((a,b)=>a-b);
+  const from=+$("from").value,k=+$("key").value;let err="";
+  if(!(M>=2&&M<=6))err="Use between 2 and 6 bits.";
+  else if(IDS.some(x=>isNaN(x)||x<0||x>=R))err=`Peer IDs must be between 0 and ${R-1}.`;
+  else if(!IDS.includes(from))err="The start peer must be one of the peer IDs.";
+  else if(isNaN(k)||k<0||k>=R)err=`The key must be between 0 and ${R-1}.`;
+  $("err").textContent=err;if(err)return;
+  const owner=succ(k);steps=[];
+  const ranges=IDS.map(n=>`${n} stores (${pred(n)}, ${n}]`).join("; ");
+  steps.push({cur:null,path:[],use:null,text:`Ring of 2^${M} = ${R} positions. Key ${k} is stored at succ(${k}) = ${owner}. Key ranges: ${ranges}.`});
+  let n=from,path=[from],guard=0;
+  while(guard++<20){
+    if(stores(n,k,R)){steps.push({cur:n,path:path.slice(),use:null,done:true,text:`Node ${n} stores key ${k} (k is in (${pred(n)}, ${n}]). It replies to node ${from}.`+(path.length>1?` Path: ${path.join(" → ")}, ${path.length-1} hop${path.length>2?"s":""}.`:" No hop was needed.")});break;}
+    const T=table(n),d=dist(n,k,R);let best=T[0];T.forEach(r=>{if(dist(n,r.st,R)<=d)best=r;});
+    const iv=`[${best.st}, ${best.end})`;
+    steps.push({cur:n,path:path.slice(),use:[n,best.i],text:`Node ${n} does not store ${k} (it holds (${pred(n)}, ${n}]). Key ${k} falls in row i = ${best.i}, interval ${iv}. That row says succ = ${best.s}. Forward the query to ${best.s}.`});
+    n=best.s;path.push(n);
+  }
+  idx=0;render();
+}
+function render(){
+  const s=steps[idx],R=1<<M,C=260,r=200;const ang=x=>-Math.PI/2+2*Math.PI*x/R;const pt=(x,rr)=>[C+rr*Math.cos(ang(x)),C+rr*Math.sin(ang(x))];
+  let h='<defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1L9 5L1 9z" fill="#d85a30"/></marker></defs>';
+  h+=`<circle cx="${C}" cy="${C}" r="${r}" fill="none" stroke="#dde2ec" stroke-width="2"/>`;
+  const k=+$("key").value;
+  for(let x=0;x<R;x++){const[a,b]=pt(x,r);const isN=IDS.includes(x);
+    if(!isN){h+=`<circle cx="${a}" cy="${b}" r="${R>32?2:3}" fill="#94a0b4"/>`;if(R<=32){const[ta,tb]=pt(x,r+16);h+=`<text x="${ta}" y="${tb+4}" font-size="10.5" text-anchor="middle" fill="#94a0b4">${x}</text>`;}}}
+  {const[a,b]=pt(k,r-26);h+=`<text x="${a}" y="${b+4}" font-size="11.5" text-anchor="middle" font-weight="700" fill="#9a5b00">K${k}</text>`;}
+  for(let i=1;i<s.path.length;i++){const[a,b]=pt(s.path[i-1],r-16),[c,d]=pt(s.path[i],r-16);h+=`<path d="M${a} ${b}Q${C} ${C} ${c} ${d}" fill="none" stroke="#d85a30" stroke-width="2.4" marker-end="url(#ar)"/>`;}
+  IDS.forEach(x=>{const[a,b]=pt(x,r);const cur=s.cur===x,own=s.done&&cur;
+    h+=`<circle cx="${a}" cy="${b}" r="15" fill="${own?"#e2f3ea":cur?"#e7eef8":"#fff"}" stroke="${own?"#1f7a4d":cur?"#1d4e89":"#16202e"}" stroke-width="${cur?2.5:1.5}"/><text x="${a}" y="${b+4.5}" font-size="12.5" font-weight="700" text-anchor="middle" fill="#16202e">${x}</text>`;});
+  $("ring").innerHTML=h;
+  $("st").textContent=s.text;$("sn").textContent=`Step ${idx+1} of ${steps.length}`;
+  $("bBack").disabled=idx===0;$("bNext").disabled=idx===steps.length-1;
+  $("ft").innerHTML=IDS.map(n=>{const cur=s.cur===n;return `<div class="box ${cur?"cur":""}"><h4>Node ${n} <span class="note">stores (${pred(n)}, ${n}]</span></h4><table><tr><th>i</th><th>start</th><th>interval</th><th>succ</th></tr>`+
+    table(n).map(r=>`<tr class="${s.use&&s.use[0]===n&&s.use[1]===r.i?"use":""}"><td>${r.i}</td><td>${r.st}</td><td>[${r.st}, ${r.end})</td><td>${r.s}</td></tr>`).join("")+`</table></div>`;}).join("");
+}
+$("pre").onchange=e=>load(+e.target.value);$("go").onclick=go;
+$("bBack").onclick=()=>{idx=Math.max(0,idx-1);render();};$("bNext").onclick=()=>{idx=Math.min(steps.length-1,idx+1);render();};$("bEnd").onclick=()=>{idx=steps.length-1;render();};
+load(0);
+// ---------- flooding ----------
+const FP=[[80,90],[200,50],[330,80],[90,230],[200,310],[460,60],[330,250],[480,250]];
+const FE=[[0,1],[1,2],[1,3],[3,4],[2,5],[4,6],[2,6],[5,7],[6,7],[0,3]];
+const nb=i=>FE.filter(e=>e.includes(i)).map(e=>e[0]===i?e[1]:e[0]);
+FP.forEach((_,i)=>{const o=document.createElement("option");o.value=i;o.textContent="Peer "+i;$("fs").appendChild(o);});$("fs").value=3;
+let fsteps=[],fidx=0;
+function fgo(){
+  const src=+$("fs").value,H=Math.max(1,Math.min(6,+$("fh").value||3));const has=$("fx").value.split(/[ ,;]+/).filter(Boolean).map(Number);
+  const seen={[src]:{from:null,hop:0}};let front=[{n:src,htl:H}];const msgs=[];fsteps=[{seen:{...seen},act:[],hits:[],text:`Peer ${src} starts a search with HTL = ${H}. Peers ${has.join(" and ")} hold the item.`,log:[]}];
+  let hop=0,hits=[],log=[];
+  while(front.length&&hop<H){hop++;const act=[],nf=[];
+    front.forEach(({n,htl})=>{nb(n).forEach(m=>{if(seen[n].from===m)return;const dup=!!seen[m];act.push([n,m,dup]);log.push([hop,`${n} → ${m}`,dup?"duplicate: dropped":has.includes(m)?"hit":"new"]);
+      if(!dup){seen[m]={from:n,hop};if(has.includes(m))hits.push(m);if(htl-1>0)nf.push({n:m,htl:htl-1});}});});
+    fsteps.push({seen:JSON.parse(JSON.stringify(seen)),act,hits:hits.slice(),log:log.slice(),text:`Hop ${hop}: ${act.length} query message${act.length===1?"":"s"}. `+(act.filter(a=>a[2]).length?`${act.filter(a=>a[2]).length} reach a peer that already saw the query and are dropped. `:"")+(nf.length?`HTL is now ${H-hop}; the new peers forward again.`:`HTL is now ${H-hop}: the query stops here.`)});
+    front=nf;}
+  const back=hits.map(h=>{const p=[h];let x=h;while(seen[x].from!==null){x=seen[x].from;p.push(x);}return p;});
+  const total=log.length;
+  fsteps.push({seen,act:[],hits,back,log,text:hits.length?`Replies travel back along the reverse path: ${back.map(p=>p.join(" → ")).join("; ")}. Total query messages: ${total}. The requester then downloads directly from ${hits.join(" or ")}.`:`No peer within ${H} hops holds the item. Total query messages: ${total}. The search fails even though the item exists: flooding gives no guarantee.`});
+  fidx=0;frender();
+}
+function frender(){const s=fsteps[fidx];const has=$("fx").value.split(/[ ,;]+/).filter(Boolean).map(Number);
+  let h='<defs><marker id="fa" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1L9 5L1 9z" fill="context-stroke"/></marker></defs>';
+  FE.forEach(([a,b])=>{h+=`<line x1="${FP[a][0]}" y1="${FP[a][1]}" x2="${FP[b][0]}" y2="${FP[b][1]}" stroke="#dde2ec" stroke-width="2"/>`;});
+  const sh=(a,b,r)=>{const[x1,y1]=FP[a],[x2,y2]=FP[b];const d=Math.hypot(x2-x1,y2-y1);return[x1+(x2-x1)/d*r,y1+(y2-y1)/d*r,x2-(x2-x1)/d*(r+3),y2-(y2-y1)/d*(r+3)];};
+  s.act.forEach(([a,b,dup])=>{const[x1,y1,x2,y2]=sh(a,b,22);h+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${dup?"#94a0b4":"#d85a30"}" stroke-width="2.4" ${dup?'stroke-dasharray="5 4"':""} marker-end="url(#fa)"/>`;});
+  (s.back||[]).forEach(p=>{for(let i=0;i+1<p.length;i++){const[x1,y1,x2,y2]=sh(p[i],p[i+1],22);h+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#1f7a4d" stroke-width="2.6" marker-end="url(#fa)"/>`;}});
+  FP.forEach(([x,y],i)=>{const seen=!!s.seen[i],hit=s.hits.includes(i);
+    h+=`<circle cx="${x}" cy="${y}" r="20" fill="${hit?"#e2f3ea":seen?"#e7eef8":"#fff"}" stroke="${hit?"#1f7a4d":seen?"#1d4e89":"#16202e"}" stroke-width="1.8"/><text x="${x}" y="${y+5}" text-anchor="middle" font-weight="700" font-size="14" fill="#16202e">${i}</text>`;
+    if(has.includes(i))h+=`<text x="${x}" y="${y+36}" text-anchor="middle" font-size="11.5" font-weight="600" fill="#9a5b00">has item</text>`;});
+  $("fg").innerHTML=h;$("fst").textContent=s.text;$("fsn").textContent=`Step ${fidx+1} of ${fsteps.length}`;
+  $("flog").innerHTML="<tr><th>Hop</th><th>Message</th><th>Result</th></tr>"+s.log.map(l=>`<tr><td>${l[0]}</td><td>${l[1]}</td><td>${l[2]}</td></tr>`).join("");
+  $("fBack").disabled=fidx===0;$("fNext").disabled=fidx===fsteps.length-1;}
+$("fgo").onclick=fgo;$("fBack").onclick=()=>{fidx=Math.max(0,fidx-1);frender();};$("fNext").onclick=()=>{fidx=Math.min(fsteps.length-1,fidx+1);frender();};
+fgo();
+$("tC").onclick=()=>{$("chord").hidden=false;$("flood").hidden=true;$("tC").setAttribute("aria-pressed","true");$("tF").setAttribute("aria-pressed","false");};
+$("tF").onclick=()=>{$("chord").hidden=true;$("flood").hidden=false;$("tF").setAttribute("aria-pressed","true");$("tC").setAttribute("aria-pressed","false");};
+})();
+</script>
+
+</div>
+</body></html>

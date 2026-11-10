@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agreement Exam Drill</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; each chapter section opens with a "core idea" note, then question cards with hidden answers. Light only, by request. */
+:root{
+  color-scheme: light;
+  --paper:#f7f8fb;
+  --sheet:#ffffff;
+  --ink:#16202e;
+  --muted:#5a6578;
+  --line:#dde2ec;
+  --accent:#1d4e89;      /* exam-pen blue */
+  --accent-soft:#e7eef8;
+  --tip:#9a5b00;
+  --tip-soft:#fdf3e2;
+  --good:#1f7a4d;
+  --good-soft:#e5f4ec;
+  --warn:#b4372f;
+  --warn-soft:#fbeceb;
+  --code-bg:#f1f3f8;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:0 64px}
+.wrap{max-width:820px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15;margin:0}
+header.top{padding-block:40px 20px;display:grid;gap:12px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(30px,6vw,44px)}
+.lede{color:var(--muted);max-width:62ch;margin:0}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 0;border-block:1px solid var(--line);margin-block:8px 28px}
+.chip,.btn{font:500 13px/1 var(--f-body);border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:999px;padding:8px 13px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.ghost{border-radius:8px}
+.chip:focus-visible,.btn:focus-visible,.reveal:focus-visible,.mark:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.spacer{flex:1}
+.progress{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:8px}
+.bar{width:90px;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--good);transition:width .3s}
+
+.exam-map{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-bottom:40px}
+.exam-map h2{font-size:20px;margin-bottom:8px}
+.exam-map ul{margin:8px 0 0;padding-left:18px}
+.exam-map li{margin:4px 0}
+.date{font-family:var(--f-mono);font-size:12px;color:var(--accent);white-space:nowrap}
+
+section.topic{margin-top:48px;display:grid;gap:18px}
+.topic-head{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.topic-head .num{font-family:var(--f-mono);color:var(--accent);font-size:14px}
+.topic-head h2{font-size:clamp(22px,4vw,28px)}
+.core{border-left:3px solid var(--accent);background:var(--accent-soft);padding:14px 18px;border-radius:0 10px 10px 0}
+.core b{color:var(--accent)}
+.core p{margin:.4em 0}
+
+article.q{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:grid;gap:12px;min-width:0}
+article.q.known{border-color:#b9dcc8}
+article.q.review{border-color:#efc4c0}
+.q-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.qid{font-family:var(--f-mono);font-size:12.5px;color:var(--muted)}
+.tag{font:600 11px/1 var(--f-body);letter-spacing:.06em;text-transform:uppercase;padding:5px 8px;border-radius:5px;background:var(--code-bg);color:var(--muted)}
+.tag.describe{background:#eaf0fb;color:#24508f}
+.tag.compare{background:#efe9fa;color:#5b3a99}
+.tag.scenario{background:#fdf0e3;color:#94520a}
+.tag.exercise{background:#e6f4f1;color:#18695a}
+.tag.code{background:#eceef2;color:#333d4d}
+.seen{font-family:var(--f-mono);font-size:11.5px;color:var(--tip);background:var(--tip-soft);padding:4px 8px;border-radius:5px}
+.prompt{font-size:16.5px;font-weight:500;margin:0}
+.q-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.reveal{font:600 13.5px/1 var(--f-body);background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px 14px;cursor:pointer}
+.reveal[aria-expanded="true"]{background:var(--sheet);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.mark{font:500 13px/1 var(--f-body);background:transparent;border:1px solid var(--line);border-radius:8px;padding:9px 12px;cursor:pointer;color:var(--muted)}
+.mark.k[aria-pressed="true"]{background:var(--good-soft);border-color:var(--good);color:var(--good)}
+.mark.r[aria-pressed="true"]{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
+.answer{border-top:1px dashed var(--line);padding-top:14px;display:grid;gap:12px;min-width:0}
+.answer h4{font:600 12px/1 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}
+.answer p{margin:.35em 0}
+.answer ul,.answer ol{margin:.3em 0;padding-left:20px}
+.answer li{margin:3px 0}
+.why{background:var(--accent-soft);border-radius:10px;padding:12px 16px}
+.why h4{color:var(--accent)}
+.tipbox{background:var(--tip-soft);border-radius:10px;padding:12px 16px}
+.tipbox h4{color:var(--tip)}
+code{font-family:var(--f-mono);font-size:.88em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+pre{font-family:var(--f-mono);font-size:13px;line-height:1.5;background:var(--code-bg);padding:14px;border-radius:8px;overflow-x:auto;margin:0}
+pre code{background:none;padding:0;font-size:inherit}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:480px}
+th,td{border-bottom:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+th{font-weight:600;background:var(--paper)}
+svg text{font-family:var(--f-body)}
+.figure{overflow-x:auto}
+.simbox{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;border:1px solid #b9dcc8;background:var(--good-soft);border-radius:10px;padding:10px 14px;color:var(--ink);text-decoration:none}
+.simbox b{color:var(--good)}
+.simbox:hover{border-color:var(--good)}
+.simbox span{color:var(--muted);font-size:14px}
+footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+
+</head><body>
+<div class="wrap">
+<header class="top">
+  <a class="eyebrow" href="/courses.html?c=distributed-systems" style="text-decoration:none">← Distributed Systems notes</a>
+  <div class="eyebrow">Distributed Systems · Prof. Margara · Chapter 07</div>
+  <h1>Distributed agreement in practice</h1>
+  <p class="lede">Exam drill for commit protocols (2PC, 3PC), the CAP theorem, Raft and blockchains. Answer on paper first, then open the model answer.</p>
+</header>
+<div class="toolbar" role="toolbar" aria-label="Filter and controls">
+  <button class="chip" data-filter="all" aria-pressed="true">All</button>
+  <button class="chip" data-filter="describe" aria-pressed="false">Describe</button>
+  <button class="chip" data-filter="compare" aria-pressed="false">Compare</button>
+  <button class="chip" data-filter="scenario" aria-pressed="false">Scenario</button>
+  <button class="chip" data-filter="exercise" aria-pressed="false">Exercise</button>
+  <button class="chip" data-filter="code" aria-pressed="false">Code</button>
+  <button class="chip" data-filter="review" aria-pressed="false">To review</button>
+  <span class="spacer"></span>
+  <button class="btn ghost" id="revealAll">Show all answers</button>
+  <button class="btn ghost" id="resetMarks">Reset marks</button>
+  <span class="progress"><span class="bar"><i id="barFill"></i></span><span id="progText">0 / 0 known</span></span>
+</div>
+
+<div class="exam-map">
+  <h2>How the exam asks about this chapter</h2>
+  <p>Raft is usually question 7, with two question types. Real examples:</p>
+  <ul>
+    <li>"Consider the Raft consensus protocol. Which problem does it solve? Under which assumptions? Does it guarantee safety (always correct) and liveness (always makes progress)? Motivate." <span class="date">18 Nov 2023</span> <span class="date">6 Sep 2024</span></li>
+    <li>"A simple data store: (a) a single machine, (b) replicated across 5 machines with Raft. Compare response time, consistency, fault tolerance." <span class="date">17 Jan 2024</span> <span class="date">12 Jul 2024</span></li>
+  </ul>
+  <p>2PC/3PC and CAP appear in the slides and are good material for a compare question.</p>
+</div>
+
+<section class="topic">
+  <div class="topic-head"><span class="num">§1</span><h2>Commit protocols</h2></div>
+  <div class="core"><p><b>Core idea.</b> Atomic commit: every node votes; commit only if all vote commit; any crash leads to abort. It differs from consensus, where nodes agree on one of the proposed values and a majority is enough. <b>2PC</b> is safe but blocking. <b>3PC</b> adds a phase to avoid blocking, at a higher cost.</p></div>
+
+  <article class="q" data-type="describe" data-id="a-c1">
+    <div class="q-head"><span class="qid">Q1</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Describe two-phase commit (coordinator and participant states). Analyze what happens when a participant or the coordinator fails. Why is 2PC called a blocking protocol?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Phase 1 (voting).</b> The coordinator writes start-2PC to its log and sends <code>prepare</code>; each participant votes <code>vote-commit</code> or <code>vote-abort</code> (and logs it). <b>Phase 2 (decision).</b> If all voted commit, the coordinator logs and sends <code>global-commit</code>, else <code>global-abort</code>. Participants log the decision and ack.</p>
+        <p>States: coordinator Init → Wait → Commit/Abort; participant Init → Ready → Commit/Abort.</p>
+        <p><b>Participant fails:</b> after a timeout in Wait, the coordinator decides abort.</p>
+        <p><b>Coordinator fails:</b></p>
+        <ul>
+          <li>Participant in <b>Init</b> (no prepare yet): it can abort; nobody can have received commit.</li>
+          <li>Participant in <b>Ready</b>: it cannot decide alone. It asks the other participants: if one got the decision, follow it; if one is in Init, the coordinator crashed before the end of the prepare phase → abort. If <b>all are in Ready</b>, nothing can be decided until the coordinator recovers: the protocol <b>blocks</b>.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>A participant in Ready promised to commit if asked, so it cannot abort; but it does not know the decision, so it cannot commit. 2PC is always safe, but it gives up liveness, and resources stay locked during the block.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="a-c2">
+    <div class="q-head"><span class="qid">Q2</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">How does three-phase commit avoid blocking? List the recovery rules of a participant when the coordinator fails, and compare 3PC with 2PC.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>3PC splits the decision in two: first tell everyone the outcome (<code>prepare-commit</code> → state Pre-commit, ack <code>ready-commit</code>), then commit. Conditions for non-blocking: no state leads directly to both commit and abort, and no state where a decision is impossible can lead to commit.</p>
+        <p><b>Coordinator fails</b>, participant in Ready asks the others:</p>
+        <ul><li>someone in Abort → abort; someone in Init → abort;</li><li>someone in Commit → commit;</li><li>someone in Pre-commit, and Pre-commit + Ready form a majority → commit;</li><li>a majority in Ready, nobody in Pre-commit → abort.</li></ul>
+        <p>No two participants can be one in Pre-commit and the other in Init.</p>
+        <div class="tbl"><table><tr><th></th><th>2PC</th><th>3PC</th></tr>
+          <tr><td>Phases</td><td>2</td><td>3 always</td></tr>
+          <tr><td>Coordinator crash</td><td>May block, locks held</td><td>Survivors decide, locks released</td></tr>
+          <tr><td>Partitions</td><td>Safe</td><td>Quorum version: safe, but may lose liveness</td></tr>
+          <tr><td>Use</td><td>Widely used</td><td>Rarely used (cost)</td></tr></table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>Pre-commit is a "decision announced" state. If any survivor saw it, everybody knows the decision was commit; if nobody saw it, nobody can have committed. FLP still applies: with partitions in an asynchronous system, you cannot have both safety and liveness.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="a-c3">
+    <div class="q-head"><span class="qid">Q3</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">State the CAP theorem and explain its practical meaning for modern data systems.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>A system that stores replicated or partitioned data can have at most two of: <b>C</b>onsistency (as if there were one up-to-date copy), <b>A</b>vailability (reads and writes always answered), <b>P</b>artition tolerance.</p>
+        <p>Partitions can always happen, so the real choice is: during a partition, stay consistent (refuse some requests) or stay available (accept requests and risk divergence). Modern systems choose a balance for each application, often with weaker consistency models (chapter 08).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>During a partition, a replica that accepts a write cannot tell the other side. Either it answers (available but inconsistent) or it waits (consistent but unavailable). There is no third option.</p></div>
+    </div>
+  </article>
+</section>
+
+<section class="topic">
+  <div class="topic-head"><span class="num">§2</span><h2>Raft and replicated state machines</h2></div>
+  <div class="core"><p><b>Core idea.</b> A <b>replicated state machine</b>: identical copies apply the same commands in the same order, so clients see one fault-tolerant machine. Raft keeps a <b>replicated log</b> with a leader. It is equivalent to multi-Paxos but designed to be understandable: log replication, leader election, safety.</p></div>
+
+  <article class="q" data-type="describe" data-id="a-r1">
+    <div class="q-head"><span class="qid">Q4</span><span class="tag describe">Describe</span><span class="seen">Exam 18 Nov 2023 · 6 Sep 2024</span></div>
+    <p class="prompt">Consider the Raft consensus protocol. Which problem does it solve? Under which assumptions? Does it guarantee safety (it is always correct) and liveness (it always makes progress)? Motivate your answers.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Problem.</b> Consensus on a sequence of commands for a replicated state machine: all non-failing machines execute the same commands in the same order.</p>
+        <p><b>Assumptions.</b> Asynchronous, unreliable communication (messages can be delayed, duplicated, lost). Processes fail by crashing and may restart; they record their state on durable storage. <b>No Byzantine</b> failures.</p>
+        <p><b>How (short).</b> Followers, candidates, leader. Time is divided into <b>terms</b>. A follower that hears no heartbeat within a randomized timeout (150–300 ms) becomes a candidate, increments the term, votes for itself and sends RequestVote. A majority of votes makes it leader (one vote per server per term). The leader appends client commands to its log and sends AppendEntries; an entry replicated on a majority is <b>committed</b> and executed.</p>
+        <p><b>Safety: yes, always.</b></p>
+        <ul>
+          <li>At most one leader per term (one vote per term, majority needed).</li>
+          <li>Log matching: AppendEntries carries the index and term of the previous entry; a follower rejects mismatches, and the leader retries with lower indexes. So equal index and term mean identical logs up to that point.</li>
+          <li>Leader completeness: a candidate includes its last index and term; voters refuse candidates with less up-to-date logs. So every new leader has all committed entries.</li>
+        </ul>
+        <p><b>Liveness: not guaranteed in theory</b> (FLP: deterministic consensus cannot also guarantee termination in an asynchronous system with a crash). Split votes can in principle repeat forever. In practice, randomized timeouts make this very unlikely, and the system makes progress whenever a majority is up and can communicate, with timeouts much longer than message delays.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Raft puts safety in the rules on terms, votes and logs, which never depend on timing. Timing is used only for liveness (timeouts). This is the standard way around FLP: never be wrong, and be fast most of the time.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="a-r2">
+    <div class="q-head"><span class="qid">Q5</span><span class="tag scenario">Scenario</span><span class="seen">Exam 17 Jan 2024 · 12 Jul 2024</span></div>
+    <p class="prompt">A simple data store: (a) on a single machine; (b) replicated on 5 machines with Raft. Compare the two in terms of response time for client requests, replication consistency, and fault tolerance.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th></th><th>(a) Single machine</th><th>(b) Raft, 5 replicas</th></tr>
+          <tr><td>Response time</td><td>Lowest: one local operation</td><td>Higher: the leader must replicate the entry on a majority (itself + 2) before committing and replying; one round trip to followers. Reads also go through the leader for linearizability.</td></tr>
+          <tr><td>Consistency</td><td>Trivially linearizable: one copy</td><td>Linearizable: all replicas apply the same log in the same order; clients see one copy. Duplicates are filtered with client request ids.</td></tr>
+          <tr><td>Fault tolerance</td><td>None: one crash = unavailable, possibly data loss</td><td>Survives 2 crashed machines (majority 3 of 5). A minority partition cannot commit; a new leader is elected in the majority.</td></tr>
+          <tr><td>Throughput</td><td>Limited by one machine</td><td>Not higher for writes: all go through the leader</td></tr></table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>Raft does not add performance, it adds availability and durability. The cost is the majority round trip on every write. With 2f + 1 replicas Raft tolerates f crashes.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="a-r3">
+    <div class="q-head"><span class="qid">Q6</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">5 nodes A–E; A is the leader of term 4. A partition separates {A, B} from {C, D, E}. Describe what happens in both sides, and after the partition heals.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol>
+          <li>A and B still think A is leader of term 4. C, D, E stop receiving heartbeats.</li>
+          <li>One of C, D, E times out first, say D: it becomes candidate for term 5 and gets votes from C and E (3 of 5): D is leader of term 5.</li>
+          <li>Clients that write to A: A appends to its log but cannot reach a majority, so nothing commits and clients get no success.</li>
+          <li>Clients that write to D: D replicates on C, E and commits.</li>
+          <li>When the partition heals, A receives a message with term 5 &gt; 4: it learns it is out of date and steps down to follower. Its uncommitted entries are overwritten by D's log through the consistency check.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>Two leaders can exist at the same time, but in different terms, and only the one with a majority can commit. Terms identify obsolete information, so the old leader is safe: it cannot do harm.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="a-r4">
+    <div class="q-head"><span class="qid">Q7</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Leader log (index: term): 1:1, 2:1, 3:2, 4:3. A follower has 1:1, 2:1, 3:1, 4:1. The leader sends AppendEntries for index 4 with previous entry ⟨3, 2⟩. What happens step by step?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol>
+          <li>The follower checks its entry at index 3: term 1 ≠ 2. It rejects.</li>
+          <li>The leader retries with a lower index: send entries 3–4 with previous ⟨2, 1⟩.</li>
+          <li>The follower has index 2 with term 1: match. It deletes its conflicting entries 3:1 and 4:1 and appends 3:2, 4:3.</li>
+          <li>Now the follower's log equals the leader's.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>This is an induction: if logs match at the previous entry, appending the same new entry keeps them matching. The leader always assumes its log is correct; normal operation repairs the followers, with no special recovery code. The follower's entries 3:1 and 4:1 were never committed (otherwise this leader would have them).</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="a-r5">
+    <div class="q-head"><span class="qid">Q8</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">How do modern distributed databases (e.g. Spanner) combine replicated state machines and 2PC?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>The database is <b>partitioned</b>; each partition is <b>replicated</b> with Paxos/Raft, so a partition behaves like one machine that does not fail (5 replicas survive 2 crashes). Across partitions, <b>2PC</b> gives atomic commit. The 2PC coordinator and participants are themselves replicated groups, so the blocking case of 2PC (coordinator crash) practically disappears, and channels can be assumed reliable as long as a majority of each partition is reachable.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>2PC is blocking only because a single node can fail. Replace each node with a replicated state machine and the weak point is gone. The two layers solve two different problems: consensus inside a partition, atomic commit across partitions.</p></div>
+    </div>
+  </article>
+</section>
+
+<section class="topic">
+  <div class="topic-head"><span class="num">§3</span><h2>Byzantine conditions: blockchains</h2></div>
+  <div class="core"><p><b>Core idea.</b> BFT replication needs 3f + 1 nodes for f traitors. Permissionless blockchains (Bitcoin) work with an unknown, very large set of nodes. Proof of work orders blocks; guarantees are only probabilistic.</p></div>
+
+  <article class="q" data-type="describe" data-id="a-b1">
+    <div class="q-head"><span class="qid">Q9</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Explain how a proof-of-work blockchain acts as a replicated state machine in a Byzantine environment. What are its assumptions and guarantees? What is double spending?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>State:</b> the balance of each user. <b>Log:</b> the ledger of signed transactions, grouped in blocks, replicated by all nodes.</p>
+        <p>Miners collect pending transactions in a block and search a proof of work over the chain + the new block: hard to find (brute force, about one every 10 minutes, difficulty adapted to the computing power), easy to verify. The winner broadcasts the block; others verify it and start on the next one. This gives global agreement on the order of blocks. If two chains appear, the one that grows faster (longer) survives.</p>
+        <p><b>Assumptions:</b> very many nodes; unknown membership; no entity controls the majority of computing power. <b>Guarantees:</b> only probabilistic; a longer chain that you do not know may always exist.</p>
+        <p><b>Double spending:</b> an attacker with enough computing power builds two concurrent chains, one paying A and one paying B, and shows each to its target. A and B can never be 100% sure that a conflicting chain does not exist; waiting for more blocks lowers the risk.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>With unknown membership you cannot count votes (anyone could create many identities). Proof of work makes a "vote" cost computing power, so the majority of power decides, not the majority of identities.</p></div>
+    </div>
+  </article>
+</section>
+<footer>Source: lecture slides "07 – Distributed agreement in practice" (Margara) and the past exams in your course folder (2023–2024). Your "Got it" and "Review again" marks stay only in this browser.</footer>
+</div>
+
+<script>
+(function(){
+  const KEY = "ds-agreement-marks-v1";
+  let marks = {};
+  try { marks = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e) { marks = {}; }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(marks)); } catch(e) {} };
+  const cards = Array.from(document.querySelectorAll("article.q"));
+
+  function applyMark(card){
+    const m = marks[card.dataset.id];
+    card.classList.toggle("known", m === "k");
+    card.classList.toggle("review", m === "r");
+    card.querySelector(".mark.k").setAttribute("aria-pressed", m === "k");
+    card.querySelector(".mark.r").setAttribute("aria-pressed", m === "r");
+  }
+  function updateProgress(){
+    const known = cards.filter(c => marks[c.dataset.id] === "k").length;
+    document.getElementById("progText").textContent = known + " / " + cards.length + " known";
+    document.getElementById("barFill").style.width = (100 * known / cards.length) + "%";
+  }
+  function setOpen(card, open){
+    const btn = card.querySelector(".reveal");
+    card.querySelector(".answer").hidden = !open;
+    btn.setAttribute("aria-expanded", open);
+    btn.textContent = open ? "Hide answer" : "Show answer";
+  }
+
+  cards.forEach(card => {
+    applyMark(card);
+    card.querySelector(".reveal").addEventListener("click", () => {
+      setOpen(card, card.querySelector(".answer").hidden);
+    });
+    card.querySelectorAll(".mark").forEach(b => b.addEventListener("click", () => {
+      const v = b.classList.contains("k") ? "k" : "r";
+      if (marks[card.dataset.id] === v) delete marks[card.dataset.id]; else marks[card.dataset.id] = v;
+      save(); applyMark(card); updateProgress(); applyFilter();
+    }));
+  });
+
+  let filter = "all";
+  function applyFilter(){
+    cards.forEach(c => {
+      const show = filter === "all" ? true : filter === "review" ? marks[c.dataset.id] === "r" : c.dataset.type === filter;
+      c.hidden = !show;
+    });
+    document.querySelectorAll("section.topic").forEach(s => {
+      s.hidden = !s.querySelector("article.q:not([hidden])");
+    });
+  }
+  document.querySelectorAll(".chip").forEach(ch => ch.addEventListener("click", () => {
+    filter = ch.dataset.filter;
+    document.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", x === ch));
+    applyFilter();
+  }));
+
+  const revealBtn = document.getElementById("revealAll");
+  revealBtn.addEventListener("click", () => {
+    const anyClosed = cards.some(c => c.querySelector(".answer").hidden);
+    cards.forEach(c => setOpen(c, anyClosed));
+    revealBtn.textContent = anyClosed ? "Hide all answers" : "Show all answers";
+  });
+  document.getElementById("resetMarks").addEventListener("click", () => {
+    marks = {}; save(); cards.forEach(applyMark); updateProgress(); applyFilter();
+  });
+  updateProgress();
+})();
+</script>
+
+</body></html>

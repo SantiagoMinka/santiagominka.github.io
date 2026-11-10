@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulation Exam Drill</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; each chapter section opens with a "core idea" note, then question cards with hidden answers. Light only, by request. */
+:root{
+  color-scheme: light;
+  --paper:#f7f8fb;
+  --sheet:#ffffff;
+  --ink:#16202e;
+  --muted:#5a6578;
+  --line:#dde2ec;
+  --accent:#1d4e89;      /* exam-pen blue */
+  --accent-soft:#e7eef8;
+  --tip:#9a5b00;
+  --tip-soft:#fdf3e2;
+  --good:#1f7a4d;
+  --good-soft:#e5f4ec;
+  --warn:#b4372f;
+  --warn-soft:#fbeceb;
+  --code-bg:#f1f3f8;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:0 64px}
+.wrap{max-width:820px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15;margin:0}
+header.top{padding-block:40px 20px;display:grid;gap:12px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(30px,6vw,44px)}
+.lede{color:var(--muted);max-width:62ch;margin:0}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 0;border-block:1px solid var(--line);margin-block:8px 28px}
+.chip,.btn{font:500 13px/1 var(--f-body);border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:999px;padding:8px 13px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.ghost{border-radius:8px}
+.chip:focus-visible,.btn:focus-visible,.reveal:focus-visible,.mark:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.spacer{flex:1}
+.progress{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:8px}
+.bar{width:90px;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--good);transition:width .3s}
+
+.exam-map{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-bottom:40px}
+.exam-map h2{font-size:20px;margin-bottom:8px}
+.exam-map ul{margin:8px 0 0;padding-left:18px}
+.exam-map li{margin:4px 0}
+.date{font-family:var(--f-mono);font-size:12px;color:var(--accent);white-space:nowrap}
+
+section.topic{margin-top:48px;display:grid;gap:18px}
+.topic-head{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.topic-head .num{font-family:var(--f-mono);color:var(--accent);font-size:14px}
+.topic-head h2{font-size:clamp(22px,4vw,28px)}
+.core{border-left:3px solid var(--accent);background:var(--accent-soft);padding:14px 18px;border-radius:0 10px 10px 0}
+.core b{color:var(--accent)}
+.core p{margin:.4em 0}
+
+article.q{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:grid;gap:12px;min-width:0}
+article.q.known{border-color:#b9dcc8}
+article.q.review{border-color:#efc4c0}
+.q-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.qid{font-family:var(--f-mono);font-size:12.5px;color:var(--muted)}
+.tag{font:600 11px/1 var(--f-body);letter-spacing:.06em;text-transform:uppercase;padding:5px 8px;border-radius:5px;background:var(--code-bg);color:var(--muted)}
+.tag.describe{background:#eaf0fb;color:#24508f}
+.tag.compare{background:#efe9fa;color:#5b3a99}
+.tag.scenario{background:#fdf0e3;color:#94520a}
+.tag.exercise{background:#e6f4f1;color:#18695a}
+.tag.code{background:#eceef2;color:#333d4d}
+.seen{font-family:var(--f-mono);font-size:11.5px;color:var(--tip);background:var(--tip-soft);padding:4px 8px;border-radius:5px}
+.prompt{font-size:16.5px;font-weight:500;margin:0}
+.q-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.reveal{font:600 13.5px/1 var(--f-body);background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px 14px;cursor:pointer}
+.reveal[aria-expanded="true"]{background:var(--sheet);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.mark{font:500 13px/1 var(--f-body);background:transparent;border:1px solid var(--line);border-radius:8px;padding:9px 12px;cursor:pointer;color:var(--muted)}
+.mark.k[aria-pressed="true"]{background:var(--good-soft);border-color:var(--good);color:var(--good)}
+.mark.r[aria-pressed="true"]{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
+.answer{border-top:1px dashed var(--line);padding-top:14px;display:grid;gap:12px;min-width:0}
+.answer h4{font:600 12px/1 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}
+.answer p{margin:.35em 0}
+.answer ul,.answer ol{margin:.3em 0;padding-left:20px}
+.answer li{margin:3px 0}
+.why{background:var(--accent-soft);border-radius:10px;padding:12px 16px}
+.why h4{color:var(--accent)}
+.tipbox{background:var(--tip-soft);border-radius:10px;padding:12px 16px}
+.tipbox h4{color:var(--tip)}
+code{font-family:var(--f-mono);font-size:.88em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+pre{font-family:var(--f-mono);font-size:13px;line-height:1.5;background:var(--code-bg);padding:14px;border-radius:8px;overflow-x:auto;margin:0}
+pre code{background:none;padding:0;font-size:inherit}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:480px}
+th,td{border-bottom:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+th{font-weight:600;background:var(--paper)}
+svg text{font-family:var(--f-body)}
+.figure{overflow-x:auto}
+.simbox{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;border:1px solid #b9dcc8;background:var(--good-soft);border-radius:10px;padding:10px 14px;color:var(--ink);text-decoration:none}
+.simbox b{color:var(--good)}
+.simbox:hover{border-color:var(--good)}
+.simbox span{color:var(--muted);font-size:14px}
+footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+
+</head><body>
+<div class="wrap">
+<header class="top">
+  <a class="eyebrow" href="/courses.html?c=distributed-systems" style="text-decoration:none">← Distributed Systems notes</a>
+  <div class="eyebrow">Distributed Systems · Prof. Cugola · Chapter 11</div>
+  <h1>Simulating distributed systems</h1>
+  <p class="lede">Exam drill for emulation vs simulation, discrete event simulation, and OMNeT++ (modules, NED, messages, results, the token ring example).</p>
+</header>
+<div class="toolbar" role="toolbar" aria-label="Filter and controls">
+  <button class="chip" data-filter="all" aria-pressed="true">All</button>
+  <button class="chip" data-filter="describe" aria-pressed="false">Describe</button>
+  <button class="chip" data-filter="compare" aria-pressed="false">Compare</button>
+  <button class="chip" data-filter="scenario" aria-pressed="false">Scenario</button>
+  <button class="chip" data-filter="exercise" aria-pressed="false">Exercise</button>
+  <button class="chip" data-filter="code" aria-pressed="false">Code</button>
+  <button class="chip" data-filter="review" aria-pressed="false">To review</button>
+  <span class="spacer"></span>
+  <button class="btn ghost" id="revealAll">Show all answers</button>
+  <button class="btn ghost" id="resetMarks">Reset marks</button>
+  <span class="progress"><span class="bar"><i id="barFill"></i></span><span id="progText">0 / 0 known</span></span>
+</div>
+
+<div class="exam-map">
+  <h2>How the exam asks about this chapter</h2>
+  <p>None of the past exams in your folder has a question on this chapter: it is new in the course. Expect a "describe" question (discrete event simulation, OMNeT++ structure) or a design question on the token-ring lab. The questions below follow the slides and the lab files in <code>token_ring_sim.zip</code>.</p>
+</div>
+
+<section class="topic">
+  <div class="topic-head"><span class="num">§1</span><h2>Why and how to simulate</h2></div>
+  <div class="core"><p><b>Core idea.</b> To study a system you can experiment with the real system or with a model. Emulation sits in between: the real software on an imitated network. Simulation runs a model and analyzes the history it produces. <b>Discrete event simulation</b> jumps from event to event.</p></div>
+
+  <article class="q" data-type="compare" data-id="m-1">
+    <div class="q-head"><span class="qid">Q1</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">Compare network emulation and simulation. Give examples of emulation tools and say what they can alter.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Emulation:</b> the real system runs on an emulated network. The emulator looks like a real network to the OS, and changes the packet flow to imitate a WAN or a wireless network: delay, loss, duplication, reordering. Often combined with node emulation (virtual machines). Tools: Mininet, Dummynet (Emulab), Linux NetEm, marionnet, netkit.</p>
+        <p><b>Simulation:</b> a model of the whole system (nodes and network) runs in a simulator; no real code or network is needed. You can test huge scales and "analyze before building".</p>
+        <p>Emulation gives realism for the software under test; simulation gives scale, control and reproducibility at the cost of model accuracy.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Testing distributed systems in large or complex deployments is hard and expensive. Emulation keeps the real code; simulation keeps only the behavior you model.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="m-2">
+    <div class="q-head"><span class="qid">Q2</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Classify models (analytical vs operational, discrete vs continuous, deterministic vs stochastic). Describe the elements and the main loop of a discrete event simulation.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Models: analytical (equations) vs operational (step by step behavior); discrete vs continuous state changes; deterministic vs stochastic (random inputs). Simulation obtains a history of execution and analyzes it.</p>
+        <p><b>Elements:</b> a list of events (timestamped objects, ordered by time); a simulation clock; state variables and performance indicators; an event processing function that updates state and indicators and creates new events.</p>
+<pre><code>forever:
+  e = remove the first event from the list
+  clock = e.timestamp
+  process(e)   // update state, record statistics, schedule new events</code></pre>
+      </div>
+      <div class="why"><h4>Why</h4><p>Nothing happens between events, so the clock can jump. A simulation of one hour of network activity can run in seconds, and it is fully reproducible with the same random seeds.</p></div>
+    </div>
+  </article>
+</section>
+
+<section class="topic">
+  <div class="topic-head"><span class="num">§2</span><h2>OMNeT++</h2></div>
+  <div class="core"><p><b>Core idea.</b> OMNeT++ gives a component model (simple and compound <b>modules</b> with <b>gates</b>), a C++ library (simulation kernel, random numbers, statistics), the <b>NED</b> language for structure, <b>ini</b> files for configuration, runtime environments, and an IDE. Frameworks such as INET add ready-made models.</p></div>
+
+  <article class="q" data-type="describe" data-id="m-3">
+    <div class="q-head"><span class="qid">Q3</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Describe the OMNeT++ component model: simple and compound modules, gates, NED, C++ classes, ini files, messages.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><b>Modules</b> communicate by sending messages through <b>gates</b>. <b>Simple</b> modules hold the behavior; <b>compound</b> modules contain submodules and connections. The whole simulation is an instance of the top-level module (the network).</li>
+          <li><b>NED</b> defines interfaces (parameters, gates) and wiring (submodules, connections with channel properties such as delay, datarate, ber/per).</li>
+          <li>Each simple module is a <b>C++ class</b> extending <code>cSimpleModule</code>, registered with <code>Define_Module</code>. Main methods: <code>initialize()</code>, <code>handleMessage(cMessage*)</code>, <code>finish()</code>. Read parameters with <code>par("name")</code>; send with <code>send(msg, "gate")</code>; timers are self-messages with <code>scheduleAt</code> and <code>cancelEvent</code>.</li>
+          <li>Parameter values go in <b>omnetpp.ini</b>, with several named configurations and wildcards (<code>**.limit = 5</code>). Volatile parameters can be random variates (<code>exponential(0.2)</code>): each read gives a new value.</li>
+          <li><b>Messages</b> are subclasses of <code>cMessage</code>, defined in a small message language (fields).</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>Separating structure (NED), behavior (C++) and experiments (ini) lets you reuse modules and run many configurations without recompiling.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="m-4">
+    <div class="q-head"><span class="qid">Q4</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">How are results collected in OMNeT++? How are random numbers managed?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Output vectors</b> (.vec): named series of (timestamp, value) pairs that capture behavior over time (e.g. <code>cOutVector waitingTime</code>, <code>record()</code>). Recording can be enabled, disabled or limited in time from the ini file. <b>Output scalars</b> (.sca): summary statistics, e.g. <code>recordScalar("#sent", numSent)</code> in <code>finish()</code>. Statistics classes (e.g. histograms) and <b>signals</b> decouple the model from statistics collection.</p>
+        <p><b>Random numbers:</b> a configurable number of RNG streams, mapped to modules in the ini file (e.g. traffic generators on stream 0, MACs on stream 1). Seeds are automatic or manual. Many distributions are available from NED and C++.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Separate RNG streams make experiments comparable: changing one module's randomness does not change the random sequence of the others.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="m-5">
+    <div class="q-head"><span class="qid">Q5</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">In TicToc with a lossy toc (10% loss), tic uses a timeout to resend. Why does the second version send a <i>copy</i> of the message (<code>dup()</code>) and keep the original? What does <code>cancelEvent</code> do?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>A sent message belongs to the receiver (it may delete it, e.g. when it is "lost"). If tic resent the same object, it would use a deleted message. So tic keeps the original and sends <code>msg-&gt;dup()</code> each time, including retransmissions after a timeout. Messages carry a sequence number (tic-1, tic-2…) to tell them apart.</p>
+        <p>The timeout is a self-message scheduled with <code>scheduleAt(simTime()+timeout, timeoutEvent)</code>. When the reply arrives in time, <code>cancelEvent(timeoutEvent)</code> removes it from the event list, then tic sends the next message and schedules a new timeout.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>This is stop-and-wait with retransmission: the same "time redundancy" technique of the fault tolerance chapter, modeled as events.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="m-6">
+    <div class="q-head"><span class="qid">Q6</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">Lab: the token ring simulation (TRNode) controls access to a shared resource. Extend it for lossy channels: how do you rebuild a lost token? Which performance indicators would you measure and how?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Lossy channels.</b> Set <code>ber</code> or <code>per</code> on the channel; on arrival, a packet with <code>hasBitError()</code> is dropped. A single <b>leader</b> node (e.g. node[0]) keeps a timeout, reset every time the token passes. The timeout must be longer than the worst token round: n × (link delay + transmission) + n × max usage time. On expiry, the leader creates a new token.</p>
+        <p>Risk: a too-short timeout creates a second token (two nodes in the critical section). Mitigation: a token sequence/epoch number; a node discards tokens with an old epoch.</p>
+        <p><b>Indicators</b> (the lab already records some): waiting time before access (<code>cOutVector waitingTime</code>, from the "need" event to the token arrival); number of token transmissions (<code>#sent</code> scalar); resource utilization; number of regenerated tokens. Compare configurations from the ini file: small ring (6 nodes), small ring with frequent requests, large ring (50 nodes).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Token ring mutual exclusion (chapter 05) has two problems: lost token and crashed process. The simulation makes the trade-off visible: a short timeout recovers fast but risks duplicate tokens; a long one is safe but wastes time.</p></div>
+    </div>
+  </article>
+</section>
+<footer>Source: lecture slides "11 – Simulation" (Cugola) and the token ring lab files in your course folder. Your "Got it" and "Review again" marks stay only in this browser.</footer>
+</div>
+
+<script>
+(function(){
+  const KEY = "ds-simulation-marks-v1";
+  let marks = {};
+  try { marks = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e) { marks = {}; }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(marks)); } catch(e) {} };
+  const cards = Array.from(document.querySelectorAll("article.q"));
+
+  function applyMark(card){
+    const m = marks[card.dataset.id];
+    card.classList.toggle("known", m === "k");
+    card.classList.toggle("review", m === "r");
+    card.querySelector(".mark.k").setAttribute("aria-pressed", m === "k");
+    card.querySelector(".mark.r").setAttribute("aria-pressed", m === "r");
+  }
+  function updateProgress(){
+    const known = cards.filter(c => marks[c.dataset.id] === "k").length;
+    document.getElementById("progText").textContent = known + " / " + cards.length + " known";
+    document.getElementById("barFill").style.width = (100 * known / cards.length) + "%";
+  }
+  function setOpen(card, open){
+    const btn = card.querySelector(".reveal");
+    card.querySelector(".answer").hidden = !open;
+    btn.setAttribute("aria-expanded", open);
+    btn.textContent = open ? "Hide answer" : "Show answer";
+  }
+
+  cards.forEach(card => {
+    applyMark(card);
+    card.querySelector(".reveal").addEventListener("click", () => {
+      setOpen(card, card.querySelector(".answer").hidden);
+    });
+    card.querySelectorAll(".mark").forEach(b => b.addEventListener("click", () => {
+      const v = b.classList.contains("k") ? "k" : "r";
+      if (marks[card.dataset.id] === v) delete marks[card.dataset.id]; else marks[card.dataset.id] = v;
+      save(); applyMark(card); updateProgress(); applyFilter();
+    }));
+  });
+
+  let filter = "all";
+  function applyFilter(){
+    cards.forEach(c => {
+      const show = filter === "all" ? true : filter === "review" ? marks[c.dataset.id] === "r" : c.dataset.type === filter;
+      c.hidden = !show;
+    });
+    document.querySelectorAll("section.topic").forEach(s => {
+      s.hidden = !s.querySelector("article.q:not([hidden])");
+    });
+  }
+  document.querySelectorAll(".chip").forEach(ch => ch.addEventListener("click", () => {
+    filter = ch.dataset.filter;
+    document.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", x === ch));
+    applyFilter();
+  }));
+
+  const revealBtn = document.getElementById("revealAll");
+  revealBtn.addEventListener("click", () => {
+    const anyClosed = cards.some(c => c.querySelector(".answer").hidden);
+    cards.forEach(c => setOpen(c, anyClosed));
+    revealBtn.textContent = anyClosed ? "Hide all answers" : "Show all answers";
+  });
+  document.getElementById("resetMarks").addEventListener("click", () => {
+    marks = {}; save(); cards.forEach(applyMark); updateProgress(); applyFilter();
+  });
+  updateProgress();
+})();
+</script>
+
+</body></html>

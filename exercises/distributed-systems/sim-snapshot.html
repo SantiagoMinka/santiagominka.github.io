@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Snapshot Simulator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Simulator layout: one wide column; controls on top, drawing, step box, then data panels. Light only. */
+:root{
+  color-scheme: light;
+  --paper:#f7f8fb; --sheet:#ffffff; --ink:#16202e; --muted:#5a6578; --faint:#94a0b4; --line:#dde2ec;
+  --accent:#1d4e89; --accent-soft:#e7eef8;
+  --tip:#9a5b00; --tip-soft:#fdf3e2;
+  --good:#1f7a4d; --good-soft:#e2f3ea;
+  --warn:#b4372f; --warn-soft:#fbeceb;
+  --hot:#d85a30; --code-bg:#f1f3f8;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 56px}
+.wrap{max-width:1040px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);line-height:1.15;margin:0;text-wrap:balance}
+header.top{padding-block:32px 16px;display:grid;gap:8px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(26px,5vw,38px)}
+.lede{color:var(--muted);max-width:70ch;margin:0}
+.panel{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:18px;display:grid;gap:14px;min-width:0;align-content:start}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.lbl{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+button,.btn{font:500 13.5px/1 var(--f-body);border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:8px;padding:9px 13px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+select,input,textarea{font:14px var(--f-body);border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--sheet);color:var(--ink)}
+textarea{font-family:var(--f-mono);font-size:13.5px;width:100%;min-height:120px;resize:vertical}
+.cap{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:.04em;text-transform:uppercase;margin-bottom:-6px}
+.fig{overflow-x:auto}
+.fig svg{width:100%;height:auto;display:block;min-width:520px}
+svg text{font-family:var(--f-body)}
+.step{background:var(--code-bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;min-height:84px}
+.step-n{font-size:12px;color:var(--muted);margin-bottom:4px;font-variant-numeric:tabular-nums}
+.step-tx{font-size:15px;line-height:1.6}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:3px;display:inline-block;border:1.5px solid}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{background:var(--paper);font-weight:600}
+code,.mono{font-family:var(--f-mono);font-size:.9em}
+.ok{color:var(--good);font-weight:600}.bad{color:var(--warn);font-weight:600}
+.pill{display:inline-block;font:600 11.5px/1 var(--f-body);padding:5px 8px;border-radius:999px}
+.pill.ok{background:var(--good-soft)}.pill.bad{background:var(--warn-soft)}
+.note{font-size:13.5px;color:var(--muted)}
+.why{background:var(--accent-soft);border-radius:10px;padding:12px 16px;font-size:14.5px}
+.why b{color:var(--accent)}
+a{color:var(--accent)}
+footer{margin-top:40px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:14px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head><body>
+<div class="wrap">
+<style>
+.node circle{fill:var(--sheet);stroke:var(--ink);stroke-width:1.5}
+.node.rec circle{fill:var(--accent-soft);stroke:var(--accent)}
+.node.done circle{fill:var(--good-soft);stroke:var(--good)}
+.edge path{fill:none;stroke:var(--faint);stroke-width:1.4}
+.edge.clickable path{stroke:var(--muted)}
+.edge.clickable:hover path{stroke:var(--accent);stroke-width:2.4}
+.edge.hot path{stroke:var(--hot);stroke-width:2.4}
+.edge.recording path{stroke:var(--accent);stroke-dasharray:5 4}
+.edge{cursor:default}.edge.clickable{cursor:pointer}
+.q{font:600 12.5px var(--f-mono)}
+.qbox{fill:var(--sheet);stroke:var(--line)}
+.state td.cur{color:var(--muted)}
+</style>
+<header class="top">
+  <a class="eyebrow" href="/courses.html?c=distributed-systems" style="text-decoration:none">← Distributed Systems notes</a>
+  <div class="eyebrow">Simulator · Chapter 05 · Synchronization</div>
+  <h1>Distributed snapshot (Chandy–Lamport)</h1>
+  <p class="lede">This is the exam figure of 18 June 2024 and 12 July 2024. Each process adds the value of each received message to its state S. A started the snapshot with S = 2. B and E already got A's tokens. Deliver the messages one at a time and watch what each process records.</p>
+</header>
+
+<div class="panel">
+  <div class="row">
+    <span class="lbl">Order</span>
+    <button id="pMsg" aria-pressed="true">Messages first</button>
+    <button id="pTok" aria-pressed="false">Tokens first</button>
+    <button id="pRnd" aria-pressed="false">Random order</button>
+    <button id="pMan" aria-pressed="false">I choose</button>
+  </div>
+  <p class="note" id="orderNote"></p>
+  <div class="cap">System (numbers on an arrow = messages in the channel; the first one to arrive is next to the arrowhead)</div>
+  <div class="fig"><svg id="g" viewBox="0 30 640 470" role="img" aria-label="Six processes A to F with directed FIFO channels"></svg></div>
+  <div class="legend">
+    <span><i class="sw" style="background:var(--sheet);border-color:var(--ink)"></i>Not recorded yet</span>
+    <span><i class="sw" style="background:var(--accent-soft);border-color:var(--accent)"></i>State recorded, still recording channels</span>
+    <span><i class="sw" style="background:var(--good-soft);border-color:var(--good)"></i>Snapshot complete at this node</span>
+    <span><svg width="22" height="10"><line x1="1" y1="5" x2="21" y2="5" stroke="#1d4e89" stroke-width="2" stroke-dasharray="5 4"/></svg>Channel being recorded</span>
+    <span><svg width="22" height="10"><line x1="1" y1="5" x2="21" y2="5" stroke="#d85a30" stroke-width="2.4"/></svg>Last delivery</span>
+  </div>
+  <div class="step"><div class="step-n" id="sn"></div><div class="step-tx" id="st"></div></div>
+  <div class="row">
+    <button id="bBack">← Back</button>
+    <button id="bNext" class="primary">Next →</button>
+    <button id="bEnd">Go to the end</button>
+    <button id="bRestart">Restart</button>
+  </div>
+</div>
+
+<div class="grid2" style="margin-top:14px">
+  <div class="panel">
+    <h3 style="font-size:18px">What each node records</h3>
+    <div class="tbl"><table id="tRec"></table></div>
+    <p class="note" id="total"></p>
+  </div>
+  <div class="panel">
+    <h3 style="font-size:18px">How to read the result</h3>
+    <div class="why">
+      <p><b>Rules.</b> On the first token: record the state, send a token on every outgoing channel, then record every other incoming channel. A message that arrives on a channel that is being recorded goes into that channel's record. A token on a channel stops its recording.</p>
+      <p><b>Assumptions.</b> FIFO, reliable channels; the graph is strongly connected; no new application messages are sent while the snapshot runs.</p>
+      <p><b>Check.</b> The total of recorded states and recorded channel messages is always 75. That is the total of the system (86) minus the messages that A, B and E sent <i>after</i> they recorded their state (3 on A→B, 4 on B→C, 4 on E→F). Different delivery orders give different snapshots, but all of them are consistent cuts.</p>
+    </div>
+  </div>
+</div>
+<footer>Figure from the exams of 18 June 2024 and 12 July 2024 (Prof. Cugola). Algorithm from the slides "05 – Synchronization".</footer>
+
+<script>
+(function(){
+const P={A:[150,80],B:[500,110],C:[330,250],D:[510,390],E:[130,330],F:[320,440]};
+const INIT={A:2,B:1,C:0,D:3,E:2,F:5};
+// channels: [from,to,queue(head first),bend]
+const CH0=[["A","B",[3],-.18],["B","C",[9,3,"T",4],-.12],["C","A",[5],-.15],["A","E",[],.15],["E","A",[2,"T"],.15],
+ ["C","E",[5],.12],["C","D",[3,2],-.15],["D","B",[4,5],.15],["D","F",[3,9],-.15],["E","F",[3,"T",4],.2],["F","C",[9],.06]];
+let mode="msg", steps=[], idx=0;
+function initial(){
+  const nodes={};for(const k in INIT)nodes[k]={cur:INIT[k],rec:null,open:{}, closed:{}};
+  const ch=CH0.map(c=>({f:c[0],t:c[1],q:c[2].slice(),bend:c[3],recd:[]}));
+  // A recorded 2 and records C→A, E→A. B and E got A's tokens.
+  nodes.A.rec=2; nodes.B.rec=1; nodes.E.rec=2;
+  ch.forEach((c,i)=>{ if(c.t==="A"&&c.f!=="A") nodes.A.open[i]=true;
+    if(c.t==="B"){ if(c.f==="A") nodes.B.closed[i]=true; else nodes.B.open[i]=true; }
+    if(c.t==="E"){ if(c.f==="A") nodes.E.closed[i]=true; else nodes.E.open[i]=true; } });
+  return {nodes,ch,last:-1,text:"Start. A recorded S = 2 and sent tokens to B and E. B recorded S = 1 and E recorded S = 2, then both sent tokens on their outgoing channels. A records C→A and E→A. B records D→B. E records C→E."};
+}
+const clone=s=>JSON.parse(JSON.stringify(s));
+const name=c=>c.f+"→"+c.t;
+function deliver(s,i){
+  const c=s.ch[i], n=s.nodes[c.t], m=c.q.shift(); let t;
+  if(m==="T"){
+    if(n.rec===null){
+      n.rec=n.cur; n.closed[i]=true;
+      const outs=[]; s.ch.forEach((o,j)=>{ if(o.f===c.t){o.q.push("T");outs.push(name(o));} if(o.t===c.t&&j!==i) n.open[j]=true; });
+      const ins=s.ch.filter((o,j)=>o.t===c.t&&j!==i).map(name);
+      t=`${c.t} receives its first token on ${name(c)}. It records its state S = ${n.rec}. Channel ${name(c)} is recorded as empty. ${c.t} sends a token on ${outs.join(", ")}`+(ins.length?` and starts to record ${ins.join(", ")}.`:`. ${c.t} has no other incoming channel, so its part is complete.`);
+    } else {
+      delete n.open[i]; n.closed[i]=true;
+      t=`${c.t} receives a token on ${name(c)}. It stops recording this channel. Recorded messages: ${c.recd.length?"{"+c.recd.join(", ")+"}":"none (empty)"}.`;
+    }
+  } else {
+    n.cur+=m;
+    if(n.open[i]){ c.recd.push(m); t=`${c.t} receives ${m} on ${name(c)}. ${c.t} is recording this channel, so ${m} goes into the channel record. The live state becomes ${n.cur} (the recorded state stays ${n.rec}).`; }
+    else if(n.rec===null){ t=`${c.t} receives ${m} on ${name(c)}. ${c.t} has not recorded its state yet, so S becomes ${n.cur}. This value will be part of the recorded state.`; }
+    else { t=`${c.t} receives ${m} on ${name(c)}. This message was sent after the sender's token (or the channel is already closed). It is not part of the snapshot. Live S = ${n.cur}.`; }
+  }
+  s.last=i; s.text=t; return s;
+}
+function heads(s){ return s.ch.map((c,i)=>c.q.length?i:-1).filter(i=>i>=0); }
+let rnd=1;
+function pick(s){
+  const h=heads(s); if(!h.length) return -1;
+  if(mode==="msg"){ const m=h.find(i=>s.ch[i].q[0]!=="T"); return m!==undefined?m:h[0]; }
+  if(mode==="tok"){ const m=h.find(i=>s.ch[i].q[0]==="T"); return m!==undefined?m:h[0]; }
+  rnd=(rnd*16807)%2147483647; return h[rnd%h.length];
+}
+function build(){
+  steps=[initial()]; idx=0;
+  if(mode==="man") return;
+  if(mode==="rnd") rnd=(Date.now()%100000)+7;
+  let s=steps[0];
+  for(let g=0;g<80;g++){ const i=pick(s); if(i<0)break; s=deliver(clone(s),i); steps.push(s); }
+  const f=clone(s); f.last=-1; f.text="All channels are empty. "+summary(f); steps.push(f);
+}
+function summary(s){
+  const allDone=Object.keys(s.nodes).every(k=>s.nodes[k].rec!==null&&Object.keys(s.nodes[k].open).length===0);
+  return allDone?"Every node has recorded its state and received a token on every incoming channel. The snapshot is complete: read the table below.":"";
+}
+function ctrlPath(a,b,bend){const[x1,y1]=P[a],[x2,y2]=P[b];const dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy);
+  const cx=(x1+x2)/2-dy*bend,cy=(y1+y2)/2+dx*bend; const r=30;
+  const s=[x1+(cx-x1)/Math.hypot(cx-x1,cy-y1)*r,y1+(cy-y1)/Math.hypot(cx-x1,cy-y1)*r];
+  const e=[x2+(cx-x2)/Math.hypot(cx-x2,cy-y2)*(r+4),y2+(cy-y2)/Math.hypot(cx-x2,cy-y2)*(r+4)];
+  return {d:`M${s[0].toFixed(1)} ${s[1].toFixed(1)}Q${cx.toFixed(1)} ${cy.toFixed(1)} ${e[0].toFixed(1)} ${e[1].toFixed(1)}`,s,e,cx,cy};}
+function qpt(p,t){return[(1-t)*(1-t)*p.s[0]+2*(1-t)*t*p.cx+t*t*p.e[0],(1-t)*(1-t)*p.s[1]+2*(1-t)*t*p.cy+t*t*p.e[1]];}
+function render(){
+  const s=steps[idx]; const g=document.getElementById("g");
+  let h='<defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1L9 5L1 9z" fill="context-stroke"/></marker></defs>';
+  const manual=mode==="man";
+  s.ch.forEach((c,i)=>{const p=ctrlPath(c.f,c.t,c.bend);
+    const rec=s.nodes[c.t].open[i];const cls=["edge",i===s.last?"hot":"",rec?"recording":"",manual&&c.q.length?"clickable":""].join(" ");
+    h+=`<g class="${cls}" data-i="${i}"><path d="${p.d}" marker-end="url(#ar)"/><path d="${p.d}" stroke="transparent" stroke-width="16" style="stroke:transparent"/>`;
+    // queue labels: head nearest the arrowhead
+    c.q.forEach((m,k)=>{const t=0.78-k*0.15;const[x,y]=qpt(p,Math.max(.12,t));const tok=m==="T";
+      h+=`<rect class="qbox" x="${x-11}" y="${y-10}" width="22" height="20" rx="5" style="${tok?'fill:#fdf3e2;stroke:#9a5b00':''}"/><text class="q" x="${x}" y="${y+4.5}" text-anchor="middle" fill="${tok?'#9a5b00':'#16202e'}">${m}</text>`;});
+    if(c.recd.length){const[x,y]=qpt(p,0.3);h+=`<text x="${x}" y="${y-14}" text-anchor="middle" font-size="11.5" fill="#1d4e89">rec {${c.recd.join(",")}}</text>`;}
+    h+="</g>";});
+  for(const k in P){const n=s.nodes[k];const done=n.rec!==null&&!Object.keys(n.open).length;const cls=done?"done":n.rec!==null?"rec":"";
+    const[x,y]=P[k];h+=`<g class="node ${cls}"><circle cx="${x}" cy="${y}" r="30"/><text x="${x}" y="${y-5}" text-anchor="middle" font-weight="700" font-size="15" fill="#16202e">${k}</text><text x="${x}" y="${y+13}" text-anchor="middle" font-size="12.5" fill="#16202e">S=${n.cur}</text>`;
+    if(n.rec!==null)h+=`<text x="${x}" y="${y+46}" text-anchor="middle" font-size="12" fill="#1d4e89" font-weight="600">recorded ${n.rec}</text>`;h+="</g>";}
+  g.innerHTML=h;
+  if(manual) g.querySelectorAll(".edge.clickable").forEach(e=>e.addEventListener("click",()=>{const i=+e.dataset.i;steps=steps.slice(0,idx+1);steps.push(deliver(clone(steps[idx]),i));idx++;render();}));
+  document.getElementById("sn").textContent=manual?`Step ${idx}`:`Step ${idx+1} of ${steps.length}`;
+  document.getElementById("st").textContent=s.text+(manual&&!heads(s).length?" "+summary(s):"")+(manual&&heads(s).length&&idx===0?" Click a channel to deliver its next message.":"");
+  // table
+  let t='<tr><th>Node</th><th>Recorded S</th><th>Incoming channels</th><th class="cur">Live S</th></tr>';let tot=0,full=true;
+  for(const k in P){const n=s.nodes[k];if(n.rec===null)full=false;else tot+=n.rec;
+    const ins=s.ch.map((c,i)=>[c,i]).filter(([c])=>c.t===k).map(([c,i])=>{const st=n.closed[i]?"":n.open[i]?" (recording…)":" (not started)";if(n.open[i]||n.rec===null)full=false;tot+=c.recd.reduce((a,b)=>a+b,0);return `${name(c)}: {${c.recd.join(", ")}}${st}`;});
+    t+=`<tr><td><b>${k}</b></td><td>${n.rec===null?"–":n.rec}</td><td>${ins.join("<br>")}</td><td class="cur">${n.cur}</td></tr>`;}
+  document.getElementById("tRec").innerHTML=t;
+  document.getElementById("total").innerHTML=full?`Total in the snapshot: <b>${tot}</b> (always 75 for this figure).`:"The total appears when the snapshot is complete.";
+  document.getElementById("bBack").disabled=idx===0;
+  document.getElementById("bNext").disabled=manual||idx>=steps.length-1;
+  document.getElementById("bEnd").disabled=manual||idx>=steps.length-1;
+}
+const NOTES={msg:"Assumption: messages that are already in a channel arrive before any token that is sent later. This is the usual exam assumption, and it gives the standard answer.",
+ tok:"Assumption: tokens are delivered as soon as possible. Messages wait. You get a different, but still consistent, snapshot.",
+ rnd:"Random order of delivery among the channel heads. Run it several times: the snapshot changes, but the total stays 75.",
+ man:"You choose: click a channel arrow to deliver its first message. Back undoes one delivery."};
+function setMode(m){mode=m;["Msg","Tok","Rnd","Man"].forEach(x=>document.getElementById("p"+x).setAttribute("aria-pressed",("p"+x).toLowerCase()===("p"+m)));document.getElementById("orderNote").textContent=NOTES[m];build();render();}
+document.getElementById("pMsg").onclick=()=>setMode("msg");document.getElementById("pTok").onclick=()=>setMode("tok");
+document.getElementById("pRnd").onclick=()=>setMode("rnd");document.getElementById("pMan").onclick=()=>setMode("man");
+document.getElementById("bBack").onclick=()=>{if(idx>0){idx--;if(mode==="man")steps=steps.slice(0,idx+1);render();}};
+document.getElementById("bNext").onclick=()=>{if(idx<steps.length-1){idx++;render();}};
+document.getElementById("bEnd").onclick=()=>{idx=steps.length-1;render();};
+document.getElementById("bRestart").onclick=()=>{build();render();};
+setMode("msg");
+})();
+</script>
+
+</div>
+</body></html>
