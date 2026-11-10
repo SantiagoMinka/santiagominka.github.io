@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Naming Exam Drill</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; each chapter section opens with a "core idea" note, then question cards with hidden answers. Light only, by request. */
+:root{
+  color-scheme: light;
+  --paper:#f7f8fb;
+  --sheet:#ffffff;
+  --ink:#16202e;
+  --muted:#5a6578;
+  --line:#dde2ec;
+  --accent:#1d4e89;      /* exam-pen blue */
+  --accent-soft:#e7eef8;
+  --tip:#9a5b00;
+  --tip-soft:#fdf3e2;
+  --good:#1f7a4d;
+  --good-soft:#e5f4ec;
+  --warn:#b4372f;
+  --warn-soft:#fbeceb;
+  --code-bg:#f1f3f8;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:0 64px}
+.wrap{max-width:820px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15;margin:0}
+header.top{padding-block:40px 20px;display:grid;gap:12px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(30px,6vw,44px)}
+.lede{color:var(--muted);max-width:62ch;margin:0}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 0;border-block:1px solid var(--line);margin-block:8px 28px}
+.chip,.btn{font:500 13px/1 var(--f-body);border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:999px;padding:8px 13px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.ghost{border-radius:8px}
+.chip:focus-visible,.btn:focus-visible,.reveal:focus-visible,.mark:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.spacer{flex:1}
+.progress{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:8px}
+.bar{width:90px;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--good);transition:width .3s}
+
+.exam-map{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-bottom:40px}
+.exam-map h2{font-size:20px;margin-bottom:8px}
+.exam-map ul{margin:8px 0 0;padding-left:18px}
+.exam-map li{margin:4px 0}
+.date{font-family:var(--f-mono);font-size:12px;color:var(--accent);white-space:nowrap}
+
+section.topic{margin-top:48px;display:grid;gap:18px}
+.topic-head{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.topic-head .num{font-family:var(--f-mono);color:var(--accent);font-size:14px}
+.topic-head h2{font-size:clamp(22px,4vw,28px)}
+.core{border-left:3px solid var(--accent);background:var(--accent-soft);padding:14px 18px;border-radius:0 10px 10px 0}
+.core b{color:var(--accent)}
+.core p{margin:.4em 0}
+
+article.q{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:grid;gap:12px;min-width:0}
+article.q.known{border-color:#b9dcc8}
+article.q.review{border-color:#efc4c0}
+.q-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.qid{font-family:var(--f-mono);font-size:12.5px;color:var(--muted)}
+.tag{font:600 11px/1 var(--f-body);letter-spacing:.06em;text-transform:uppercase;padding:5px 8px;border-radius:5px;background:var(--code-bg);color:var(--muted)}
+.tag.describe{background:#eaf0fb;color:#24508f}
+.tag.compare{background:#efe9fa;color:#5b3a99}
+.tag.scenario{background:#fdf0e3;color:#94520a}
+.tag.exercise{background:#e6f4f1;color:#18695a}
+.tag.code{background:#eceef2;color:#333d4d}
+.seen{font-family:var(--f-mono);font-size:11.5px;color:var(--tip);background:var(--tip-soft);padding:4px 8px;border-radius:5px}
+.prompt{font-size:16.5px;font-weight:500;margin:0}
+.q-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.reveal{font:600 13.5px/1 var(--f-body);background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px 14px;cursor:pointer}
+.reveal[aria-expanded="true"]{background:var(--sheet);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.mark{font:500 13px/1 var(--f-body);background:transparent;border:1px solid var(--line);border-radius:8px;padding:9px 12px;cursor:pointer;color:var(--muted)}
+.mark.k[aria-pressed="true"]{background:var(--good-soft);border-color:var(--good);color:var(--good)}
+.mark.r[aria-pressed="true"]{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
+.answer{border-top:1px dashed var(--line);padding-top:14px;display:grid;gap:12px;min-width:0}
+.answer h4{font:600 12px/1 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}
+.answer p{margin:.35em 0}
+.answer ul,.answer ol{margin:.3em 0;padding-left:20px}
+.answer li{margin:3px 0}
+.why{background:var(--accent-soft);border-radius:10px;padding:12px 16px}
+.why h4{color:var(--accent)}
+.tipbox{background:var(--tip-soft);border-radius:10px;padding:12px 16px}
+.tipbox h4{color:var(--tip)}
+code{font-family:var(--f-mono);font-size:.88em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+pre{font-family:var(--f-mono);font-size:13px;line-height:1.5;background:var(--code-bg);padding:14px;border-radius:8px;overflow-x:auto;margin:0}
+pre code{background:none;padding:0;font-size:inherit}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:480px}
+th,td{border-bottom:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+th{font-weight:600;background:var(--paper)}
+svg text{font-family:var(--f-body)}
+.figure{overflow-x:auto}
+footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+
+</head><body>
+<div class="wrap">
+<header class="top">
+  <a class="eyebrow" href="/courses.html?c=distributed-systems" style="text-decoration:none">← Distributed Systems notes</a>
+  <div class="eyebrow">Distributed Systems · Prof. Cugola · Chapter 04</div>
+  <h1>Naming</h1>
+  <p class="lede">Exam drill for the naming chapter: flat, structured and attribute-based naming, Chord, and garbage collection of unreferenced entities. Answer on paper first, then open the model answer. Each answer explains why it is correct.</p>
+</header>
+<div class="toolbar" role="toolbar" aria-label="Filter and controls">
+  <button class="chip" data-filter="all" aria-pressed="true">All</button>
+  <button class="chip" data-filter="describe" aria-pressed="false">Describe</button>
+  <button class="chip" data-filter="compare" aria-pressed="false">Compare</button>
+  <button class="chip" data-filter="scenario" aria-pressed="false">Scenario</button>
+  <button class="chip" data-filter="exercise" aria-pressed="false">Exercise</button>
+  <button class="chip" data-filter="code" aria-pressed="false">Code</button>
+  <button class="chip" data-filter="review" aria-pressed="false">To review</button>
+  <span class="spacer"></span>
+  <button class="btn ghost" id="revealAll">Show all answers</button>
+  <button class="btn ghost" id="resetMarks">Reset marks</button>
+  <span class="progress"><span class="bar"><i id="barFill"></i></span><span id="progText">0 / 0 known</span></span>
+</div>
+
+<div class="exam-map">
+  <h2>How the exam asks about this chapter</h2>
+  <p>Naming appears twice in most recent tests: an open question (usually question 2), and a <b>Chord exercise</b> (usually question 6). The Chord exercise is in almost every exam since 2023. Real examples:</p>
+  <ul>
+    <li>"Describe structured naming and how it can be implemented through a hierarchy of servers. Explain why the same hierarchy does not perform equally well with flat names." <span class="date">17 Jan 2024</span> · similar <span class="date">9 Sep 2015</span> <span class="date">27 Jun 2013</span></li>
+    <li>"Describe attribute-based naming in general, then explain why it does not scale as efficiently as structured naming." <span class="date">12 Jul 2024</span></li>
+    <li>"Describe and compare the various approaches to remove unreferenced entities in a distributed system." <span class="date">18 Jun 2024</span> <span class="date">25 Feb 2015</span> <span class="date">19 Feb 2013</span></li>
+    <li>"Peers participate in a Chord DHT with finger tables, m bits. (a) Show the routing tables. (b) Show the messages to retrieve key k." <span class="date">18 Nov 2023</span> <span class="date">17 Jan 2024</span> <span class="date">14 Feb 2024</span> <span class="date">18 Jun 2024</span></li>
+    <li>"Document lookup service: tens of thousands of dynamic hosts vs fewer than a hundred static hosts. Where would you use Chord, and what would you use in the other case?" <span class="date">12 Jul 2024</span></li>
+    <li>"Describe name resolution in presence of structured names." <span class="date">3 Dec 2014</span></li>
+  </ul>
+</div>
+
+<!-- ===== §1 BASICS ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§1</span><h2>Basics: names, addresses, identifiers</h2></div>
+  <div class="core">
+    <p><b>Core idea.</b> A <b>name</b> refers to an entity. You reach the entity through an <b>access point</b>, which has an <b>address</b>. An entity can have many access points and can change them, so an address is a bad name. An <b>identifier</b> is a name that never changes and is never reused. <b>Name resolution</b> maps a name to the address of an access point.</p>
+  </div>
+
+  <article class="q" data-type="describe" data-id="n-b1">
+    <div class="q-head"><span class="qid">Q1</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Define name, address and identifier. Why should we not use an address as the name of an entity? What does an identifier make possible?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><b>Name:</b> a string that refers to an entity (host, user, file, service). Names can be global (same entity everywhere) or local (meaning depends on where you use it), human-friendly ("My Mobile") or machine-friendly (00:15:2A:2E:E1:97).</li>
+          <li><b>Address:</b> the name of an access point of the entity. An address is a special name.</li>
+          <li><b>Identifier:</b> a name with three properties: (1) it never changes during the life of the entity; (2) each entity has exactly one identifier; (3) it is never assigned to another entity.</li>
+        </ul>
+        <p>Do not use an address as a name: an entity can have <b>many access points</b> at the same time (e-mail, mobile, office phone), and it can <b>change</b> them (a laptop gets a new IP at home). A good name is location-independent.</p>
+        <p>Identifiers split the problem in two: <b>name → identifier</b> (naming) and <b>identifier → address</b> (locating). Only the second mapping changes when the entity moves.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Mobility is the reason. If the name contains the location, every move breaks every stored name. With an identifier in the middle, the name stays valid and only the location service updates. Examples of resolution: DNS (domain → host), LDAP (person → e-mail, phone), RMI registry (name → remote reference), UDDI (service description → service metadata).</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §2 FLAT NAMING ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§2</span><h2>Flat naming</h2></div>
+  <div class="core">
+    <p><b>Core idea.</b> A flat name is a string with no structure. It tells nothing about where the entity is. Four families of solutions: <b>simple</b> (broadcast, multicast, forwarding pointers), <b>home-based</b>, <b>DHT</b>, <b>hierarchical</b>.</p>
+  </div>
+
+  <article class="q" data-type="compare" data-id="n-f1">
+    <div class="q-head"><span class="qid">Q2</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">Describe and compare the simple solutions for flat naming: broadcast, multicast, forwarding pointers. Where are they suitable?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>They are made for small scale (a LAN).</p>
+        <ul>
+          <li><b>Broadcast:</b> like ARP. Send "find X" on the broadcast channel; only X replies. Problem: every host processes every request → traffic and CPU overhead.</li>
+          <li><b>Multicast:</b> the same, but to a multicast group, which reduces the scope of the search.</li>
+          <li><b>Forwarding pointers</b> (for mobile entities): when the entity moves, it leaves a reference to its new location at the old one. Problems: chains become long; a broken link breaks the chain; latency increases at each dereference; chain reduction is complex (when and how to clean up?).</li>
+        </ul>
+        <p>For distributed objects, the forwarding pointers are <b>proxies</b> that forward to the next proxy or to the real object. You can short-cut the chain by sending the current location back to the first proxy (along the path, or directly). Skeletons know when no proxy refers to them, so they can be deleted.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Broadcast asks everybody, so cost grows with the number of hosts. Forwarding pointers ask nobody, but cost grows with the number of moves. Neither scales to the Internet. That motivates the next three families.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="n-f2">
+    <div class="q-head"><span class="qid">Q3</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Describe the home-based approach (e.g. Mobile IP) and its problems.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Each mobile entity has a <b>home</b> node that always knows its current location. The home is stable and can be replicated. The original IP of the host acts as its identifier. Used in Mobile IP and in cellular networks. A client contacts the home, which forwards the request (or returns the current address).</p>
+        <p>Problems:</p>
+        <ul>
+          <li>The extra step to the home increases latency.</li>
+          <li>The home address must be supported for the whole life of the entity.</li>
+          <li>The home is fixed: a burden when the entity moves permanently elsewhere.</li>
+          <li>Poor geographical scalability: the entity can be next to the client, but the request travels to a far home.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>The home is a single fixed point of reference: simple, but it ignores locality. Example: you are in Milan, your home is in Tokyo, and your caller is also in Milan. Every lookup goes to Tokyo and back. A two-tier variant (look in a local registry first, then contact the home) fixes part of this. The hierarchical approach generalizes that idea.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="n-f3">
+    <div class="q-head"><span class="qid">Q4</span><span class="tag describe">Describe</span><span class="seen">Exam 27 Jun 2013</span></div>
+    <p class="prompt">Describe the hierarchical approach to implement a flat naming system. How are lookup, insert and delete done? What are its problems?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>The network is divided into <b>domains</b> in a tree. The root domain spans the whole network; leaf domains are a LAN or a mobile cell. Each domain has a <b>directory node</b> that tracks the entities in that domain.</p>
+        <ul>
+          <li>The <b>root</b> has an entry for every entity. An entry points to the sub-domain where the entity is.</li>
+          <li>A <b>leaf</b> holds the real address of an entity in its domain. An entity with several addresses (replication) has entries in several leaves.</li>
+        </ul>
+        <p><b>Lookup:</b> start at the leaf of the client. If the entry is not there, go up to the parent. When an entry is found, follow its pointers down to the leaf with the address. Local queries stay local (an expanding ring search).</p>
+        <p><b>Insert:</b> starts at the new location. Records are created top-down or bottom-up; bottom-up allows queries at once.</p>
+        <p><b>Delete:</b> starts at the old leaf and goes up. It stops at a node that still has other children with entries for that entity.</p>
+        <p><b>Problems:</b></p>
+        <ul>
+          <li>The root holds data for all entities. Records are small, but lookups through the root make a bottleneck.</li>
+          <li>You can partition the root, but then assigning entities to root partitions is difficult. A user in the US, managed by the Italian part of the root, is inefficient.</li>
+          <li>Caching addresses directly is inefficient for mobile entities. You can short-cut the search if you know the mobility patterns.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>The tree gives <b>locality</b>: a nearby entity is found low in the tree, with few messages. The cost: a far entity needs a path through the root, and the root must know everybody, because a flat name does not tell which branch to take.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="n-f4">
+    <div class="q-head"><span class="qid">Q5</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Describe Chord: how nodes and keys are placed, the basic lookup, the finger table, the routing rule, and the cost (table size and number of hops).</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>A DHT gives <code>put(id, item)</code> and <code>item = get(id)</code> on a structured overlay. For naming, the key is the name or identifier and the value is the address.</p>
+        <ul>
+          <li>Nodes and keys are on a logical <b>ring</b> of 2<sup>m</sup> positions. Node id = hash of its IP. Key = hash of the item.</li>
+          <li>The item with key k is stored at the <b>successor</b> of k: the node with the smallest id ≥ k (wrapping around the ring).</li>
+          <li><b>Basic lookup:</b> each node knows its successor. The query moves around the ring one node at a time: O(N) hops.</li>
+          <li><b>Finger table:</b> m entries. Entry i of node n points to succ(n + 2<sup>i</sup>), for i = 0 … m−1. Finger i points about 1/2<sup>m−i</sup> of the way around the ring.</li>
+          <li><b>Routing rule (slides):</b> a node that receives a query for key k checks if it stores k. If not, it forwards the query to the successor in the entry with the largest start (n + 2<sup>i</sup>) that does not exceed k (measured clockwise from n).</li>
+          <li><b>Cost:</b> log N fingers per node; each hop at least halves the distance to k, so O(log N) hops.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>The fingers work like a binary search on the ring: the first jump covers about half the remaining distance, the next a quarter, and so on. This gives logarithmic routing with a logarithmic table. The hash spreads keys evenly, so the load is balanced. When nodes join or leave, only the keys of the neighbors move.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="n-c1">
+    <div class="q-head"><span class="qid">Q6</span><span class="tag exercise">Exercise</span><span class="seen">Exam 18 Nov 2023</span></div>
+    <p class="prompt">Three peers (IDs = 2, 9, 12) participate in a Chord DHT with finger tables. IDs and keys use 4 bits. (a) Show the routing tables of the three peers. (b) Peer 2 wants the value of key 10. Show the messages.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Ring of 2<sup>4</sup> = 16 positions. Entry i: start = n + 2<sup>i</sup> mod 16, succ = first node ≥ start.</p>
+        <div class="tbl"><table>
+          <tr><th>Node 2: i</th><th>start</th><th>succ</th><th>Node 9: start</th><th>succ</th><th>Node 12: start</th><th>succ</th></tr>
+          <tr><td>0</td><td>3</td><td>9</td><td>10</td><td>12</td><td>13</td><td>2</td></tr>
+          <tr><td>1</td><td>4</td><td>9</td><td>11</td><td>12</td><td>14</td><td>2</td></tr>
+          <tr><td>2</td><td>6</td><td>9</td><td>13</td><td>2</td><td>0</td><td>2</td></tr>
+          <tr><td>3</td><td>10</td><td>12</td><td>1</td><td>2</td><td>4</td><td>9</td></tr>
+        </table></div>
+        <p>Key 10 is stored at succ(10) = <b>12</b>.</p>
+        <p><b>Lookup from 2:</b> node 2 does not store 10 (it stores keys 13–15 and 0–2). The largest start not exceeding 10 is 10 (i = 3) → succ 12. Node 2 sends the query to <b>12</b>. Node 12 stores key 10 and replies to 2. Path: <b>2 → 12</b>.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>When a start falls exactly on k (or just before it), its successor is by definition the node responsible for k. So one hop is enough. The standard Chord paper uses "closest preceding finger", which here goes 2 → 9 → 12. Both reach the same node. Follow the rule of the slides, and write the rule you use in one line: the grader then can check each step.</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>Watch the wrap-around: succ(13) for node 9 is 2, because no node is ≥ 13, so you continue from 0. Also write which keys each node stores: node 2 stores (12, 2], node 9 stores (2, 9], node 12 stores (9, 12].</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="n-c2">
+    <div class="q-head"><span class="qid">Q7</span><span class="tag exercise">Exercise</span><span class="seen">Exam 18 Jun 2024</span></div>
+    <p class="prompt">Three peers (IDs = 2, 6, 11), 4 bits. (a) Show the routing tables. (b) Peer 2 wants key 7. Show the messages and the line of the finger table each node uses.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table>
+          <tr><th>i</th><th>Node 2: start</th><th>succ</th><th>Node 6: start</th><th>succ</th><th>Node 11: start</th><th>succ</th></tr>
+          <tr><td>0</td><td>3</td><td>6</td><td>7</td><td>11</td><td>12</td><td>2</td></tr>
+          <tr><td>1</td><td>4</td><td>6</td><td>8</td><td>11</td><td>13</td><td>2</td></tr>
+          <tr><td>2</td><td>6</td><td>6</td><td>10</td><td>11</td><td>15</td><td>2</td></tr>
+          <tr><td>3</td><td>10</td><td>11</td><td>14</td><td>2</td><td>3</td><td>6</td></tr>
+        </table></div>
+        <p>Key 7 is stored at succ(7) = <b>11</b>.</p>
+        <ol>
+          <li>Node 2: not stored. Starts 3, 4, 6, 10. The largest that does not exceed 7 is 6 → <b>line i = 2</b> → send to 6.</li>
+          <li>Node 6: not stored (it holds 3–6). Starts 7, 8, 10, 14. The largest that does not exceed 7 is 7 → <b>line i = 0</b> → send to 11.</li>
+          <li>Node 11: stores key 7. It replies to node 2.</li>
+        </ol>
+        <p>Path: <b>2 → 6 → 11</b>.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>From node 2, start 10 overshoots key 7, so you cannot use line 3. Never jump past k: you could skip the responsible node. At node 6 the first finger already covers k, and its successor 11 is the responsible node.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="n-c3">
+    <div class="q-head"><span class="qid">Q8</span><span class="tag exercise">Exercise</span><span class="seen">Exam 14 Feb 2024</span></div>
+    <p class="prompt">Four peers (IDs = 2, 3, 4, 6), <b>3 bits</b>. (a) Show the routing tables. (b) Peer 3 wants key 5. Show the messages.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Ring of 2<sup>3</sup> = 8 positions, 3 entries per table.</p>
+        <div class="tbl"><table>
+          <tr><th>i</th><th>Node 2</th><th>Node 3</th><th>Node 4</th><th>Node 6</th></tr>
+          <tr><td>0</td><td>3 → 3</td><td>4 → 4</td><td>5 → 6</td><td>7 → 2</td></tr>
+          <tr><td>1</td><td>4 → 4</td><td>5 → 6</td><td>6 → 6</td><td>0 → 2</td></tr>
+          <tr><td>2</td><td>6 → 6</td><td>7 → 2</td><td>0 → 2</td><td>2 → 2</td></tr>
+        </table></div>
+        <p>(start → succ). Key 5 is stored at succ(5) = <b>6</b>.</p>
+        <p>Node 3: starts 4, 5, 7. The largest that does not exceed 5 is 5 (line i = 1) → succ 6. Node 6 stores key 5 and replies. Path: <b>3 → 6</b>.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>With 3 bits you have only 3 rows. Check the number of bits in the text before you build the tables: it fixes the ring size (mod 8 here) and the number of rows. Node 6's table points only to 2, because 7, 0 and 2 all have successor 2.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="n-c4">
+    <div class="q-head"><span class="qid">Q9</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Practice with more nodes. Peers 1, 5, 8, 14, 20, 27; 5 bits. (a) Build the finger tables of nodes 1, 20 and 27. (b) Route a query for key 26 from node 1. (c) Route a query for key 13 from node 27.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Ring of 32 positions, 5 rows.</p>
+        <div class="tbl"><table>
+          <tr><th>i</th><th>Node 1</th><th>Node 20</th><th>Node 27</th></tr>
+          <tr><td>0</td><td>2 → 5</td><td>21 → 27</td><td>28 → 1</td></tr>
+          <tr><td>1</td><td>3 → 5</td><td>22 → 27</td><td>29 → 1</td></tr>
+          <tr><td>2</td><td>5 → 5</td><td>24 → 27</td><td>31 → 1</td></tr>
+          <tr><td>3</td><td>9 → 14</td><td>28 → 1</td><td>3 → 5</td></tr>
+          <tr><td>4</td><td>17 → 20</td><td>4 → 5</td><td>11 → 14</td></tr>
+        </table></div>
+        <p><b>(b) Key 26 from 1</b> (stored at succ(26) = 27). Node 1: largest start ≤ 26 is 17 (i = 4) → 20. Node 20: distance to 26 is 6; starts at distance 1, 2, 4, 8, 16 → largest ≤ 6 is 24 (i = 2) → 27. Node 27 stores 26. Path: <b>1 → 20 → 27</b>.</p>
+        <p><b>(c) Key 13 from 27</b> (stored at succ(13) = 14). Measure clockwise: from 27 to 13 is (13 − 27) mod 32 = 18. Starts of 27 are at distances 1, 2, 4, 8, 16. The largest ≤ 18 is 16 → start 11 (i = 4) → 14. Node 14 stores 13. Path: <b>27 → 14</b>.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>When the query wraps past 0, compare <b>clockwise distances</b> from the current node, not raw numbers. "Start 11 does not exceed 13" is true only along the ring from 27. This is the most common error in the exam.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="n-c5">
+    <div class="q-head"><span class="qid">Q10</span><span class="tag scenario">Scenario</span><span class="seen">Exam 12 Jul 2024</span></div>
+    <p class="prompt">You implement a document lookup service: given a document key, find the host that holds the document. Scenario 1: tens of thousands of hosts that join and leave dynamically. Scenario 2: fewer than a hundred hosts that never join or leave. Where would you use Chord and why? How would you implement the other one?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Scenario 1 → Chord.</b></p>
+        <ul>
+          <li>Each node keeps only O(log N) entries: about 15 for 30,000 hosts. A full table would be too large and would change at every join or leave.</li>
+          <li>Lookup takes O(log N) hops.</li>
+          <li>A join or leave moves only the keys of one neighbor and updates a few fingers.</li>
+          <li>No central server: no bottleneck and no single point of failure.</li>
+        </ul>
+        <p><b>Scenario 2 → full knowledge, one hop.</b> With fewer than 100 static hosts, every host can keep the full list of hosts. Map a key to a host with a hash (e.g. consistent hashing, or hash(key) mod N, which is fine because N never changes). Any client finds the host in <b>one hop</b>. A replicated central directory is another valid option. Chord would add log N hops for no benefit.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Chord pays extra hops to keep small tables and to handle churn. When the system is small and static, neither problem exists, so you do not need to pay. This kind of question checks that you know <i>why</i> a technique exists, not only how it works.</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §3 STRUCTURED NAMING ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§3</span><h2>Structured naming</h2></div>
+  <div class="core">
+    <p><b>Core idea.</b> Names are paths in a <b>name space</b>: a labeled graph of directory nodes and leaf nodes. Large name spaces are split among <b>name servers</b> in three layers: global, administrational, managerial. DNS is the main example. The structure of the name tells the resolver where to go.</p>
+  </div>
+
+  <article class="q" data-type="describe" data-id="n-s1">
+    <div class="q-head"><span class="qid">Q11</span><span class="tag describe">Describe</span><span class="seen">Exam 17 Jan 2024 · 3 Dec 2014</span></div>
+    <p class="prompt">Describe the concept of structured naming and how a structured naming system can be implemented with a hierarchy of servers.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Name space:</b> a labeled graph.</p>
+        <ul>
+          <li>A <b>leaf node</b> is a named entity. It stores information about the entity, at least its identifier or address.</li>
+          <li>A <b>directory node</b> has labeled outgoing edges, each to another node. A directory node is itself an entity, with an identifier.</li>
+          <li>Entities are named by <b>path names</b>, e.g. <code>/alpha/beta/gamma</code>, absolute or relative.</li>
+          <li>Many paths can lead to the same entity (<b>hard links</b>), or a leaf can store the path of another entity (<b>symbolic link</b>). A file system is an example.</li>
+        </ul>
+        <p><b>Distribution.</b> The name space is split into layers, and each node is assigned to a name server:</p>
+        <div class="tbl"><table>
+          <tr><th></th><th>Global</th><th>Administrational</th><th>Managerial</th></tr>
+          <tr><td>Contents</td><td>High-level directories, managed jointly</td><td>Mid-level directories, one administration each</td><td>Low-level directories in one administration</td></tr>
+          <tr><td>Scale</td><td>Worldwide</td><td>Organization</td><td>Department</td></tr>
+          <tr><td>Number of nodes</td><td>Few</td><td>Many</td><td>Vast numbers</td></tr>
+          <tr><td>Lookup time</td><td>Seconds</td><td>Milliseconds</td><td>Immediate</td></tr>
+          <tr><td>Update propagation</td><td>Lazy</td><td>Immediate</td><td>Immediate</td></tr>
+          <tr><td>Replicas</td><td>Many</td><td>None or few</td><td>None</td></tr>
+          <tr><td>Client caching</td><td>Yes</td><td>Yes</td><td>Sometimes</td></tr>
+        </table></div>
+        <p><b>Resolution:</b> iterative or recursive (next question).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The layers match how stable the data is. Top-level directories (e.g. <code>.it</code>) almost never change, so they can be replicated a lot and cached for a long time. Lower nodes change often but are used locally, so one local server is enough. The table is what makes the system scale. Learn it as the core of the answer.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="n-s2">
+    <div class="q-head"><span class="qid">Q12</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">A client in Milan resolves <code>ftp.cs.vu.nl</code>. The servers are: root, <code>nl</code>, <code>vu.nl</code>, <code>cs.vu.nl</code>; the last three are in the Netherlands. Compare iterative and recursive resolution: who talks to whom, how many long-distance messages, and where caching helps.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Iterative.</b> The client asks the root, which returns the address of the <code>nl</code> server. The client asks <code>nl</code>, which returns <code>vu</code>. Then the client asks <code>vu</code>, then <code>cs</code>. That is 4 requests + 4 replies, all from Milan: about <b>8 long-distance messages</b>. Only the client caches the intermediate results.</p>
+        <p><b>Recursive.</b> The client asks the root (if the root accepts recursion). The root asks <code>nl</code>, <code>nl</code> asks <code>vu</code>, <code>vu</code> asks <code>cs</code>. Replies come back along the chain. Inside the Netherlands the messages are short; the client sends only 1 long-distance request and gets 1 reply. Each server on the chain caches the results for later queries.</p>
+        <div class="tbl"><table>
+          <tr><th></th><th>Iterative</th><th>Recursive</th></tr>
+          <tr><td>Communication cost</td><td>Higher for a far client</td><td>Can be lower</td></tr>
+          <tr><td>Caching</td><td>Only at the client</td><td>At each server along the chain → faster lookups</td></tr>
+          <tr><td>Server load</td><td>Low: each server answers and forgets</td><td>High: each server keeps a thread suspended while it waits</td></tr>
+        </table></div>
+        <p>In practice the client asks for a mode, but servers need not comply. Global servers support only iterative resolution.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Recursive resolution moves the work and the waiting to the servers. That is good for caching and for far clients, but bad for heavily loaded servers. So the root and top-level servers, which get the most queries, refuse recursion.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="n-s3">
+    <div class="q-head"><span class="qid">Q13</span><span class="tag compare">Compare</span><span class="seen">Exam 17 Jan 2024 · 9 Sep 2015 · 27 Jun 2013</span></div>
+    <p class="prompt">Explain why the same hierarchy of servers does not perform equally well with flat names. How does the structure of names improve performance?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>With structured names</b>, the name itself says which branch to follow: <code>/nl/vu/cs/ftp</code> goes root → nl → vu → cs.</p>
+        <ul>
+          <li>Each server stores only its own part of the name space. The root knows only the top-level domains, not each entity.</li>
+          <li>Resolution goes top-down with no search.</li>
+          <li>Upper levels are stable, so clients can cache prefixes (e.g. the address of the <code>vu.nl</code> server) and skip the top for later names in the same domain.</li>
+          <li>Names follow the organization, so each administration manages its own subtree.</li>
+        </ul>
+        <p><b>With flat names</b>, the name gives no information about the location:</p>
+        <ul>
+          <li>The <b>root must store an entry for every entity</b> → large tables and a bottleneck.</li>
+          <li>A lookup starts at the client's leaf and goes <b>up</b> until some node knows the entity, then down. A far entity always goes through the root.</li>
+          <li>You cannot cache prefixes, because there are no prefixes. Each entity must be cached alone.</li>
+          <li>Splitting the root is hard: you must decide arbitrarily which part of the root owns each entity.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>A structured name is partly a routing instruction. A flat name is not. In the structured case the hierarchy partitions the <i>names</i>. In the flat case the hierarchy can partition only the <i>locations</i>, so every entity must be registered all the way up to the root.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="n-s4">
+    <div class="q-head"><span class="qid">Q14</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">The host <code>ftp.elet.polimi.it</code> moves (a) to another machine in the same department, (b) to a different domain, <code>cs.wustl.edu</code>, and keeps its name. What happens in DNS in each case? Why is DNS bad for truly mobile entities?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>(a) Same domain:</b> no problem. Update the database of the <code>elet.polimi.it</code> name servers. Only that zone changes.</p>
+        <p><b>(b) Other domain:</b> keep the name, because users and applications use it. Two options:</p>
+        <ul>
+          <li>The <code>elet.polimi.it</code> servers store the <b>new IP address</b> (an A record). Lookups are not affected, but later updates are no longer local: each move needs an update in Milan, so the managerial layer is no longer efficient.</li>
+          <li>The servers store the <b>new name</b> (a CNAME, a symbolic link). Lookups are slower: in practice two distributed lookups. Later updates stay local in <code>wustl.edu</code>. This is like a forwarding pointer.</li>
+        </ul>
+        <p><b>Mobility:</b> DNS assumes that the global and administrational layers are stable, and that the managerial layer changes often but is used locally. A truly mobile entity changes often <i>and</i> far away. Caches with long TTLs then hold stale addresses (inconsistencies can last days at the global level).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>DNS is fast because of caching and replication, and these work only if the data is stable. Mobility breaks that assumption. This is why mobile systems use identifiers plus a separate location service (home-based, hierarchical, DHT).</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="n-s5">
+    <div class="q-head"><span class="qid">Q15</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Describe DNS in practice: zones, resource records, resolution, caching and replication.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li>The name space is a rooted <b>tree</b> (no hard links). Each subtree is a <b>domain</b>, under a separate authority. Each name server is responsible for a <b>zone</b>.</li>
+          <li>Names are case-insensitive, max 255 characters, max 63 per label.</li>
+          <li>Each node has a set of <b>resource records</b>: SOA (zone info), A (IP address of a host), MX (mail server), SRV (server for a service), NS (name server of a zone), CNAME (symbolic link to the primary name), PTR (canonical name, for reverse lookup), HINFO (host info), TXT (any info).</li>
+          <li>Resolution is a mixture of iterative and recursive. Global servers support only iterative mode. Root servers are mirrored (13 root names, over 1,700 instances) and use <b>IP anycast</b>.</li>
+          <li>Caching and replication are used heavily. Secondary servers update from the primary periodically (e.g. twice a day). Each record has a <b>TTL</b> that limits its life in caches. Temporary inconsistencies (days at the global level) are accepted.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>DNS trades consistency for availability and speed. A stale address for a few hours is acceptable; a slow or unavailable root would stop the Internet. Note that NS, MX, SRV and CNAME are all symbolic links in the name-space model.</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §4 ATTRIBUTE BASED ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§4</span><h2>Attribute-based naming</h2></div>
+  <div class="core">
+    <p><b>Core idea.</b> You find an entity by its <b>properties</b>, not by its name: "all printers on floor 2 that print in color". Such systems are <b>directory services</b>, usually built on DBMS technology. LDAP combines attributes with a structured name space.</p>
+  </div>
+
+  <article class="q" data-type="compare" data-id="n-a1">
+    <div class="q-head"><span class="qid">Q16</span><span class="tag compare">Compare</span><span class="seen">Exam 12 Jul 2024</span></div>
+    <p class="prompt">First describe attribute-based naming in general (with LDAP as an example). Then explain why it does not scale as efficiently as structured naming.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>General.</b> Each entity has a set of attributes that describe its properties. Clients query by the values of some attributes. A query can return <b>many entities</b>. These systems are called directory services and are usually implemented with DBMS technology.</p>
+        <p><b>LDAP</b> (derived from X.500) combines structured and attribute-based naming:</p>
+        <ul>
+          <li>A directory is a set of <b>entries</b>; each entry is a collection of typed &lt;attribute, value&gt; pairs (single or multi-valued).</li>
+          <li>All entries form the <b>Directory Information Base</b> (DIB). Each entry has a unique name, made of naming attributes (relative distinguished names), e.g. <code>/C=NL/O=Vrije Universiteit/OU=Comp. Sc./CN=Main server</code>. The names form a <b>Directory Information Tree</b> (DIT).</li>
+          <li>For large directories the DIB is partitioned by the DIT, like DNS. Servers are Directory Service Agents (DSA); clients are Directory User Agents (DUA).</li>
+          <li>LDAP adds <b>search</b>: <code>search("&amp;(C=NL)(O=Vrije Universiteit)(OU=*)(CN=Main server)")</code>.</li>
+        </ul>
+        <p><b>Why it scales worse.</b></p>
+        <ul>
+          <li>In structured naming, resolution follows one path. Each component of the name selects one server. The cost is proportional to the depth.</li>
+          <li>An attribute query does not give a path. The matching entries can be in any partition. The system must contact many DSAs, in the worst case all of them. In the example, <code>OU=*</code> forces a search of every organizational unit of the VU.</li>
+          <li>A query returns a set, so the system must collect and merge results from many servers.</li>
+          <li>Matching attribute values needs indexes or exhaustive search. Caching is less effective, because queries vary a lot.</li>
+        </ul>
+        <p>LDAP scales well only when the query fixes the top naming attributes (C, O), which restrict the search to one subtree.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The same idea as the "flat vs structured" question above: structure in the query gives a route. A name is a key with structure. An attribute query is a filter, and a filter can match entries anywhere. In general, "find all X such that…" costs more than "go to X".</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §5 GARBAGE ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§5</span><h2>Removing unreferenced entities</h2></div>
+  <div class="core">
+    <p><b>Core idea.</b> Naming gives global references. When no one refers to an entity any more, the system should remove it. In a distributed system this is hard: no node has global knowledge, and messages can be lost or reordered. Four techniques: <b>reference counting</b>, <b>weighted reference counting</b>, <b>reference listing</b>, <b>distributed mark-and-sweep</b>.</p>
+  </div>
+
+  <article class="q" data-type="compare" data-id="n-g1">
+    <div class="q-head"><span class="qid">Q17</span><span class="tag compare">Compare</span><span class="seen">Exam 18 Jun 2024 · 25 Feb 2015 · 19 Feb 2013</span></div>
+    <p class="prompt">Describe and compare the various approaches to remove unreferenced entities in a distributed system.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Reference counting.</b> The object (in its skeleton) counts how many references exist. Each increment and decrement is a message, so delivery must be exactly-once (acks, duplicate detection). There is a <b>race condition</b> when a process passes a reference to another (next question). The fix needs 3 messages per copy → performance problem at large scale.</p>
+        <p><b>Weighted reference counting.</b> Sends only <b>decrements</b>, which removes the race. The skeleton has a total weight and a partial weight. When a reference is copied, its partial weight is split in two, with no message to the skeleton. When a reference is deleted, its partial weight is subtracted from the total. When the total equals the skeleton's own partial weight, no proxy remains → remove. Problem: weights cannot be split forever, so the number of references is limited. An <b>indirection</b> removes the limit but adds one hop to reach the object.</p>
+        <p><b>Reference listing.</b> The skeleton keeps the <b>identities</b> of the proxies, not a number. Insert and delete are <b>idempotent</b>, so unreliable communication is fine (repeat until acked). Easier to keep consistent with failures (e.g. ping the clients, which does not scale). Race conditions remain when references are copied. Used by <b>Java RMI</b>: a client creates its proxy only after the server acks the insertion; failures are handled with <b>leases</b> that the client must renew (fixed by the run-time); GC messages use UDP.</p>
+        <p><b>Distributed mark-and-sweep</b> (Emerald). Finds entities unreachable from the root set, also cycles. Each site runs a collector; all objects, proxies and skeletons start white. Mark: objects reachable from a local root become grey with their proxies; a grey proxy sends a message to its skeleton, and the object becomes grey; a proxy turns black after the ack. Sweep: each site removes its white objects when all local objects are black or white. It needs a <b>stable reachability graph</b> → a distributed transaction that blocks the system → poor scalability.</p>
+        <div class="tbl"><table>
+          <tr><th></th><th>Ref. counting</th><th>Weighted</th><th>Ref. listing</th><th>Mark-and-sweep</th></tr>
+          <tr><td>Needs reliable channels</td><td>Yes (exactly once)</td><td>Decrements only</td><td>No (idempotent)</td><td>Yes</td></tr>
+          <tr><td>Race on copy</td><td>Yes</td><td>No</td><td>Yes</td><td>No</td></tr>
+          <tr><td>Collects cycles</td><td>No</td><td>No</td><td>No</td><td>Yes</td></tr>
+          <tr><td>Scalability</td><td>Medium (3 msgs per copy)</td><td>Good, but limited refs</td><td>Good (pinging can hurt)</td><td>Poor</td></tr>
+        </table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>Each technique fixes a problem of the previous one. Counting has races, so weighted counting sends only decrements. Counters break with lost or duplicated messages, so listing uses idempotent operations. None of them finds unreachable cycles, so mark-and-sweep traces the graph, at the price of a global stop.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="n-g2">
+    <div class="q-head"><span class="qid">Q18</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">With plain reference counting, process P1 has a reference to object O. P1 passes the reference to P2, then deletes its own reference. Show how O can be removed while P2 still uses it. How do you fix it, and what does the fix cost?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol>
+          <li>Count of O = 1 (P1).</li>
+          <li>P1 sends the reference to P2. P2 must send "increment" to O.</li>
+          <li>P1 deletes its reference and sends "decrement" to O.</li>
+          <li>The decrement arrives <b>before</b> P2's increment (different senders, so no ordering). The count becomes 0 and O is removed.</li>
+          <li>P2's increment arrives too late: P2 has a dangling reference.</li>
+        </ol>
+        <p><b>Fix:</b> P1 first tells O "increment for P2" and waits for the ack. Only then P1 passes the reference to P2. Now passing a reference needs <b>three messages</b>: increment, ack, and the reference itself.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>In a single machine, copying a reference and incrementing the counter is one atomic step. In a distributed system they are separate messages from different processes, and messages from different senders have no order. The race does not exist in non-distributed systems.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="n-g3">
+    <div class="q-head"><span class="qid">Q19</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Weighted reference counting. The skeleton of O starts with total weight = partial weight = 128. (1) The skeleton gives a reference to P1. (2) P1 copies it to P2. (3) P2 copies it to P3. Then P1, P2 and P3 delete their references in this order. Show the weights after each step. When is O removed? How many copies in a chain can you make?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table>
+          <tr><th>Step</th><th>Total</th><th>Skeleton partial</th><th>P1</th><th>P2</th><th>P3</th></tr>
+          <tr><td>Start</td><td>128</td><td>128</td><td>–</td><td>–</td><td>–</td></tr>
+          <tr><td>Skeleton → P1</td><td>128</td><td>64</td><td>64</td><td>–</td><td>–</td></tr>
+          <tr><td>P1 → P2</td><td>128</td><td>64</td><td>32</td><td>32</td><td>–</td></tr>
+          <tr><td>P2 → P3</td><td>128</td><td>64</td><td>32</td><td>16</td><td>16</td></tr>
+          <tr><td>P1 deletes (−32)</td><td>96</td><td>64</td><td>–</td><td>16</td><td>16</td></tr>
+          <tr><td>P2 deletes (−16)</td><td>80</td><td>64</td><td>–</td><td>–</td><td>16</td></tr>
+          <tr><td>P3 deletes (−16)</td><td>64</td><td>64</td><td>–</td><td>–</td><td>–</td></tr>
+        </table></div>
+        <p>At the end, total = skeleton partial = 64 → no proxy remains → <b>O is removed</b>.</p>
+        <p>Copies between processes send <b>no message</b> to the skeleton. A weight of 128 = 2<sup>7</sup> can be halved only 7 times, so a chain allows about 7 copies; a proxy with weight 1 cannot copy any more. The indirection fix: that proxy creates a new skeleton-like object with fresh weight, at the cost of an extra hop.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The invariant is: total = skeleton partial + sum of all proxy weights. Copying moves weight between proxies but keeps the sum, so the skeleton does not need to know. Only deletions change the sum, and they are decrements, so their order does not matter. That is how the race disappears.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="n-g4">
+    <div class="q-head"><span class="qid">Q20</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">In Java RMI a client holds a remote reference, then its network is down for 20 minutes. The lease is 10 minutes. What happens? Why does RMI use leases and UDP for garbage collection?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>The client cannot renew the lease. After 10 minutes the server removes the client from the reference list. If no other client refers to the object, the object can be collected. When the network comes back, the client's reference can be dangling: a call fails with a remote exception.</p>
+        <p><b>Leases:</b> the server cannot know if a silent client crashed or is only disconnected (asynchronous system). A lease makes the client responsible for showing that it is alive. With no renewal, the server assumes the reference is gone. This avoids memory leaks from crashed clients. The cost: problems with long failures. The lease duration is set by the run-time and is not negotiable.</p>
+        <p><b>UDP:</b> reference listing uses idempotent insert and delete, so a lost or duplicated message is harmless; the client repeats until it gets an ack. TCP connections would add cost for no benefit.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>This links naming to the failure model of chapter 02. Crash and slowness look the same in an asynchronous system, so a lease is a timeout that trades safety (an object may be removed too early) for liveness (memory is freed).</p></div>
+    </div>
+  </article>
+</section>
+
+<footer>Source: lecture slides "04 – Naming" (Cugola) and the past exams in your course folder (2013–2024). Your "Got it" and "Review again" marks stay only in this browser.</footer>
+</div>
+
+<script>
+(function(){
+  const KEY = "ds-naming-marks-v1";
+  let marks = {};
+  try { marks = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e) { marks = {}; }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(marks)); } catch(e) {} };
+  const cards = Array.from(document.querySelectorAll("article.q"));
+
+  function applyMark(card){
+    const m = marks[card.dataset.id];
+    card.classList.toggle("known", m === "k");
+    card.classList.toggle("review", m === "r");
+    card.querySelector(".mark.k").setAttribute("aria-pressed", m === "k");
+    card.querySelector(".mark.r").setAttribute("aria-pressed", m === "r");
+  }
+  function updateProgress(){
+    const known = cards.filter(c => marks[c.dataset.id] === "k").length;
+    document.getElementById("progText").textContent = known + " / " + cards.length + " known";
+    document.getElementById("barFill").style.width = (100 * known / cards.length) + "%";
+  }
+  function setOpen(card, open){
+    const btn = card.querySelector(".reveal");
+    card.querySelector(".answer").hidden = !open;
+    btn.setAttribute("aria-expanded", open);
+    btn.textContent = open ? "Hide answer" : "Show answer";
+  }
+
+  cards.forEach(card => {
+    applyMark(card);
+    card.querySelector(".reveal").addEventListener("click", () => {
+      setOpen(card, card.querySelector(".answer").hidden);
+    });
+    card.querySelectorAll(".mark").forEach(b => b.addEventListener("click", () => {
+      const v = b.classList.contains("k") ? "k" : "r";
+      if (marks[card.dataset.id] === v) delete marks[card.dataset.id]; else marks[card.dataset.id] = v;
+      save(); applyMark(card); updateProgress(); applyFilter();
+    }));
+  });
+
+  let filter = "all";
+  function applyFilter(){
+    cards.forEach(c => {
+      const show = filter === "all" ? true : filter === "review" ? marks[c.dataset.id] === "r" : c.dataset.type === filter;
+      c.hidden = !show;
+    });
+    document.querySelectorAll("section.topic").forEach(s => {
+      s.hidden = !s.querySelector("article.q:not([hidden])");
+    });
+  }
+  document.querySelectorAll(".chip").forEach(ch => ch.addEventListener("click", () => {
+    filter = ch.dataset.filter;
+    document.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", x === ch));
+    applyFilter();
+  }));
+
+  const revealBtn = document.getElementById("revealAll");
+  revealBtn.addEventListener("click", () => {
+    const anyClosed = cards.some(c => c.querySelector(".answer").hidden);
+    cards.forEach(c => setOpen(c, anyClosed));
+    revealBtn.textContent = anyClosed ? "Hide all answers" : "Show all answers";
+  });
+  document.getElementById("resetMarks").addEventListener("click", () => {
+    marks = {}; save(); cards.forEach(applyMark); updateProgress(); applyFilter();
+  });
+  updateProgress();
+})();
+</script>
+
+</body></html>

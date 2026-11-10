@@ -60,8 +60,13 @@
   function renderCourse(course) {
     if (!course) { fail("Course not found."); return; }
 
+    // A note whose file is .html is a standalone page: link straight to it.
+    const noteHref = (n) => /\.html$/.test(n.file || "")
+      ? `/content/courses/${encodeURIComponent(course.slug)}/${encodeURIComponent(n.file)}`
+      : `/note.html?c=${encodeURIComponent(course.slug)}&n=${encodeURIComponent(n.slug)}`;
+
     const notes = (course.notes || []).map((n) => `
-      <li><a href="/note.html?c=${encodeURIComponent(course.slug)}&n=${encodeURIComponent(n.slug)}">
+      <li><a href="${noteHref(n)}">
         <span class="n-title">${esc(n.title)}</span>
         <span class="n-date">${esc(fmtDate(n.date))}</span>
       </a></li>`).join("");

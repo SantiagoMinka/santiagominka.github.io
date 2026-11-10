@@ -37,6 +37,9 @@ python3 -m http.server 8000
 That's it. Notes support standard Markdown, LaTeX math (`$inline$` and `$$block$$`),
 code fences, tables, and raw HTML (e.g. an `<iframe>` to embed an exercise).
 
+A note can also be a standalone HTML page: put the `.html` file in the same folder and
+set `"file": "my-page.html"`. The course page then links straight to it (no Markdown viewer).
+
 ## Add a course
 
 Create a folder under `content/courses/` and add a course object to `content/courses.json`:

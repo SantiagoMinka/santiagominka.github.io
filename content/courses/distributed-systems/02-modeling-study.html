@@ -1,0 +1,704 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modeling Exam Drill</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; each chapter section opens with a "core idea" note, then question cards with hidden answers. Light only, by request. */
+:root{
+  color-scheme: light;
+  --paper:#f7f8fb;
+  --sheet:#ffffff;
+  --ink:#16202e;
+  --muted:#5a6578;
+  --line:#dde2ec;
+  --accent:#1d4e89;      /* exam-pen blue */
+  --accent-soft:#e7eef8;
+  --tip:#9a5b00;
+  --tip-soft:#fdf3e2;
+  --good:#1f7a4d;
+  --good-soft:#e5f4ec;
+  --warn:#b4372f;
+  --warn-soft:#fbeceb;
+  --code-bg:#f1f3f8;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:0 64px}
+.wrap{max-width:820px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15;margin:0}
+header.top{padding-block:40px 20px;display:grid;gap:12px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(30px,6vw,44px)}
+.lede{color:var(--muted);max-width:62ch;margin:0}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 0;border-block:1px solid var(--line);margin-block:8px 28px}
+.chip,.btn{font:500 13px/1 var(--f-body);border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:999px;padding:8px 13px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.ghost{border-radius:8px}
+.chip:focus-visible,.btn:focus-visible,.reveal:focus-visible,.mark:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.spacer{flex:1}
+.progress{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:8px}
+.bar{width:90px;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--good);transition:width .3s}
+
+.exam-map{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-bottom:40px}
+.exam-map h2{font-size:20px;margin-bottom:8px}
+.exam-map ul{margin:8px 0 0;padding-left:18px}
+.exam-map li{margin:4px 0}
+.date{font-family:var(--f-mono);font-size:12px;color:var(--accent);white-space:nowrap}
+
+section.topic{margin-top:48px;display:grid;gap:18px}
+.topic-head{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.topic-head .num{font-family:var(--f-mono);color:var(--accent);font-size:14px}
+.topic-head h2{font-size:clamp(22px,4vw,28px)}
+.core{border-left:3px solid var(--accent);background:var(--accent-soft);padding:14px 18px;border-radius:0 10px 10px 0}
+.core b{color:var(--accent)}
+.core p{margin:.4em 0}
+
+article.q{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:grid;gap:12px;min-width:0}
+article.q.known{border-color:#b9dcc8}
+article.q.review{border-color:#efc4c0}
+.q-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.qid{font-family:var(--f-mono);font-size:12.5px;color:var(--muted)}
+.tag{font:600 11px/1 var(--f-body);letter-spacing:.06em;text-transform:uppercase;padding:5px 8px;border-radius:5px;background:var(--code-bg);color:var(--muted)}
+.tag.describe{background:#eaf0fb;color:#24508f}
+.tag.compare{background:#efe9fa;color:#5b3a99}
+.tag.scenario{background:#fdf0e3;color:#94520a}
+.tag.exercise{background:#e6f4f1;color:#18695a}
+.tag.code{background:#eceef2;color:#333d4d}
+.seen{font-family:var(--f-mono);font-size:11.5px;color:var(--tip);background:var(--tip-soft);padding:4px 8px;border-radius:5px}
+.prompt{font-size:16.5px;font-weight:500;margin:0}
+.q-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.reveal{font:600 13.5px/1 var(--f-body);background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px 14px;cursor:pointer}
+.reveal[aria-expanded="true"]{background:var(--sheet);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.mark{font:500 13px/1 var(--f-body);background:transparent;border:1px solid var(--line);border-radius:8px;padding:9px 12px;cursor:pointer;color:var(--muted)}
+.mark.k[aria-pressed="true"]{background:var(--good-soft);border-color:var(--good);color:var(--good)}
+.mark.r[aria-pressed="true"]{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
+.answer{border-top:1px dashed var(--line);padding-top:14px;display:grid;gap:12px;min-width:0}
+.answer h4{font:600 12px/1 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}
+.answer p{margin:.35em 0}
+.answer ul,.answer ol{margin:.3em 0;padding-left:20px}
+.answer li{margin:3px 0}
+.why{background:var(--accent-soft);border-radius:10px;padding:12px 16px}
+.why h4{color:var(--accent)}
+.tipbox{background:var(--tip-soft);border-radius:10px;padding:12px 16px}
+.tipbox h4{color:var(--tip)}
+code{font-family:var(--f-mono);font-size:.88em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+pre{font-family:var(--f-mono);font-size:13px;line-height:1.5;background:var(--code-bg);padding:14px;border-radius:8px;overflow-x:auto;margin:0}
+pre code{background:none;padding:0;font-size:inherit}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:480px}
+th,td{border-bottom:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+th{font-weight:600;background:var(--paper)}
+svg text{font-family:var(--f-body)}
+.figure{overflow-x:auto}
+footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+
+</head><body>
+<div class="wrap">
+<header class="top">
+  <a class="eyebrow" href="/courses.html?c=distributed-systems" style="text-decoration:none">← Distributed Systems notes</a>
+  <div class="eyebrow">Distributed Systems · Prof. Cugola · Chapter 02</div>
+  <h1>Modeling Distributed Systems</h1>
+  <p class="lede">Exam drill for the modeling chapter. Read the question, answer it on paper, then open the model answer. Each answer explains why it is correct. Mark each question as known or to review.</p>
+</header>
+
+<div class="toolbar" role="toolbar" aria-label="Filter and controls">
+  <button class="chip" data-filter="all" aria-pressed="true">All</button>
+  <button class="chip" data-filter="describe" aria-pressed="false">Describe</button>
+  <button class="chip" data-filter="compare" aria-pressed="false">Compare</button>
+  <button class="chip" data-filter="scenario" aria-pressed="false">Scenario</button>
+  <button class="chip" data-filter="exercise" aria-pressed="false">Exercise</button>
+  <button class="chip" data-filter="code" aria-pressed="false">Code</button>
+  <button class="chip" data-filter="review" aria-pressed="false">To review</button>
+  <span class="spacer"></span>
+  <button class="btn ghost" id="revealAll">Show all answers</button>
+  <button class="btn ghost" id="resetMarks">Reset marks</button>
+  <span class="progress"><span class="bar"><i id="barFill"></i></span><span id="progText">0 / 0 known</span></span>
+</div>
+
+<div class="exam-map">
+  <h2>How the exam asks about this chapter</h2>
+  <p>The written test has 7 questions in 2 hours, so you have about 15 minutes for each. A modeling question is usually question 1: an open "describe" or "describe and compare" question. Real examples from your past exams:</p>
+  <ul>
+    <li>"Describe mobile code paradigms making appropriate examples." <span class="date">14 Feb 2024</span> <span class="date">13 Feb 2015</span> <span class="date">19 Sep 2013</span></li>
+    <li>"Discuss (classify) the various types of failures that may happen to a distributed system and make a practical example of each of them." <span class="date">6 Sep 2024</span> <span class="date">3 Dec 2014</span></li>
+    <li>"Describe the various kinds of failures (the failure model). Briefly discuss how complex it is to build a correct system under the various kinds of errors." <span class="date">13 Jul 2015</span></li>
+    <li>"Describe the Service Oriented Architecture in general and the Web Service technology as an example of its implementation." <span class="date">23 Sep 2015</span></li>
+    <li>"Describe the publish-subscribe model, then compare it with RPC: addressing, synchronicity, persistency." <span class="date">17 Jan 2024</span></li>
+    <li>Old middleware exam: "Implement in Java the IntSpace class" (a Linda tuple space of integers). <span class="date">5 Sep 2013</span></li>
+  </ul>
+  <p>The questions below copy these types: <b>Describe</b>, <b>Compare</b>, <b>Scenario</b> (pick a solution and justify it), <b>Exercise</b> (small calculation or proof) and <b>Code</b>.</p>
+</div>
+
+<!-- ============ 1. SOFTWARE ARCHITECTURE ============ -->
+<section class="topic" id="sw">
+  <div class="topic-head"><span class="num">§1</span><h2>Software architecture: network OS vs middleware</h2></div>
+  <div class="core">
+    <p><b>Core idea.</b> The software architecture tells where the "distribution" services live. With a network OS, the application programmer handles platform differences. With middleware, a layer between OS and application hides those differences and gives higher-level services.</p>
+  </div>
+
+  <article class="q" data-type="compare" data-id="sw1">
+    <div class="q-head"><span class="qid">Q1</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">Describe and compare the network-OS-based and the middleware-based software architectures of a distributed system.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Network-OS based.</b> Each machine runs its own network OS. The OS gives only basic communication services (for example sockets). Different machines can have different OSes. The application programmer must mask these platform differences.</p>
+        <p><b>Middleware based.</b> A middleware layer sits between the network OS and the applications. It gives a standard API on every machine. It masks most platform differences. It also gives advanced services: communication and coordination, special application services, and management services.</p>
+        <p><b>Comparison.</b> Middleware raises the abstraction level and improves portability and interoperability. The cost is an extra layer (some overhead) and dependence on a specific middleware.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A distributed system is heterogeneous: different hardware, OSes and languages. Somebody must hide this heterogeneity. In the first model the application does it, so every application repeats the same work. Middleware does it once, for all applications. This is the main reason why middleware exists.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="sw2">
+    <div class="q-head"><span class="qid">Q2</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Which services does a middleware usually provide? What does it mean that these services are "business-unaware"?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><b>Communication and coordination:</b> synchronous and asynchronous, point-to-point or multicast. These services mask the differences of the network OS.</li>
+          <li><b>Special application services:</b> distributed transactions, groupware and workflow, messaging, notification services.</li>
+          <li><b>Management services:</b> naming, security, failure handling.</li>
+        </ul>
+        <p>"Business-unaware" means that the services do not depend on the application domain. A bank and a game can use the same messaging or naming service.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Middleware is general-purpose. It solves the problems that every distributed application has (find a peer, send a message, handle a failure). The business logic stays in the application. This separation makes the middleware reusable.</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ============ 2. RUN-TIME ARCHITECTURE ============ -->
+<section class="topic" id="rt">
+  <div class="topic-head"><span class="num">§2</span><h2>Run-time architecture: architectural styles</h2></div>
+  <div class="core">
+    <p><b>Core idea.</b> The run-time architecture names the component types, the connectors between them, and the data they exchange. The course lists eight styles: client-server, service oriented, REST, peer-to-peer, object-oriented, data-centered, event-based, mobile code.</p>
+    <p>For each style, know three things: <b>who has which role</b>, <b>how components communicate</b>, and <b>one pro and one con</b>.</p>
+  </div>
+
+  <article class="q" data-type="describe" data-id="rt1">
+    <div class="q-head"><span class="qid">Q3</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Describe the client-server style. What is a multi-tiered architecture, and how can the three classes of services be split between tiers?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Components have different roles. <b>Servers</b> offer services through a well-defined API and are passive: they wait for requests. <b>Clients</b> access the services. Communication is message based or RPC. The Web is the main example.</p>
+        <p>A server can itself be the client of another server. Then the system has more <b>tiers</b>. The services split into three classes: <b>user interface</b>, <b>application logic</b>, <b>data storage</b>.</p>
+        <ul>
+          <li><b>Two tiers:</b> client and server. The split can be in many places: only the GUI on the client (thin client), GUI and part of the application on the client, or GUI, application and some data (cache) on the client (fat client).</li>
+          <li><b>Three tiers:</b> GUI on the client, application logic on an application server, data on a DBMS server. Example: browser, web/application server, database.</li>
+          <li><b>N tiers:</b> the application tier itself splits into many components, each one a server for the previous.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>Tiers let you scale and manage each class of service on its own. You can replicate the application tier without touching the database. A thin client is easy to update, because the logic stays on the server. A fat client lowers server load and latency, but it is harder to keep up to date.</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>Draw the small table "GUI / Application / Data" with a line that moves between client and server. A small drawing gets the point across faster than a long paragraph.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="rt2">
+    <div class="q-head"><span class="qid">Q4</span><span class="tag describe">Describe</span><span class="seen">Exam 23 Sep 2015</span></div>
+    <p class="prompt">Describe the Service Oriented Architecture in general and the Web Service technology as an example of its implementation.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>SOA</b> uses four concepts:</p>
+        <ul>
+          <li><b>Services:</b> loosely coupled units of functionality.</li>
+          <li><b>Service providers:</b> they export services.</li>
+          <li><b>Service brokers:</b> they hold the descriptions of available services.</li>
+          <li><b>Service consumers:</b> they search the broker, then bind to and invoke the services they need.</li>
+        </ul>
+        <p><b>Orchestration</b> is the invocation of a set of services in an ad-hoc workflow to reach a goal. Incarnations: OSGi, Jini, JXTA, Web Services.</p>
+        <p><b>Web Services</b> (W3C: "a software system designed to support interoperable machine-to-machine interaction over a network"):</p>
+        <ul>
+          <li><b>WSDL</b> describes the interface: the set of operations.</li>
+          <li><b>SOAP</b> is the XML-based protocol for messages (operation calls). It usually runs on HTTP, but it can use other transports.</li>
+          <li><b>UDDI</b> is the registry. It defines how to publish and search web services. UDDI is the broker.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>Map each SOA role to a technology: provider = the web service, description = WSDL, broker = UDDI, invocation = SOAP. This mapping is the core of the answer. It also shows why SOA is loosely coupled: the consumer knows only the description, and it finds the provider at run time.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="rt3">
+    <div class="q-head"><span class="qid">Q5</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">List the main constraints of the REST style. Why does the "stateless" constraint improve scalability?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol>
+          <li>Interactions are client-server.</li>
+          <li>Interactions are <b>stateless</b>: the client sends all the state the server needs.</li>
+          <li>Responses are labeled as <b>cacheable</b> or not.</li>
+          <li>The system is <b>layered</b>: a component sees only the next layer.</li>
+          <li><b>Code on demand</b> (optional).</li>
+          <li><b>Uniform interface</b>, with four sub-constraints: identification of resources (URIs); manipulation through representations (data + metadata, format chosen dynamically); self-descriptive messages (control data tells the action, e.g. the HTTP method and cache headers); hypermedia as the engine of application state (links move the client from state to state).</li>
+        </ol>
+        <p>The goals: scalability, general interfaces, independent deployment of components, and intermediaries (proxies, caches, gateways).</p>
+      </div>
+      <div class="why"><h4>Why stateless helps</h4><p>The server keeps no session state. So any server replica can serve any request. A load balancer can send requests anywhere, and a crashed server loses no session. Caches and proxies can also work, because each request is complete on its own. The cost is larger messages, because the client resends its state every time.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="rt4">
+    <div class="q-head"><span class="qid">Q6</span><span class="tag compare">Compare</span><span class="seen">Related: 5 Sep 2013</span></div>
+    <p class="prompt">Why was the peer-to-peer style introduced? Compare it with client-server. What is a "pure" P2P system?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>In P2P all components have the <b>same role</b>. There is no distinction between clients and servers. Peers share resources by direct exchange: CPU cycles (SETI@home), collaboration (Skype), storage (Freenet), bandwidth, data.</p>
+        <p>Client-server problems that P2P solves:</p>
+        <ul>
+          <li>It does not scale well, because service provision and management are centralized.</li>
+          <li>The server is a single point of failure.</li>
+        </ul>
+        <p>P2P works because end hosts now have much processing power and broadband connections. The idea: "take advantage of resources at the edges of the network".</p>
+        <p>A <b>pure</b> P2P system has no central component at all. Napster is not pure (central index). Original Gnutella is pure. Kazaa (super-peers) and BitTorrent (trackers) are hybrid.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>In client-server, more clients means more load on one server. In P2P, every new peer also brings resources. So capacity grows with the number of users. The cost: P2P is harder to manage, to secure and to search.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="rt5">
+    <div class="q-head"><span class="qid">Q7</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Describe the object-oriented style. Why is it called "peer-to-peer" if it is often used to build client-server applications? Give its advantages.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Each component encapsulates a data structure and gives an API to access and change it. The component keeps the data consistent. Its internal organization is hidden. Components interact through RPC (remote method invocation).</p>
+        <p>It is "peer-to-peer" because every object can call any other object: there are no fixed roles. But in practice a set of objects often acts as a server.</p>
+        <p>Pros:</p>
+        <ul>
+          <li>Information hiding hides the complexity of the shared data.</li>
+          <li>Encapsulation makes management easier. For example, you can move server objects at run time to share the load.</li>
+          <li>Objects are easy to reuse.</li>
+          <li>You can wrap legacy components inside objects.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>The client calls only the interface. So the object can move or change its internals without any change on the client. This is the same principle as OO programming, applied across machines.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="rt6">
+    <div class="q-head"><span class="qid">Q8</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Describe Linda and the tuple space model. Explain the operations <code>out</code>, <code>rd</code>, <code>in</code>, and the probes <code>rdp</code>, <code>inp</code>. Why is communication called "persistent, implicit, content-based, generative"?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Linda (Carriero and Gelernter, 1980s) is a <b>data-centered</b> style. Data are <b>tuples</b>: ordered sequences of typed fields, e.g. <code>&lt;"Italy", "Milan"&gt;</code>. Tuples live in a persistent, global, shared <b>tuple space</b>.</p>
+        <ul>
+          <li><code>out(t)</code>: writes tuple t.</li>
+          <li><code>rd(p)</code>: returns a copy of a tuple that matches template p. It blocks if there is no match. If many tuples match, it chooses one non-deterministically.</li>
+          <li><code>in(p)</code>: like <code>rd</code>, but it removes the tuple.</li>
+          <li><code>eval(a)</code>: some implementations; inserts the tuple that process a generates.</li>
+          <li><code>rdp(p)</code>, <code>inp(p)</code>: non-blocking probes. They return null at once if there is no match.</li>
+        </ul>
+        <ul>
+          <li><b>Persistent:</b> a tuple stays in the space after the writer terminates.</li>
+          <li><b>Implicit:</b> the writer does not name the reader.</li>
+          <li><b>Content-based:</b> the reader selects tuples by their content (template), not by an address.</li>
+          <li><b>Generative:</b> a tuple has its own life, independent of the process that made it.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>These four properties give <b>decoupling in space</b> (processes do not know each other) and <b>decoupling in time</b> (the writer and the reader do not need to be alive at the same time). This high decoupling is the strength of the model.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="rt7">
+    <div class="q-head"><span class="qid">Q9</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">You must implement a tuple space distributed over a wide-area network. Which problems do you meet? Why do probes (<code>inp</code>, <code>rdp</code>) need a distributed transaction? What do commercial products do instead?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><b>Storage:</b> how to store and replicate tuples efficiently over many nodes.</li>
+          <li><b>Routing:</b> how to route a query (template) to the node that holds a matching tuple.</li>
+          <li><b>Proactive only:</b> processes must ask for tuples. For a reactive behavior you need an extra process blocked on <code>rd</code>.</li>
+        </ul>
+        <p><b>Probes.</b> <code>inp(p)</code> can return null only if no node holds a match <i>at that moment</i>. So the system must check all nodes as one atomic step. Otherwise a matching tuple can arrive on a node that you already checked. This atomic global check is a distributed transaction.</p>
+        <p><b>Commercial products</b> (JavaSpaces, TSpaces, GigaSpaces) use one server that holds the tuple space, with remote clients. They also add reactive operations such as <code>notify</code>, which registers a listener that the space calls when a matching tuple is written.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A blocking <code>rd</code> is easy to distribute: you wait until any node answers. A "no" answer is hard: to say "no tuple exists", you must look at the whole system at the same instant. In a distributed system, a global instant does not exist without coordination. This idea comes back in the snapshot and agreement chapters.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="code" data-id="rt8">
+    <div class="q-head"><span class="qid">Q10</span><span class="tag code">Code</span><span class="seen">Exam 5 Sep 2013</span></div>
+    <p class="prompt">Implement in Java the class <code>IntSpace</code>: a Linda tuple space where tuples and patterns are integers. <code>out(t)</code> writes t. <code>rd(p)</code> returns at once if p is present (without removing it), else it suspends the caller. <code>in(p)</code> is like <code>rd</code> but removes p. When readers and inputters wait for the same integer, a new <code>out</code> must wake the readers first, then one inputter. Use only the base Java synchronization.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+<pre><code>import java.util.*;
+
+public class IntSpace {
+  // value -> number of copies in the space (a multiset)
+  private final Map&lt;Integer,Integer&gt; tuples  = new HashMap&lt;&gt;();
+  // value -> number of readers that wait for it
+  private final Map&lt;Integer,Integer&gt; readers = new HashMap&lt;&gt;();
+
+  private static int count(Map&lt;Integer,Integer&gt; m, int k) {
+    return m.getOrDefault(k, 0);
+  }
+
+  public synchronized void out(int t) {
+    tuples.merge(t, 1, Integer::sum);
+    notifyAll();                      // wake readers and inputters
+  }
+
+  public synchronized int rd(int p) throws InterruptedException {
+    readers.merge(p, 1, Integer::sum);
+    try {
+      while (count(tuples, p) == 0) wait();
+    } finally {
+      readers.merge(p, -1, Integer::sum);
+      notifyAll();                    // inputters may continue now
+    }
+    return p;
+  }
+
+  public synchronized int in(int p) throws InterruptedException {
+    // give priority to readers: wait while a reader for p still waits
+    while (count(tuples, p) == 0 || count(readers, p) &gt; 0) wait();
+    tuples.merge(p, -1, Integer::sum);
+    return p;
+  }
+}</code></pre>
+      </div>
+      <div class="why"><h4>Why</h4>
+        <ul>
+          <li>All methods are <code>synchronized</code>, so the maps are always consistent.</li>
+          <li>Each <code>wait()</code> is inside a <code>while</code>: after a wake-up, the thread checks its condition again (spurious wake-ups, or another thread took the tuple first).</li>
+          <li>Use <code>notifyAll()</code>, not <code>notify()</code>: threads wait for different values, so one <code>notify()</code> can wake the wrong thread and lose the signal.</li>
+          <li>The <code>readers</code> counter gives the required order. An inputter cannot take p while a reader for p still waits. Each reader decrements the counter on exit and calls <code>notifyAll()</code>. After the last reader leaves, exactly one inputter removes the tuple. The others see count 0 and wait again.</li>
+        </ul>
+      </div>
+      <div class="tipbox"><h4>Exam tip</h4><p>In these Java questions the grader checks three things: mutual exclusion, <code>while</code> around <code>wait</code>, and the correct wake-up policy. State your policy in one comment line.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="rt9">
+    <div class="q-head"><span class="qid">Q11</span><span class="tag compare">Compare</span><span class="seen">Exam 17 Jan 2024</span></div>
+    <p class="prompt">Describe the event-based (publish-subscribe) style. Then compare it with RPC: addressing (unicast vs multicast, implicit vs explicit), synchronicity, persistency.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Components <b>publish</b> notifications about the events they observe. Components <b>subscribe</b> to the events they want to receive (e.g. <code>topic=fire* &amp; place=1st floor</code>). An event dispatcher delivers each notification to all matching subscribers. Communication is message based, asynchronous, multicast, implicit and anonymous.</p>
+        <div class="tbl"><table>
+          <tr><th></th><th>RPC</th><th>Publish-subscribe</th></tr>
+          <tr><td>Addressing</td><td>Unicast, explicit: the caller names the server.</td><td>Multicast, implicit: receivers are chosen by their subscriptions.</td></tr>
+          <tr><td>Synchronicity</td><td>Synchronous: the caller blocks until the reply.</td><td>Asynchronous: the publisher continues at once.</td></tr>
+          <tr><td>Persistency</td><td>Transient: both parties must be alive.</td><td>Usually transient: only subscribers connected now receive the event.</td></tr>
+          <tr><td>Coupling</td><td>Caller and callee know each other.</td><td>Publishers and subscribers do not know each other.</td></tr>
+        </table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>Pub-sub is good when the producer does not know (or must not know) who needs the information: monitoring, alarms, news feeds. RPC is good when you need a result to continue. Note the difference with Linda: Linda is persistent and proactive (the reader asks), pub-sub is reactive (the system pushes events to you).</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="rt10">
+    <div class="q-head"><span class="qid">Q12</span><span class="tag describe">Describe</span><span class="seen">Exam 14 Feb 2024 · 13 Feb 2015 · 19 Sep 2013</span></div>
+    <p class="prompt">Describe the mobile code paradigms, making appropriate examples.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Mobile code lets you relocate components at run time: only the code, or the code and its state. The paradigms differ by where three things are before and after the interaction: the <b>know-how</b> (code), the <b>resources</b>, and the <b>computational component</b> (with its execution state). Component A on site A starts the interaction.</p>
+        <div class="tbl"><table>
+          <tr><th>Paradigm</th><th>Before</th><th>After</th><th>Cake metaphor</th><th>Example</th></tr>
+          <tr><td><b>Client-server</b> (reference, no mobility)</td><td>B has know-how and resources</td><td>Same; A gets the result</td><td>"Please make me a chocolate cake."</td><td>HTTP request for a page; call to a remote API.</td></tr>
+          <tr><td><b>Remote evaluation</b></td><td>A has know-how; B has resources</td><td>Know-how moves to B; B runs it</td><td>"Make me a cake. Here is the recipe."</td><td>Send a script via ssh; a Spark/MapReduce job sent to the data nodes; PostScript sent to a printer.</td></tr>
+          <tr><td><b>Code on demand</b></td><td>A has resources; B has know-how</td><td>Know-how moves to A; A runs it</td><td>"Please tell me the recipe."</td><td>JavaScript in a web page; Java applets; download of plug-ins.</td></tr>
+          <tr><td><b>Mobile agent</b></td><td>A has know-how and the component; B has resources</td><td>Component (code + state) moves to B</td><td>"Here I am. Can I use your oven?"</td><td>An agent that visits many shops to compare prices, then comes back.</td></tr>
+        </table></div>
+        <p>Pros: high flexibility. You can update components without a stop, add new functions and services, and adapt services to the client. Con: security is very difficult (protect the host from the code, and the code from the host).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The key question is always "what moves, and in which direction?". Remote evaluation moves code <i>towards the data</i>: good when data is large and code is small. Code on demand moves code <i>towards the user</i>: good to lower server load and latency. Mobile agent moves the whole running unit: good for disconnected operation, but it needs strong mobility.</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>The question says "making appropriate examples". Give one real example per paradigm. Also add the strong vs weak mobility point (next question) for full marks.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="rt11">
+    <div class="q-head"><span class="qid">Q13</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">Define strong and weak mobility. Which one does Java provide? Why is strong mobility rare?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Strong mobility:</b> the system can move the code <i>and the execution state</i> (stack, program counter) of a running unit to another environment. Only a few research systems provide it.</p>
+        <p><b>Weak mobility:</b> the system can move only the code (and maybe some data). Execution starts again from the beginning or from a fixed entry point. Java, .NET and the Web provide it.</p>
+        <p>Java gives weak mobility: dynamic class loading and object serialization. A Java "mobile agent" must save its state into fields by hand and restart from a known method.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The execution state is inside the virtual machine (thread stack, program counter). Standard VMs do not let a program capture and restore it. Also, the target machine can have a different architecture. So capturing a running thread and resuming it elsewhere needs a modified VM.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="rt12">
+    <div class="q-head"><span class="qid">Q14</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">Name the architectural style or mobile code paradigm for each case and justify it: (a) a browser downloads a script that checks a form before submission; (b) a scientist sends an analysis program to the cluster that holds 50 TB of telescope data; (c) sensors of a building send "temperature &gt; 40°C on floor 2" and the fire-control and logging systems receive it; (d) worker processes take tasks from a shared bag of tasks and put back results.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li><b>Code on demand.</b> The know-how (script) moves from the server to the client, which has the resource (the form data).</li>
+          <li><b>Remote evaluation.</b> The code is small and the data is huge. Move the code to the data.</li>
+          <li><b>Event-based (publish-subscribe).</b> Sensors do not know who is interested. Many receivers get the same event. Communication is asynchronous.</li>
+          <li><b>Data-centered (Linda tuple space).</b> Workers do <code>in(&lt;"task", ?x&gt;)</code> and <code>out(&lt;"result", r&gt;)</code>. Workers and master are decoupled in time and space. Load balances automatically: a free worker takes the next task.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>Scenario questions test if you can choose by properties, not by names. Ask: who knows whom? Who must be alive at the same time? What moves: data or code? The answer to these questions points to the style.</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ============ 3. INTERACTION MODEL ============ -->
+<section class="topic" id="im">
+  <div class="topic-head"><span class="num">§3</span><h2>Interaction model: synchronous vs asynchronous</h2></div>
+  <div class="core">
+    <p><b>Core idea.</b> A distributed algorithm depends on three timing factors: process speed, message delay, clock drift. A <b>synchronous</b> system has known bounds on all three. An <b>asynchronous</b> system has no bounds. Some problems (agree on "who") work in both. Problems that need time (agree on "when", detect a crash) work only with bounds.</p>
+  </div>
+
+  <article class="q" data-type="describe" data-id="im1">
+    <div class="q-head"><span class="qid">Q15</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Define synchronous and asynchronous distributed systems. Why is a solution for an asynchronous system also valid for a synchronous one, but not the other way?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Synchronous:</b> (1) the time for each process step has known lower and upper bounds; (2) each message arrives within a known bounded time; (3) each local clock has a known bound on its drift from real time.</p>
+        <p><b>Asynchronous:</b> no bounds on process speed, message delay or clock drift.</p>
+        <p>An asynchronous algorithm makes no timing assumption. A synchronous system respects every assumption that this algorithm makes (none). So the algorithm works there too. A synchronous algorithm uses the bounds (e.g. timeouts). In an asynchronous system the bounds do not exist, so the algorithm can fail.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Think of it as "fewer assumptions = more general". The asynchronous model is a worst case. The Internet is close to asynchronous, so algorithms for the asynchronous model are the safest choice. But some problems have no solution there (see Q17 and FLP).</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="im2">
+    <div class="q-head"><span class="qid">Q16</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">In Pepperland, two divisions on two hills must agree on who leads the charge and when to charge. Messengers always arrive. (a) How can they agree on the leader in asynchronous Pepperland? (b) Why can they not charge together in asynchronous Pepperland? (c) How do they charge together in synchronous Pepperland?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>(a) Leader.</b> Each general sends a messenger with a value (for example the number of soldiers, or a random number). Each general compares the two values with the same deterministic rule: the larger value leads; on a tie, a fixed order of the names decides. The messengers always arrive, so after a finite time both generals have the same two values. They then make the same decision. No time bound is necessary.</p>
+        <p><b>(b) Charge together.</b> If the leader sends "charge!", the messenger can take 5 minutes or 3 hours. The leader does not know when the other division charges. A message with a time ("charge at 15:00") does not help, because the clocks can drift without limit.</p>
+        <p><b>(c) Synchronous.</b> Let <i>min</i> and <i>max</i> be the bounds on message delay. The leader sends "charge!", waits <i>min</i>, then charges. The other general charges when the message arrives. The second division charges at most <i>max − min</i> after the first. If the charge lasts longer than <i>max − min</i>, the two charges overlap and victory is certain.</p>
+        <div class="figure">
+          <svg viewBox="0 0 520 160" width="520" height="160" role="img" aria-label="Timeline: leader sends at 0 and charges at min; follower charges between min and max">
+            <line x1="60" y1="45" x2="500" y2="45" stroke="#16202e" stroke-width="1.5"/>
+            <line x1="60" y1="115" x2="500" y2="115" stroke="#16202e" stroke-width="1.5"/>
+            <text x="8" y="49" font-size="13" fill="#16202e">D1</text>
+            <text x="8" y="119" font-size="13" fill="#16202e">D2</text>
+            <circle cx="80" cy="45" r="4" fill="#1d4e89"/>
+            <text x="64" y="30" font-size="12" fill="#5a6578">send</text>
+            <line x1="80" y1="45" x2="200" y2="115" stroke="#1d4e89" stroke-dasharray="4 3"/>
+            <line x1="80" y1="45" x2="400" y2="115" stroke="#1d4e89" stroke-dasharray="4 3"/>
+            <rect x="200" y="108" width="200" height="14" fill="#e7eef8" stroke="#1d4e89"/>
+            <text x="230" y="143" font-size="12" fill="#1d4e89">D2 charges here (arrival in [min, max])</text>
+            <circle cx="200" cy="45" r="5" fill="#b4372f"/>
+            <text x="180" y="30" font-size="12" fill="#b4372f">D1 charges at min</text>
+            <line x1="200" y1="62" x2="400" y2="62" stroke="#9a5b00"/>
+            <line x1="200" y1="57" x2="200" y2="67" stroke="#9a5b00"/>
+            <line x1="400" y1="57" x2="400" y2="67" stroke="#9a5b00"/>
+            <text x="262" y="78" font-size="12" fill="#9a5b00">gap ≤ max − min</text>
+          </svg>
+        </div>
+      </div>
+      <div class="why"><h4>Why</h4><p>"Who" is a decision on data: it needs only that all messages arrive eventually. "When" is a decision on time: it needs bounds. This is the general lesson of the interaction model. Ask yourself if a problem is about data or about time.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="im3">
+    <div class="q-head"><span class="qid">Q17</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Synchronous Pepperland: message delay is between 20 and 60 minutes. A charge lasts 30 minutes. With the protocol of the slides (leader waits <i>min</i>, then charges), is victory guaranteed? Can you change the leader's waiting time to guarantee it?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Slide protocol.</b> The gap is up to max − min = 60 − 20 = <b>40 minutes</b>. The charge lasts 30 minutes, which is less than 40. So victory is <b>not</b> guaranteed.</p>
+        <p><b>Better wait.</b> Let the leader wait <i>w</i> before it charges. D2 charges at arrival <i>a</i> ∈ [20, 60]. The worst gap is max(|20 − w|, |60 − w|). This is smallest at the midpoint, w = (min + max)/2 = <b>40</b>. Then the gap is at most (max − min)/2 = <b>20 minutes</b> &lt; 30. Victory is guaranteed.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>With w = min, the leader always charges first, and the full uncertainty falls on one side. With the midpoint, the uncertainty is split in two halves: D2 can be up to 20 minutes early or late. Victory needs overlap, not order, so the symmetric choice is better. This is the same idea as Cristian's algorithm in the synchronization chapter (estimate the delay with the midpoint).</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>The exam often adds a small twist to a slide example. Write the general formula first, then the numbers.</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ============ 4. FAILURE MODEL ============ -->
+<section class="topic" id="fm">
+  <div class="topic-head"><span class="num">§4</span><h2>Failure model</h2></div>
+  <div class="core">
+    <p><b>Core idea.</b> Processes and channels can both fail. The failure model lists <i>how</i> they can fail: <b>omission</b> (something does not happen), <b>Byzantine</b> (something wrong happens), <b>timing</b> (something happens too late or too early; only in synchronous systems). The weaker the model, the more expensive a correct system becomes.</p>
+  </div>
+
+  <article class="q" data-type="describe" data-id="fm1">
+    <div class="q-head"><span class="qid">Q18</span><span class="tag describe">Describe</span><span class="seen">Exam 6 Sep 2024 · 3 Dec 2014 · 13 Jul 2015</span></div>
+    <p class="prompt">Discuss (classify) the various types of failures that can happen in a distributed system. Give a practical example of each. Briefly discuss how difficult it is to build a correct system under each type.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table>
+          <tr><th>Class</th><th>Affects</th><th>What happens</th><th>Practical example</th></tr>
+          <tr><td rowspan="2"><b>Omission</b></td><td>Process</td><td><b>Crash:</b> the process stops; others cannot be sure it stopped. <b>Fail-stop:</b> it stops and other processes can detect this with certainty.</td><td>A server loses power. With fail-stop, a heartbeat timeout in a LAN with bounded delays confirms the crash.</td></tr>
+          <tr><td>Channel</td><td><b>Send omission:</b> lost between sender and its outgoing buffer. <b>Channel omission:</b> lost in the network. <b>Receive omission:</b> lost between incoming buffer and the receiver.</td><td>Sender OS buffer full; a router drops a packet on congestion; the receiver socket buffer overflows.</td></tr>
+          <tr><td rowspan="2"><b>Byzantine</b> (arbitrary)</td><td>Process</td><td>It omits steps or adds steps; it sends wrong values.</td><td>A bug or a memory error gives a wrong result; a hacked node lies on purpose.</td></tr>
+          <tr><td>Channel</td><td>Content corrupted; non-existent messages delivered; real messages delivered more than once.</td><td>Bit flip with no checksum; a retransmission creates a duplicate; an attacker injects packets.</td></tr>
+          <tr><td><b>Timing</b></td><td>Both</td><td>A time bound of the synchronous model is violated. Exists only in synchronous systems.</td><td>A reply arrives after the deadline; a clock drifts more than the bound; garbage collection pauses a process too long.</td></tr>
+        </table></div>
+        <p><b>Difficulty.</b> Fail-stop is the easiest: you know who failed. Crash is harder: you must suspect, not know. Timing failures break the assumptions of synchronous algorithms. Byzantine is the hardest: you cannot trust any single message. As an order of magnitude, to tolerate <i>k</i> faulty processes you need <i>k</i>+1 replicas for fail-silent processes, 2<i>k</i>+1 to mask Byzantine values by voting, and 3<i>k</i>+1 for Byzantine agreement (see the fault-tolerance chapter).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The classes go from "benign" to "malicious". With omission, a received message is always correct; the only question is if it arrives. With Byzantine, a message can arrive and be wrong. So you need redundancy and voting. With crash vs fail-stop, the difference is only detection, and detection depends on the interaction model (next question).</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>The 2024 text says "make a practical example of each". A table with one example per row answers it quickly and clearly.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="fm2">
+    <div class="q-head"><span class="qid">Q19</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Classify each failure: (a) a process computes a wrong checksum because of a memory bit flip; (b) the receiver's socket buffer is full and the OS drops a packet; (c) a router reboots and loses its queue; (d) in a system with a 100 ms delay bound, a message arrives after 300 ms; (e) a network card sends each frame twice.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>Byzantine process failure: the process does a wrong step.</li>
+          <li>Receive omission: the message reached the machine, but not the process.</li>
+          <li>Channel omission: the messages are lost inside the network.</li>
+          <li>Timing failure: a bound of the synchronous model is violated.</li>
+          <li>Byzantine channel failure: a real message is delivered more than once.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>For each case ask two questions. <b>Where</b> is the problem: process, or channel (and which part of the channel)? <b>What</b> is wrong: missing (omission), wrong (Byzantine), or late (timing)?</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="fm3">
+    <div class="q-head"><span class="qid">Q20</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">How do you detect a defeated division in synchronous Pepperland, and why is it impossible in asynchronous Pepperland? Numeric part: a division sends "I am still here" every T = 10 minutes. Message delay is between min = 5 and max = 30 minutes. After the last message received, how long must the other general wait before he decides "defeated"?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Synchronous:</b> each division sends periodic heartbeats. If no heartbeat arrives within the bound, the other division is defeated. <b>Asynchronous:</b> a late heartbeat and a defeated division look the same. The messenger can be just very slow. So you cannot decide.</p>
+        <p><b>Numbers.</b> The last heartbeat arrived at time r. It was sent at s, with s ≥ r − max and s ≤ r − min. The next heartbeat is sent at s + T and arrives at most at s + T + max ≤ r − min + T + max.</p>
+        <p>Timeout = T + max − min = 10 + 30 − 5 = <b>35 minutes</b>.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The slide gives the idea ("no messengers for longer than max"). The exact timeout must count the period T and the uncertainty max − min of the previous message. A shorter timeout gives false suspicions. A longer timeout is safe but slow. In the asynchronous model no finite timeout is safe, so crash is not distinguishable from slowness. This is why fail-stop needs a synchronous system.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="fm4">
+    <div class="q-head"><span class="qid">Q21</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">In "failing Pepperland" the enemy can capture messengers. Prove that the two generals cannot be sure to agree on "charge" or "surrender".</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol>
+          <li>To agree on a decision, at least one message must arrive.</li>
+          <li>Suppose a protocol exists. Let scenario <b>A</b> be the run that reaches agreement to attack with the <b>fewest</b> delivered messages.</li>
+          <li>Let scenario <b>B</b> be equal to A, but the last message of A is lost, and all later messages are lost too.</li>
+          <li>Say the last message goes from General 1 to General 2. General 1 sees the same messages in A and B. So he attacks in both.</li>
+          <li>A is minimal. So in B, General 2 (who has one message less) cannot decide to attack. He decides differently.</li>
+          <li>In B the generals disagree. Contradiction: no such protocol exists.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>The sender of the last message never knows if it arrived. An acknowledgment does not help: then the ack is the last message, and the problem moves to its sender. This "last message" argument works for any number of messages. The proof uses the minimality of A to make that argument rigorous.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="fm5">
+    <div class="q-head"><span class="qid">Q22</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">What does the FLP theorem state? Why does it matter in practice, and how do real systems work around it?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>FLP</b> (Fischer, Lynch, Paterson, 1985): in an asynchronous system where even one process can crash, no deterministic algorithm can guarantee that consensus is always reached.</p>
+        <p><b>Why it matters:</b> many real tasks are consensus problems:</p>
+        <ul>
+          <li>Commit or abort a distributed transaction (e.g. a cash withdrawal at an ATM).</li>
+          <li>Agree on the values of replicated sensors.</li>
+          <li>Agree that a component is faulty.</li>
+        </ul>
+        <p><b>Workarounds:</b></p>
+        <ul>
+          <li><b>Change the assumptions:</b> e.g. make links reliable enough, or assume partial synchrony (timeouts that are usually correct).</li>
+          <li><b>Reduce the guarantees:</b> e.g. probabilistic instead of deterministic agreement, or safety always but progress only when the network is stable (this is what Raft and Paxos do).</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>In an asynchronous system you cannot tell a crashed process from a slow one (Q20). An algorithm that waits for the slow process can wait forever. An algorithm that does not wait can decide without it, and then the slow process can decide differently. FLP proves formally that this dilemma has no deterministic way out. Link this to the Raft question of recent exams: Raft guarantees safety, but liveness only when timing is good.</p></div>
+    </div>
+  </article>
+</section>
+
+<footer>Source: lecture slides "02 – Modeling Distributed Systems" (Cugola) and the past exams in your course folder (2013–2024). Your "Got it" and "Review again" marks stay only in this browser.</footer>
+</div>
+
+<script>
+(function(){
+  const KEY = "ds-modeling-marks-v1";
+  let marks = {};
+  try { marks = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e) { marks = {}; }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(marks)); } catch(e) {} };
+  const cards = Array.from(document.querySelectorAll("article.q"));
+
+  function applyMark(card){
+    const m = marks[card.dataset.id];
+    card.classList.toggle("known", m === "k");
+    card.classList.toggle("review", m === "r");
+    card.querySelector(".mark.k").setAttribute("aria-pressed", m === "k");
+    card.querySelector(".mark.r").setAttribute("aria-pressed", m === "r");
+  }
+  function updateProgress(){
+    const known = cards.filter(c => marks[c.dataset.id] === "k").length;
+    document.getElementById("progText").textContent = known + " / " + cards.length + " known";
+    document.getElementById("barFill").style.width = (100 * known / cards.length) + "%";
+  }
+  function setOpen(card, open){
+    const btn = card.querySelector(".reveal");
+    card.querySelector(".answer").hidden = !open;
+    btn.setAttribute("aria-expanded", open);
+    btn.textContent = open ? "Hide answer" : "Show answer";
+  }
+
+  cards.forEach(card => {
+    applyMark(card);
+    card.querySelector(".reveal").addEventListener("click", () => {
+      setOpen(card, card.querySelector(".answer").hidden);
+    });
+    card.querySelectorAll(".mark").forEach(b => b.addEventListener("click", () => {
+      const v = b.classList.contains("k") ? "k" : "r";
+      if (marks[card.dataset.id] === v) delete marks[card.dataset.id]; else marks[card.dataset.id] = v;
+      save(); applyMark(card); updateProgress(); applyFilter();
+    }));
+  });
+
+  let filter = "all";
+  function applyFilter(){
+    cards.forEach(c => {
+      const show = filter === "all" ? true : filter === "review" ? marks[c.dataset.id] === "r" : c.dataset.type === filter;
+      c.hidden = !show;
+    });
+    document.querySelectorAll("section.topic").forEach(s => {
+      s.hidden = !s.querySelector("article.q:not([hidden])");
+    });
+  }
+  document.querySelectorAll(".chip").forEach(ch => ch.addEventListener("click", () => {
+    filter = ch.dataset.filter;
+    document.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", x === ch));
+    applyFilter();
+  }));
+
+  const revealBtn = document.getElementById("revealAll");
+  revealBtn.addEventListener("click", () => {
+    const anyClosed = cards.some(c => c.querySelector(".answer").hidden);
+    cards.forEach(c => setOpen(c, anyClosed));
+    revealBtn.textContent = anyClosed ? "Hide all answers" : "Show all answers";
+  });
+  document.getElementById("resetMarks").addEventListener("click", () => {
+    marks = {}; save(); cards.forEach(applyMark); updateProgress(); applyFilter();
+  });
+  updateProgress();
+})();
+</script>
+
+</body></html>

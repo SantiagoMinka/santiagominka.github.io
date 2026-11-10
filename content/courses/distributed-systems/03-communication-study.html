@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Communication Exam Drill</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; each chapter section opens with a "core idea" note, then question cards with hidden answers. Light only, by request. */
+:root{
+  color-scheme: light;
+  --paper:#f7f8fb;
+  --sheet:#ffffff;
+  --ink:#16202e;
+  --muted:#5a6578;
+  --line:#dde2ec;
+  --accent:#1d4e89;      /* exam-pen blue */
+  --accent-soft:#e7eef8;
+  --tip:#9a5b00;
+  --tip-soft:#fdf3e2;
+  --good:#1f7a4d;
+  --good-soft:#e5f4ec;
+  --warn:#b4372f;
+  --warn-soft:#fbeceb;
+  --code-bg:#f1f3f8;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:0 64px}
+.wrap{max-width:820px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15;margin:0}
+header.top{padding-block:40px 20px;display:grid;gap:12px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(30px,6vw,44px)}
+.lede{color:var(--muted);max-width:62ch;margin:0}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 0;border-block:1px solid var(--line);margin-block:8px 28px}
+.chip,.btn{font:500 13px/1 var(--f-body);border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:999px;padding:8px 13px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.ghost{border-radius:8px}
+.chip:focus-visible,.btn:focus-visible,.reveal:focus-visible,.mark:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.spacer{flex:1}
+.progress{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:8px}
+.bar{width:90px;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--good);transition:width .3s}
+
+.exam-map{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin-bottom:40px}
+.exam-map h2{font-size:20px;margin-bottom:8px}
+.exam-map ul{margin:8px 0 0;padding-left:18px}
+.exam-map li{margin:4px 0}
+.date{font-family:var(--f-mono);font-size:12px;color:var(--accent);white-space:nowrap}
+
+section.topic{margin-top:48px;display:grid;gap:18px}
+.topic-head{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.topic-head .num{font-family:var(--f-mono);color:var(--accent);font-size:14px}
+.topic-head h2{font-size:clamp(22px,4vw,28px)}
+.core{border-left:3px solid var(--accent);background:var(--accent-soft);padding:14px 18px;border-radius:0 10px 10px 0}
+.core b{color:var(--accent)}
+.core p{margin:.4em 0}
+
+article.q{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:grid;gap:12px;min-width:0}
+article.q.known{border-color:#b9dcc8}
+article.q.review{border-color:#efc4c0}
+.q-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.qid{font-family:var(--f-mono);font-size:12.5px;color:var(--muted)}
+.tag{font:600 11px/1 var(--f-body);letter-spacing:.06em;text-transform:uppercase;padding:5px 8px;border-radius:5px;background:var(--code-bg);color:var(--muted)}
+.tag.describe{background:#eaf0fb;color:#24508f}
+.tag.compare{background:#efe9fa;color:#5b3a99}
+.tag.scenario{background:#fdf0e3;color:#94520a}
+.tag.exercise{background:#e6f4f1;color:#18695a}
+.tag.code{background:#eceef2;color:#333d4d}
+.seen{font-family:var(--f-mono);font-size:11.5px;color:var(--tip);background:var(--tip-soft);padding:4px 8px;border-radius:5px}
+.prompt{font-size:16.5px;font-weight:500;margin:0}
+.q-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.reveal{font:600 13.5px/1 var(--f-body);background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px 14px;cursor:pointer}
+.reveal[aria-expanded="true"]{background:var(--sheet);color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.mark{font:500 13px/1 var(--f-body);background:transparent;border:1px solid var(--line);border-radius:8px;padding:9px 12px;cursor:pointer;color:var(--muted)}
+.mark.k[aria-pressed="true"]{background:var(--good-soft);border-color:var(--good);color:var(--good)}
+.mark.r[aria-pressed="true"]{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
+.answer{border-top:1px dashed var(--line);padding-top:14px;display:grid;gap:12px;min-width:0}
+.answer h4{font:600 12px/1 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}
+.answer p{margin:.35em 0}
+.answer ul,.answer ol{margin:.3em 0;padding-left:20px}
+.answer li{margin:3px 0}
+.why{background:var(--accent-soft);border-radius:10px;padding:12px 16px}
+.why h4{color:var(--accent)}
+.tipbox{background:var(--tip-soft);border-radius:10px;padding:12px 16px}
+.tipbox h4{color:var(--tip)}
+code{font-family:var(--f-mono);font-size:.88em;background:var(--code-bg);padding:1px 5px;border-radius:4px}
+pre{font-family:var(--f-mono);font-size:13px;line-height:1.5;background:var(--code-bg);padding:14px;border-radius:8px;overflow-x:auto;margin:0}
+pre code{background:none;padding:0;font-size:inherit}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:480px}
+th,td{border-bottom:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+th{font-weight:600;background:var(--paper)}
+svg text{font-family:var(--f-body)}
+.figure{overflow-x:auto}
+footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:16px}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+
+</head><body>
+<div class="wrap">
+<header class="top">
+  <a class="eyebrow" href="/courses.html?c=distributed-systems" style="text-decoration:none">← Distributed Systems notes</a>
+  <div class="eyebrow">Distributed Systems · Prof. Cugola · Chapter 03</div>
+  <h1>Communication</h1>
+  <p class="lede">Exam drill for the communication chapter: RPC, RMI, message-oriented communication and streams. Answer on paper first, then open the model answer. Each answer explains why it is correct.</p>
+</header>
+<div class="toolbar" role="toolbar" aria-label="Filter and controls">
+  <button class="chip" data-filter="all" aria-pressed="true">All</button>
+  <button class="chip" data-filter="describe" aria-pressed="false">Describe</button>
+  <button class="chip" data-filter="compare" aria-pressed="false">Compare</button>
+  <button class="chip" data-filter="scenario" aria-pressed="false">Scenario</button>
+  <button class="chip" data-filter="exercise" aria-pressed="false">Exercise</button>
+  <button class="chip" data-filter="code" aria-pressed="false">Code</button>
+  <button class="chip" data-filter="review" aria-pressed="false">To review</button>
+  <span class="spacer"></span>
+  <button class="btn ghost" id="revealAll">Show all answers</button>
+  <button class="btn ghost" id="resetMarks">Reset marks</button>
+  <span class="progress"><span class="bar"><i id="barFill"></i></span><span id="progText">0 / 0 known</span></span>
+</div>
+
+<div class="exam-map">
+  <h2>How the exam asks about this chapter</h2>
+  <p>Communication is usually question 1 of the test. It is an open "describe and compare" question or a design scenario. Real examples from your past exams:</p>
+  <ul>
+    <li>"You want to implement your own streaming library for a video service. Describe the requirements that do not fit the IP protocol and the mechanisms to address them." <span class="date">18 Nov 2023</span> · same idea with an Internet radio <span class="date">18 Jun 2024</span></li>
+    <li>"Describe publish-subscribe, compare it with RPC (addressing, synchronicity, persistency), explain how a DHT can implement a distributed dispatcher. Which is the main limitation?" <span class="date">17 Jan 2024</span> · similar <span class="date">5 Sep 2013</span></li>
+    <li>"Consider RPC and RMI and focus on parameter passing. Why is pass-by-reference a problem in RPC, how does RMI address it, and why is pass-by-value a problem for RMI?" <span class="date">12 Jul 2024</span> · similar <span class="date">9 Sep 2015</span></li>
+    <li>"Describe Remote Procedure Call: communication model, operation, technological and practical alternatives and issues." <span class="date">25 Feb 2015</span></li>
+    <li>"Describe and compare message queuing and publish/subscribe." <span class="date">13 Jul 2015</span> · with message passing (MPI) too <span class="date">1 Feb 2013</span></li>
+  </ul>
+</div>
+
+<!-- ===== §1 FUNDAMENTALS ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§1</span><h2>Fundamentals: protocols, middleware, types of communication</h2></div>
+  <div class="core">
+    <p><b>Core idea.</b> The transport layer (TCP, UDP) gives the basic communication. Middleware adds common services on top: marshalling, naming, security, replication. Each communication service has two independent properties: <b>transient or persistent</b>, and <b>synchronous or asynchronous</b>.</p>
+  </div>
+
+  <article class="q" data-type="exercise" data-id="c-f1">
+    <div class="q-head"><span class="qid">Q1</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Define transient vs persistent and synchronous vs asynchronous communication. Then classify: (a) a normal RPC; (b) a one-way RPC; (c) e-mail; (d) a message queue <code>put</code>; (e) a send on a UDP socket.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Transient:</b> sender and receiver must both run for the message to be delivered. <b>Persistent:</b> the communication system stores the message until it can deliver it.</p>
+        <p><b>Synchronous:</b> the sender blocks until the receiver has stored, received or processed the message. These are three levels: <i>receipt-based</i>, <i>delivery-based</i>, <i>response-based</i>. <b>Asynchronous:</b> the sender continues at once.</p>
+        <ol type="a">
+          <li>Normal RPC: transient, response-based synchronous.</li>
+          <li>One-way RPC: transient, asynchronous (or receipt-based if it waits for an ack).</li>
+          <li>E-mail: persistent, asynchronous.</li>
+          <li>Queue <code>put</code>: persistent, asynchronous.</li>
+          <li>UDP send: transient, asynchronous.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>The two properties are independent questions. Persistency asks: "must the receiver be alive now?" Synchronicity asks: "how long does the sender wait?" Keep them separate and every case is easy to classify. The slides name two popular combinations: transient with synchronization after processing (RPC), and persistent with synchronization at request submission (message queuing).</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §2 RPC ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§2</span><h2>Remote procedure call</h2></div>
+  <div class="core">
+    <p><b>Core idea.</b> RPC hides remote communication behind a normal procedure call. A <b>client stub</b> and a <b>server stub</b> do the work: they marshal parameters, send messages, and unmarshal results. The stubs are generated from an <b>IDL</b> description. The difficult parts: parameter passing, binding the client to a server, and the cost of synchronous calls.</p>
+  </div>
+
+  <article class="q" data-type="describe" data-id="c-r1">
+    <div class="q-head"><span class="qid">Q2</span><span class="tag describe">Describe</span><span class="seen">Exam 25 Feb 2015</span></div>
+    <p class="prompt">Describe Remote Procedure Call: communication model, operation, technological and practical alternatives and issues.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Model.</b> Developers know procedure calls. A well-engineered procedure is a black box. So there is no reason not to execute it on another machine. RPC is transient and synchronous: the caller blocks until the result arrives.</p>
+        <p><b>Operation.</b></p>
+        <ol>
+          <li>The client calls the client stub like a local procedure.</li>
+          <li>The stub <b>serializes</b> the parameters (flattens structures into bytes) and <b>marshals</b> them (converts to a common representation: endianness, character sets).</li>
+          <li>The middleware sends the invocation message.</li>
+          <li>The server stub unmarshals the parameters and calls the real procedure.</li>
+          <li>The result goes back in the same way.</li>
+        </ol>
+        <p>The stubs are generated automatically from an <b>IDL</b>. The IDL separates interface from implementation, and has mappings to many languages.</p>
+        <p><b>Technologies.</b> Sun RPC (ONC RPC): XDR data format, TCP or UDP, pass by copy only, used by NFS. DCE RPC: several call semantics (at-most-once, idempotent, broadcast), directory, time and file services, Kerberos security; basis of DCOM and .NET remoting.</p>
+        <p><b>Issues and alternatives.</b> Pass by reference; binding (portmap, DCE directory); dynamic activation (inetd); lightweight RPC on a single machine; asynchronous, batched and queued RPC. The next questions cover each one.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The question has three parts. The grader checks each part. Give the call flow with stubs as a numbered list, name the two technologies, then list the issues. The list of issues is also the structure of the slides, so it is easy to remember.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="c-r2">
+    <div class="q-head"><span class="qid">Q3</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Explain pass by value, by reference and by copy/restore. Then give the final value of <code>a</code> under pass by reference and under copy/restore:</p>
+<pre><code>void inc2(int *x, int *y) { *x = *x + 1; *y = *y + 1; }
+int a = 0;
+inc2(&amp;a, &amp;a);</code></pre>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><b>By value:</b> the callee gets a copy. Changes do not reach the caller.</li>
+          <li><b>By reference:</b> the callee gets the address of the variable. Changes go directly to the caller's variable.</li>
+          <li><b>By copy/restore</b> (value/result): the value is copied in; at the end, the final value is copied back into the caller's variable.</li>
+        </ul>
+        <p><b>By reference:</b> x and y point to the same variable. a = 0 → 1 → 2. Result <b>a = 2</b>.</p>
+        <p><b>Copy/restore:</b> x and y are two separate copies, both 0. Each becomes 1. Both are restored into a. Result <b>a = 1</b>.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A pointer has a meaning only in the address space of one process. So RPC cannot send a real reference. Copy/restore is the usual replacement, but the slides say: "semantics is different!". The difference shows with <b>aliasing</b>, when two parameters refer to the same memory. Also, copy/restore works for arrays but not for arbitrary linked structures. Optimization: copy only in, or only out, when the IDL marks a parameter as input-only or output-only.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="c-r3">
+    <div class="q-head"><span class="qid">Q4</span><span class="tag compare">Compare</span><span class="seen">Exam 12 Jul 2024 · 9 Sep 2015</span></div>
+    <p class="prompt">Consider RPC and RMI and focus on parameter passing. Describe how parameter passing works in the two systems. Explain why pass by reference is a problem in RPC, how RMI addresses it, and why pass by value is a problem for RMI.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>RPC.</b> Parameters go by value: serialized and marshalled by the stubs. <b>By reference is a problem</b> because a pointer is valid only in the caller's address space. Sun RPC does not support it (only one input and one output parameter, copied). Some systems use copy/restore, which has different semantics with aliasing and does not work for arbitrary data structures.</p>
+        <p><b>RMI.</b> It is the OO version of RPC. Two kinds of parameters:</p>
+        <ul>
+          <li><b>Remote objects go by reference.</b> RMI has <b>remote object references</b>: a reference that is valid in the whole system (host, port, object id). The receiver gets a proxy (stub) that forwards calls to the original object. So pass by reference is natural in RMI.</li>
+          <li><b>Non-remote objects go by value</b> (in Java they must be serializable). The receiver gets a copy.</li>
+        </ul>
+        <p><b>By value is a problem in RMI</b> because an object is data <i>and code</i>. The receiver needs the methods of the object's class. If the class is not available there, the copy is useless. Java RMI solves this with <b>code on demand</b>: it downloads the class. CORBA is multi-language, so it cannot move code: with <code>valuetype</code>, the programmer must provide an implementation of the methods on each side with the same semantics.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The two problems are symmetric. RPC handles data well but has no global reference. RMI has global references, but a copy of an object carries behavior, and behavior is code. Java can move code because it is a single platform (JVM). CORBA cannot, because sender and receiver can use different languages.</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>Use the exact words "remote object reference", "proxy/stub", "serializable", "code on demand" and "valuetype". They show that you know the specific mechanisms.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="c-r4">
+    <div class="q-head"><span class="qid">Q5</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">How does a client find and bind to a server? Compare Sun's portmap with DCE's solution. What is dynamic activation?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Binding has two problems: (1) find <b>where</b> the server is (which host); (2) find <b>how</b> to talk to it (which port). Do not hard-wire this information in the client.</p>
+        <p><b>Sun:</b> a <code>portmap</code> daemon on each host. The server picks a free port and registers it with portmap, with its service id. The client asks portmap for the port. Portmap serves only local servers, so it solves only problem (2). The client must know the host in advance, or multicast the query to many daemons, or use a directory service.</p>
+        <p><b>DCE:</b> a DCE daemon works like portmap (problem 2). A <b>directory server</b> (binder) gives <b>location transparency</b> (problem 1): the client knows only where the directory is. The directory can be distributed for scalability. The client contacts the directory only once per session.</p>
+        <p><b>Dynamic activation:</b> a server that waits with no requests wastes resources. A local daemon (<code>inetd</code> in Sun) starts the server process when a request arrives, or redirects the request if the process already runs. The map service → program is in a configuration file. Cost: the first request is slower.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Splitting "where" and "how" is the key. Ports change at each server restart, so they must be local information. Hosts are global information, so they belong in a directory. This is the same idea as naming in chapter 04: a name must be resolved into an address.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="c-r5">
+    <div class="q-head"><span class="qid">Q6</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Lightweight RPC: why do the slides say "1 parameter copy instead of 4"? When is it used?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>It is used when client and server are on the <b>same machine</b>. A normal RPC would use TCP/UDP, which is useless there.</p>
+        <p><b>Normal RPC, 4 copies:</b> client stub → kernel, kernel → server stub (request); server stub → kernel, kernel → client stub (reply). That is 2 × (stub→kernel + kernel→stub).</p>
+        <p><b>Lightweight RPC, 1 copy:</b> client and server share a private memory region (a shared stack). The client stub copies the parameters onto the shared stack once and makes a system call. The kernel does a context switch and runs the procedure in the server. Results go on the same stack, then another system call and context switch return to the client.</p>
+        <p>Other advantage: fewer threads, because no process must listen on a channel. Similar ideas exist in DCOM and .NET.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>You want the same programming primitive for local and remote calls (transparency). But you do not want to pay the network cost locally. Shared memory removes the copies through the kernel. The context switch is the only cost left.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="c-r6">
+    <div class="q-head"><span class="qid">Q7</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">A mobile app calls a server through RPC. The phone often loses connectivity, and many calls (e.g. "log this event") return no result. Which variants of RPC help? Describe them and their semantics.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><b>Asynchronous RPC with ack:</b> the call returns when the server acknowledges the request. Good for calls with no result.</li>
+          <li><b>One-way RPC:</b> returns at once, no ack. Risk: "maybe" semantics; the call can be lost.</li>
+          <li><b>Callback:</b> the server later calls the client back with the result.</li>
+          <li><b>Deferred synchronous (promise/future):</b> the call returns a promise at once. The client polls or waits on it later.</li>
+          <li><b>Batched RPC (Sun):</b> calls with no result are buffered on the client. They go together with the next non-batched call or at a timeout. Fewer messages, which is good for "log event".</li>
+          <li><b>Queued RPC (MIT Rover):</b> made for mobility. If the phone disconnects between request and reply, the server retries the reply later. Requests and replies can use different channels. A network scheduler can batch, compress, or reorder by priority. The client uses promises.</li>
+        </ul>
+        <p>For this app: batch the "log" calls, and use queued RPC with promises for the calls that need a result.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Synchronous RPC wastes the client's time and fails when the link is down. Each variant removes part of the waiting. The price is weaker semantics: with one-way calls you do not know if the call ran. Queued RPC adds persistence, so it moves RPC towards message queuing.</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §3 RMI ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§3</span><h2>Remote method invocation</h2></div>
+  <div class="core">
+    <p><b>Core idea.</b> RMI applies RPC to objects. The interface lives on one host and the implementation on another. The big new feature: <b>remote object references can be passed around</b>. The big new problem: passing objects by copy means passing code.</p>
+  </div>
+
+  <article class="q" data-type="compare" data-id="c-m1">
+    <div class="q-head"><span class="qid">Q8</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">Compare Java RMI and CORBA. Why are IDLs for distributed objects "richer" than RPC IDLs?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table>
+          <tr><th></th><th>Java RMI</th><th>CORBA (OMG)</th></tr>
+          <tr><td>Languages</td><td>One: Java on the JVM</td><td>Many languages and platforms</td></tr>
+          <tr><td>By reference</td><td>Yes (remote objects)</td><td>Yes</td></tr>
+          <tr><td>By value</td><td>Yes, also complex objects (serialization)</td><td>Yes (<code>valuetype</code>); the programmer guarantees the same method semantics on both sides</td></tr>
+          <tr><td>Code mobility</td><td>Code on demand: downloads classes</td><td>No</td></tr>
+        </table></div>
+        <p>Object IDLs are richer: they support <b>inheritance</b> and <b>exceptions</b>, because they describe objects, not only procedures.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A single platform makes everything easier: same data format, same code everywhere. Multi-language support is more general, but the middleware cannot move code between languages. This trade-off decides how each system passes objects by value.</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §4 MESSAGE ORIENTED ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§4</span><h2>Message-oriented communication</h2></div>
+  <div class="core">
+    <p><b>Core idea.</b> RPC is synchronous, point-to-point and tightly coupled. Message-oriented communication uses one-way messages. It is usually asynchronous, often persistent and multi-point, so components are more decoupled. Four models: <b>sockets</b> and <b>MPI</b> (message passing), <b>message queuing</b>, <b>publish-subscribe</b>.</p>
+  </div>
+
+  <article class="q" data-type="compare" data-id="c-s1">
+    <div class="q-head"><span class="qid">Q9</span><span class="tag compare">Compare</span><span class="seen">Related: middleware exam 2013</span></div>
+    <p class="prompt">Compare stream sockets and datagram sockets. What is IP multicast, and how is it different from broadcast?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Stream sockets (TCP):</b> connection-oriented, reliable, ordered byte stream. The server listens and accepts connections on a port; the client connects. A connected socket is identified by 4 numbers: server IP, server port, client IP, client port.</p>
+        <p><b>Datagram sockets (UDP):</b> no connection, best-effort. Client and server do the same: create a socket, bind it to a port, then <code>sendto</code>/<code>recvfrom</code>. One socket can talk to many hosts.</p>
+        <p><b>IP multicast:</b> delivers UDP datagrams efficiently to a group. Groups use class D addresses (224.0.0.0 – 239.255.255.255). Receivers must <b>join</b> the group (<code>setsockopt</code>). Groups are open: senders do not need to be members. Most routers do not route multicast outside the LAN.</p>
+        <p><b>Difference from broadcast:</b> broadcast reaches every host on the network, and every host must process the packet. Multicast reaches only the hosts that joined, so it costs less with many hosts and high traffic.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Sockets are the common abstraction for the transport layer. Every higher model (RPC, MPI, queues) is built on them. Multicast shows the limit of the network layer: it is efficient, but routers often do not support it on the Internet. This is why middleware builds multicast in overlays (see queue relays and pub-sub brokers).</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="c-s2">
+    <div class="q-head"><span class="qid">Q10</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Why was MPI introduced? Describe its model and its main limitation.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Sockets are low level and protocol independent, so they are awkward to use. High-performance networks (clusters) need higher-level primitives for <b>asynchronous, transient</b> communication, with more services than read and write. MPI is the platform-independent answer.</p>
+        <p><b>Model:</b> communication happens in a known <b>group</b> of processes. Each process has a local id in the group. The pair (groupID, processID) is the address. There are collective operations: <code>MPI_Bcast</code>, <code>MPI_Reduce</code>, <code>MPI_Scatter</code>, <code>MPI_Gather</code>. There are many send variants with different synchronization.</p>
+        <p><b>Limitation:</b> no fault tolerance. A crash is fatal for the whole computation.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>MPI targets a cluster: a fixed set of reliable machines on a fast network, running one parallel program. In that setting fault tolerance costs more than it gives. On a wide-area network this assumption fails, so MPI fits clusters, not general distributed systems.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="c-s3">
+    <div class="q-head"><span class="qid">Q11</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Describe message queuing: primitives, client-server with queues, and the architecture (queue managers, relays, brokers).</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Point-to-point, <b>persistent, asynchronous</b> communication. Usually the only guarantee is the eventual insertion of the message in the recipient's queue. Decoupled in time and space: a generalization of e-mail. Each component has an input and an output queue. Products: IBM MQ, MSMQ, JMS.</p>
+        <div class="tbl"><table>
+          <tr><th>Primitive</th><th>Meaning</th></tr>
+          <tr><td><code>put</code></td><td>Append a message to a queue</td></tr>
+          <tr><td><code>get</code></td><td>Block until the queue is not empty, then remove the first message</td></tr>
+          <tr><td><code>poll</code></td><td>Check the queue and remove the first message; never block</td></tr>
+          <tr><td><code>notify</code></td><td>Install a handler called when a message is put in the queue</td></tr>
+        </table></div>
+        <p><b>Client-server with queues:</b> clients put requests in the server's queue; the server takes them, processes them and puts results in the clients' queues. Clients do not need to stay connected. Many servers can share one queue: automatic load balancing.</p>
+        <p><b>Architecture:</b></p>
+        <ul>
+          <li>Queues have symbolic names, so a lookup service maps them to network addresses (often a static, pre-deployed topology).</li>
+          <li><b>Queue managers</b> handle queues, locally or remotely. Some act as <b>relays</b> (application-level routers) in an overlay network. Relays improve fault tolerance and give multi-point delivery without IP multicast.</li>
+          <li><b>Message brokers</b> are application-level gateways that convert message formats, to integrate different subsystems.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>Persistence is the key. Because the queue stores the message, the receiver can be offline. This gives decoupling in time, which RPC and sockets cannot give. Shared queues give load balancing with no extra protocol.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="c-s4">
+    <div class="q-head"><span class="qid">Q12</span><span class="tag compare">Compare</span><span class="seen">Exam 13 Jul 2015 · 1 Feb 2013</span></div>
+    <p class="prompt">Describe and compare message passing (MPI), message queuing and publish-subscribe.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table>
+          <tr><th></th><th>Message passing (MPI)</th><th>Message queuing</th><th>Publish-subscribe</th></tr>
+          <tr><td>Addressing</td><td>Explicit: (group, process id)</td><td>Explicit: queue name</td><td>Implicit: by subscription (topic or content)</td></tr>
+          <tr><td>Cardinality</td><td>Point-to-point + group collectives</td><td>Point-to-point (queue shared by readers)</td><td>Multicast: one to many</td></tr>
+          <tr><td>Persistency</td><td>Transient</td><td>Persistent</td><td>Transient: only connected subscribers get events</td></tr>
+          <tr><td>Synchronicity</td><td>Many variants, mostly async</td><td>Asynchronous</td><td>Asynchronous</td></tr>
+          <tr><td>Decoupling</td><td>Low: processes know each other</td><td>Time and space</td><td>Space (anonymous), not time</td></tr>
+          <tr><td>Infrastructure</td><td>Library over the network OS</td><td>Queue managers, relays</td><td>Event dispatcher (central or brokers)</td></tr>
+          <tr><td>Typical use</td><td>Parallel computing on clusters</td><td>Reliable enterprise integration, workflows</td><td>Monitoring, notifications, dynamic systems</td></tr>
+        </table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>Build the comparison on fixed dimensions: addressing, persistency, synchronicity, decoupling. With a table, you cannot forget a cell, and the grader sees the comparison at once. A message-oriented middleware often gives both queues and pub-sub: queues for reliable point-to-point work, pub-sub for one-to-many notifications.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="c-p1">
+    <div class="q-head"><span class="qid">Q13</span><span class="tag compare">Compare</span><span class="seen">Exam 5 Sep 2013</span></div>
+    <p class="prompt">Distinguish subject-based and content-based publish-subscribe. What is the trade-off?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Subject-based (topic-based):</b> the set of subjects is fixed in advance. A subscriber selects a subject, e.g. "Distributed Systems". It is similar to multicast groups.</p>
+        <p><b>Content-based:</b> subscriptions are filters on the content of the event, e.g. course = "Distributed Systems" ∧ date &gt; 16.11.2004 ∧ room = "D04". The set of filters is defined by the subscribers. One event can match many subscriptions. The two can be combined.</p>
+        <p><b>Trade-off:</b> more expressiveness → more complex and slower implementation (matching filters is costly, routing is hard). But expressiveness also gives more filtering: fewer useless events reach the subscribers.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>With subjects, routing is simple: one subject = one group. With content, each broker must evaluate filters on each event. This is why content-based systems need special routing (next questions) and why a DHT supports only subjects.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="c-p2">
+    <div class="q-head"><span class="qid">Q14</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Four brokers form an acyclic overlay: B1–B2, B2–B3, B2–B4. Subscriber S1 on B3 subscribes to <code>fire*</code>. Subscriber S2 on B4 subscribes to <code>temp*</code>. Publisher P on B1 publishes <code>fire alarm</code>. Describe what happens with (a) message forwarding and (b) subscription forwarding. Count the broker-to-broker messages for the subscriptions and for the event.</p>
+    <div class="figure">
+      <svg viewBox="0 0 440 150" width="440" height="150" role="img" aria-label="Broker tree: B1 connected to B2; B2 connected to B3 and B4; P on B1, S1 on B3, S2 on B4">
+        <line x1="90" y1="75" x2="210" y2="75" stroke="#5a6578" stroke-width="2"/>
+        <line x1="210" y1="75" x2="340" y2="35" stroke="#5a6578" stroke-width="2"/>
+        <line x1="210" y1="75" x2="340" y2="115" stroke="#5a6578" stroke-width="2"/>
+        <g font-size="13" text-anchor="middle">
+          <circle cx="90" cy="75" r="20" fill="#e7eef8" stroke="#1d4e89"/><text x="90" y="80" fill="#16202e">B1</text>
+          <circle cx="210" cy="75" r="20" fill="#e7eef8" stroke="#1d4e89"/><text x="210" y="80" fill="#16202e">B2</text>
+          <circle cx="340" cy="35" r="20" fill="#e7eef8" stroke="#1d4e89"/><text x="340" y="40" fill="#16202e">B3</text>
+          <circle cx="340" cy="115" r="20" fill="#e7eef8" stroke="#1d4e89"/><text x="340" y="120" fill="#16202e">B4</text>
+          <text x="35" y="80" fill="#b4372f">P</text>
+          <text x="405" y="40" fill="#1f7a4d">S1 fire*</text>
+          <text x="405" y="120" fill="#1f7a4d">S2 temp*</text>
+        </g>
+        <line x1="45" y1="75" x2="70" y2="75" stroke="#b4372f"/>
+        <line x1="360" y1="35" x2="375" y2="35" stroke="#1f7a4d"/>
+        <line x1="360" y1="115" x2="375" y2="115" stroke="#1f7a4d"/>
+      </svg>
+    </div>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>(a) Message forwarding.</b> Each broker stores only the subscriptions of its own clients. Subscriptions: <b>0</b> broker messages (B3 keeps fire*, B4 keeps temp*). The event is flooded on the tree: B1→B2, B2→B3, B2→B4 = <b>3</b> messages. B3 delivers to S1. B4 drops the event.</p>
+        <p><b>(b) Subscription forwarding.</b> Each subscription is propagated to all brokers, never twice on the same link. fire*: B3→B2, B2→B1, B2→B4 = 3. temp*: B4→B2, B2→B1, B2→B3 = 3. Total <b>6</b> messages. Now each broker knows on which link each subscription came. The event follows the reverse path of fire*: B1→B2 (B1 got fire* from B2), B2→B3 (B2 got fire* from B3). Total <b>2</b> messages. B4 gets nothing.</p>
+        <p>With coverage optimizations, a broker does not forward a subscription that is covered by one it already forwarded (e.g. "Distributed *" covers "Distributed systems").</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Message forwarding makes subscriptions free and events expensive. Subscription forwarding makes subscriptions expensive and events cheap. So the choice depends on the ratio. Many events and stable subscriptions → subscription forwarding. Few events and frequent subscription changes → message forwarding. <b>Hierarchical forwarding</b> is in between: on a rooted tree, subscriptions and messages go up to the root; messages go down only along branches where a matching subscription came from.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="c-p3">
+    <div class="q-head"><span class="qid">Q15</span><span class="tag describe">Describe</span><span class="seen">Exam 17 Jan 2024 · 5 Sep 2013</span></div>
+    <p class="prompt">Explain how a generic DHT can be used to implement a distributed publish-subscribe dispatcher. Which is the main limitation of this approach?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>A DHT routes efficiently to the <b>successor</b> of any id: the node with the smallest id ≥ that id.</p>
+        <ul>
+          <li><b>Subscribe to subject S:</b> compute H<sub>S</sub> = hash(S). Route a subscribe message towards succ(H<sub>S</sub>). On each node along the path, leave routing information that points back to the subscriber.</li>
+          <li><b>Publish on subject S:</b> compute H<sub>S</sub> and route the event towards succ(H<sub>S</sub>). When the event meets a path left by subscriptions (at the latest at succ(H<sub>S</sub>)), follow those paths back to the subscribers.</li>
+        </ul>
+        <p>succ(H<sub>S</sub>) is the <b>rendezvous</b> node for subject S. The DHT overlay can have cycles; the DHT gives the routing.</p>
+        <p><b>Main limitation:</b> it works only for <b>subject-based</b> pub-sub. The hash needs an exact key. A content-based filter like "temp &gt; 40" has no single key, so you cannot hash it to one node. A second problem: the rendezvous node of a popular subject becomes a hot spot.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Hashing is the trick: publishers and subscribers do not know each other, but they both compute the same node from the subject. A hash destroys order and ranges. So "temp &gt; 40" and "temp = 41" go to unrelated nodes. Content-based routing needs other strategies (next question).</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="c-p4">
+    <div class="q-head"><span class="qid">Q16</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">For content-based routing on cyclic topologies, describe per-source forwarding (PSF), improved PSF (iPSF) and per-receiver forwarding (PRF). How are the paths built?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><b>PSF:</b> each source defines a shortest path tree (SPT). The forwarding table is organized per source: for each source v, the children of this node in the SPT of v; for each child u, a predicate that joins the predicates of all nodes reachable through u.</li>
+          <li><b>iPSF:</b> like PSF, but it merges <b>indistinguishable sources</b>. Two sources A and B are indistinguishable at node n if n has the same children in T(A) and T(B), and reaches the same nodes through them. Result: smaller tables that are easier to build.</li>
+          <li><b>PRF:</b> the source computes the set of receivers and puts it in the message header. At each hop the set is partitioned among the next hops. Two tables: a unicast routing table, and a table with the predicate of each node.</li>
+        </ul>
+        <p><b>Path building:</b> <b>Distance Vector</b> builds minimum-latency SPTs with config / config-response packets; each node knows only its neighbors in the SPT. <b>Link-State</b> floods link-state packets; each node knows the whole topology and computes the SPTs locally; any metric is possible.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>In a cyclic graph, a message can reach a node twice. A tree per source removes the cycles. The difference is where the routing information lives: in the tables (PSF, iPSF) or in the message header (PRF).</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="c-p5">
+    <div class="q-head"><span class="qid">Q17</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">What does complex event processing (CEP) add to publish-subscribe? Which issues remain open?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>CEP adds <b>rules</b> that describe how to build composite events from primitive (or composite) events. Example: "smoke on floor 2 and temperature &gt; 50 on floor 2 within 1 minute → fire on floor 2". Pub-sub looks at one event at a time; CEP looks at patterns of events.</p>
+        <p>Open issues:</p>
+        <ul>
+          <li><b>Rule language:</b> balance expressiveness with processing complexity.</li>
+          <li><b>Processing engine:</b> how to match incoming events efficiently to build composite events.</li>
+          <li><b>Distribution:</b> how to distribute processing, in a cluster or over a network.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>It is the same trade-off as subject vs content filtering, one step higher. More powerful rules filter better, but they cost more to evaluate and to distribute.</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §5 STREAMS ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§5</span><h2>Stream-oriented communication</h2></div>
+  <div class="core">
+    <p><b>Core idea.</b> Usually time affects only performance. For streams such as live video, time affects <b>correctness</b>: a frame that arrives too late is useless. IP is best effort, so the application must create the quality of service (QoS) itself.</p>
+  </div>
+
+  <article class="q" data-type="describe" data-id="c-t1">
+    <div class="q-head"><span class="qid">Q18</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Define the asynchronous, synchronous and isochronous transmission modes. Which QoS parameters describe a stream?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><b>Asynchronous:</b> data units go one after the other, with only an ordering constraint.</li>
+          <li><b>Synchronous:</b> each unit has a <b>maximum</b> end-to-end delay.</li>
+          <li><b>Isochronous:</b> each unit has a maximum <b>and a minimum</b> end-to-end delay: the jitter is bounded.</li>
+        </ul>
+        <p>Streams can be simple, or complex (made of substreams, e.g. audio + video).</p>
+        <p><b>QoS parameters:</b> required bit rate; maximum delay to set up the session; maximum end-to-end delay; maximum variance of the delay (jitter).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Playback needs regular spacing, not only speed. A video at 25 fps needs a frame every 40 ms. Frames that arrive fast but irregularly still break playback. That is why isochronous transmission bounds the jitter.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="c-t2">
+    <div class="q-head"><span class="qid">Q19</span><span class="tag scenario">Scenario</span><span class="seen">Exam 18 Nov 2023 · 18 Jun 2024</span></div>
+    <p class="prompt">You want to implement your own streaming library for a video service (or an Internet radio). (a) List the requirements of this service that do not fit the characteristics of IP. (b) Describe the mechanisms you could use to address those limitations.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>(a) Requirements vs IP.</b> IP is <b>best effort</b>: no guarantee on bandwidth, delay, jitter, loss or order. The service needs:</p>
+        <ul>
+          <li>a minimum, constant <b>bit rate</b>;</li>
+          <li>a bounded <b>end-to-end delay</b> (critical for live content);</li>
+          <li>bounded <b>jitter</b> for smooth playback;</li>
+          <li>few <b>losses</b>, and a short <b>session setup</b> time;</li>
+          <li><b>synchronization</b> of substreams (audio and video: lip sync).</li>
+        </ul>
+        <p>TCP fixes loss and order with retransmissions, but retransmissions add delay and jitter. So streaming often uses UDP and handles losses itself.</p>
+        <p><b>(b) Mechanisms.</b></p>
+        <ul>
+          <li><b>DiffServ:</b> mark packets in the IP header (DSCP, e.g. Expedited Forwarding). But Internet routers do not necessarily support it.</li>
+          <li><b>Buffering</b> at the receiver: start playback later, then absorb the jitter. You trade setup time for jitter.</li>
+          <li><b>Forward error correction:</b> send redundant data, so the receiver rebuilds lost packets without retransmission.</li>
+          <li><b>Interleaving:</b> spread consecutive frames over different packets. A lost packet then causes many small gaps instead of one long gap.</li>
+          <li><b>Stream synchronization</b> at the sender (merge substreams) or at the receiver.</li>
+        </ul>
+        <p>For the radio (one sender, many listeners), add one-to-many distribution: IP multicast inside a LAN, or relay servers in an overlay, because Internet routers do not route multicast.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The exam asks for a mapping: each requirement → why IP fails it → which mechanism fixes it. Keep that structure. Note that most mechanisms work <b>at the application layer</b>, because the network layer gives no guarantees.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="c-t3">
+    <div class="q-head"><span class="qid">Q20</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">An audio server sends one packet every 20 ms. The network delay of each packet is between 40 ms and 160 ms. How long must the client wait after the first packet arrives before it starts playback, to never stop? How many packets must the buffer hold?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Worst case: the first packet is the fastest (40 ms) and a later packet is the slowest (160 ms). Jitter = max − min = 160 − 40 = <b>120 ms</b>.</p>
+        <p>Wait <b>120 ms</b> after the first arrival. Then playback of packet i is at 20·i + 40 + 120 = 20·i + 160. Packet i arrives at most at 20·i + 160. So it is always ready in time.</p>
+        <p>Buffer: in 120 ms, 120 / 20 = <b>6</b> more packets arrive in the best case. So the buffer holds about 6–7 packets.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>This is the slide sentence "control max jitter by sacrificing session setup time", with numbers. The buffer converts variable delay into a fixed delay equal to the maximum. Same reasoning as the Pepperland charge in chapter 02: the uncertainty is max − min.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="c-t4">
+    <div class="q-head"><span class="qid">Q21</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">A stream has 16 frames. Each packet carries 4 frames. Packet 2 is lost. Which frames are lost without and with interleaving? Why is interleaving better?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Without interleaving:</b> packet 1 = frames 1–4, packet 2 = 5–8, … Losing packet 2 loses frames <b>5, 6, 7, 8</b>: one gap of 4 consecutive frames.</p>
+        <p><b>With interleaving:</b> packet j carries frames j, j+4, j+8, j+12. Packet 2 = frames <b>2, 6, 10, 14</b>. Four separate gaps of one frame each.</p>
+        <p>A one-frame gap is easy to hide (repeat or interpolate the neighbors). A long gap is very visible or audible.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Interleaving does not lower the loss. It spreads the loss so that it is less harmful. The cost: the receiver must wait for more packets before it can play a sequence, so the delay increases.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="c-t5">
+    <div class="q-head"><span class="qid">Q22</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Why is stream synchronization hard? Give the maximum jitter for (a) left and right channels of CD-quality audio and (b) lip sync of a 30 fps video.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>CD audio: 44,100 samples per second. Each sample must stay in sync: 1 / 44,100 s ≈ <b>23 μs</b>.</li>
+          <li>Lip sync at 30 fps: each audio interval must stay with its frame: 1 / 30 s ≈ <b>33 ms</b>.</li>
+        </ol>
+        <p>Synchronization can happen at the sender (merge the streams into one) or at the receiver. It can happen in the application or in the middleware.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>"Synchronized" depends on the data unit. The limit is one unit of the finest stream. Audio samples are very short, so stereo channels need a very tight bound. That is why they usually travel merged in the same stream.</p></div>
+    </div>
+  </article>
+</section>
+
+<footer>Source: lecture slides "03 – Communication" (Cugola) and the past exams in your course folder (2013–2024). Your "Got it" and "Review again" marks stay only in this browser.</footer>
+</div>
+
+<script>
+(function(){
+  const KEY = "ds-communication-marks-v1";
+  let marks = {};
+  try { marks = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e) { marks = {}; }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(marks)); } catch(e) {} };
+  const cards = Array.from(document.querySelectorAll("article.q"));
+
+  function applyMark(card){
+    const m = marks[card.dataset.id];
+    card.classList.toggle("known", m === "k");
+    card.classList.toggle("review", m === "r");
+    card.querySelector(".mark.k").setAttribute("aria-pressed", m === "k");
+    card.querySelector(".mark.r").setAttribute("aria-pressed", m === "r");
+  }
+  function updateProgress(){
+    const known = cards.filter(c => marks[c.dataset.id] === "k").length;
+    document.getElementById("progText").textContent = known + " / " + cards.length + " known";
+    document.getElementById("barFill").style.width = (100 * known / cards.length) + "%";
+  }
+  function setOpen(card, open){
+    const btn = card.querySelector(".reveal");
+    card.querySelector(".answer").hidden = !open;
+    btn.setAttribute("aria-expanded", open);
+    btn.textContent = open ? "Hide answer" : "Show answer";
+  }
+
+  cards.forEach(card => {
+    applyMark(card);
+    card.querySelector(".reveal").addEventListener("click", () => {
+      setOpen(card, card.querySelector(".answer").hidden);
+    });
+    card.querySelectorAll(".mark").forEach(b => b.addEventListener("click", () => {
+      const v = b.classList.contains("k") ? "k" : "r";
+      if (marks[card.dataset.id] === v) delete marks[card.dataset.id]; else marks[card.dataset.id] = v;
+      save(); applyMark(card); updateProgress(); applyFilter();
+    }));
+  });
+
+  let filter = "all";
+  function applyFilter(){
+    cards.forEach(c => {
+      const show = filter === "all" ? true : filter === "review" ? marks[c.dataset.id] === "r" : c.dataset.type === filter;
+      c.hidden = !show;
+    });
+    document.querySelectorAll("section.topic").forEach(s => {
+      s.hidden = !s.querySelector("article.q:not([hidden])");
+    });
+  }
+  document.querySelectorAll(".chip").forEach(ch => ch.addEventListener("click", () => {
+    filter = ch.dataset.filter;
+    document.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", x === ch));
+    applyFilter();
+  }));
+
+  const revealBtn = document.getElementById("revealAll");
+  revealBtn.addEventListener("click", () => {
+    const anyClosed = cards.some(c => c.querySelector(".answer").hidden);
+    cards.forEach(c => setOpen(c, anyClosed));
+    revealBtn.textContent = anyClosed ? "Hide all answers" : "Show all answers";
+  });
+  document.getElementById("resetMarks").addEventListener("click", () => {
+    marks = {}; save(); cards.forEach(applyMark); updateProgress(); applyFilter();
+  });
+  updateProgress();
+})();
+</script>
+
+</body></html>

@@ -5,7 +5,23 @@
       "title": "Distributed Systems",
       "code": "DS",
       "description": "Coordination, consistency, and failure recovery across machines.",
-      "notes": [],
+      "notes": [
+        {
+          "slug": "02-modeling-study",
+          "title": "Modeling Distributed Systems: exam drill",
+          "file": "02-modeling-study.html"
+        },
+        {
+          "slug": "03-communication-study",
+          "title": "Communication: exam drill",
+          "file": "03-communication-study.html"
+        },
+        {
+          "slug": "04-naming-study",
+          "title": "Naming: exam drill",
+          "file": "04-naming-study.html"
+        }
+      ],
       "exercises": [
         {
           "slug": "recovery-line",
