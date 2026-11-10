@@ -111,7 +111,7 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
   <a class="eyebrow" href="/courses.html?c=distributed-systems" style="text-decoration:none">← Distributed Systems notes</a>
   <div class="eyebrow">Distributed Systems · Prof. Margara · Chapter 07</div>
   <h1>Distributed agreement in practice</h1>
-  <p class="lede">Exam drill for commit protocols (2PC, 3PC), the CAP theorem, Raft and blockchains. Answer on paper first, then open the model answer.</p>
+  <p class="lede">Exam drill for commit protocols (2PC, 3PC), FLP and CAP, Raft, and blockchains. Many questions are traces: answer on paper first, then open the model answer. Each answer explains why it is correct.</p>
 </header>
 <div class="toolbar" role="toolbar" aria-label="Filter and controls">
   <button class="chip" data-filter="all" aria-pressed="true">All</button>
@@ -129,83 +129,354 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
 
 <div class="exam-map">
   <h2>How the exam asks about this chapter</h2>
-  <p>Raft is usually question 7, with two question types. Real examples:</p>
+  <p>In the 2023–2024 exams, Raft is usually question 7. There are two question types. Real examples:</p>
   <ul>
     <li>"Consider the Raft consensus protocol. Which problem does it solve? Under which assumptions? Does it guarantee safety (always correct) and liveness (always makes progress)? Motivate." <span class="date">18 Nov 2023</span> <span class="date">6 Sep 2024</span></li>
     <li>"A simple data store: (a) a single machine, (b) replicated across 5 machines with Raft. Compare response time, consistency, fault tolerance." <span class="date">17 Jan 2024</span> <span class="date">12 Jul 2024</span></li>
   </ul>
-  <p>2PC/3PC and CAP appear in the slides and are good material for a compare question.</p>
+  <p>The available exams do not ask about 2PC, 3PC, CAP or blockchains directly. These topics are in the slides, so they can appear as a describe or compare question. The traces in this page train the mechanisms that make the open answers precise.</p>
 </div>
 
+<!-- ===== §1 ATOMIC COMMIT AND 2PC ===== -->
 <section class="topic">
-  <div class="topic-head"><span class="num">§1</span><h2>Commit protocols</h2></div>
-  <div class="core"><p><b>Core idea.</b> Atomic commit: every node votes; commit only if all vote commit; any crash leads to abort. It differs from consensus, where nodes agree on one of the proposed values and a majority is enough. <b>2PC</b> is safe but blocking. <b>3PC</b> adds a phase to avoid blocking, at a higher cost.</p></div>
+  <div class="topic-head"><span class="num">§1</span><h2>Atomic commit and two-phase commit</h2></div>
+  <div class="core"><p><b>Core idea.</b> Atomic commit gives the "A" of ACID when a transaction updates data on several nodes: either all nodes commit or all abort. Every node votes; the outcome is commit only if all vote commit. <b>2PC</b> has a voting phase and a decision phase. It is always safe, but a coordinator crash can block the participants.</p></div>
+
+  <article class="q" data-type="compare" data-id="a-c0">
+    <div class="q-head"><span class="qid">Q1</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">Compare atomic commit and consensus. For each one, say who proposes what, what the nodes agree on, and how many failures it tolerates.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th></th><th>Consensus</th><th>Atomic commit</th></tr>
+          <tr><td>Input</td><td>One or more nodes propose a value</td><td>Every node votes commit or abort</td></tr>
+          <tr><td>Outcome</td><td>Nodes agree on one of the proposed values</td><td>Commit if and only if all nodes vote commit; abort otherwise</td></tr>
+          <tr><td>Failures</td><td>Tolerated, as long as a majority of nodes is available</td><td>Any crash leads to an abort</td></tr>
+          <tr><td>Typical use</td><td>Replicated state machines (Raft, Paxos)</td><td>Distributed transactions in a partitioned (sharded) DBMS</td></tr></table></div>
+        <p>Atomic commit guarantees atomicity: if the transaction commits, its effects are durable; if it aborts, it has no side effects. Consistency (preserving invariants) relies on this atomicity.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>In consensus any proposed value is acceptable, so the majority can choose without the missing nodes. In atomic commit every node holds a different part of the data. A node that does not answer may be unable to apply its part, so the only safe answer is abort. The common trap is to say "2PC is a consensus protocol with a majority": it is not, it needs all the votes.</p></div>
+    </div>
+  </article>
 
   <article class="q" data-type="describe" data-id="a-c1">
-    <div class="q-head"><span class="qid">Q1</span><span class="tag describe">Describe</span></div>
-    <p class="prompt">Describe two-phase commit (coordinator and participant states). Analyze what happens when a participant or the coordinator fails. Why is 2PC called a blocking protocol?</p>
+    <div class="q-head"><span class="qid">Q2</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Describe two-phase commit (messages, coordinator and participant states). Analyze what happens when a participant or the coordinator fails. Why is 2PC called a blocking protocol?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p><b>Phase 1 (voting).</b> The coordinator writes start-2PC to its log and sends <code>prepare</code>; each participant votes <code>vote-commit</code> or <code>vote-abort</code> (and logs it). <b>Phase 2 (decision).</b> If all voted commit, the coordinator logs and sends <code>global-commit</code>, else <code>global-abort</code>. Participants log the decision and ack.</p>
-        <p>States: coordinator Init → Wait → Commit/Abort; participant Init → Ready → Commit/Abort.</p>
-        <p><b>Participant fails:</b> after a timeout in Wait, the coordinator decides abort.</p>
+        <p><b>Messages.</b> The client sends <code>commit T</code> to the coordinator (transaction manager). <b>Phase 1 (voting):</b> the coordinator sends <code>prepare</code>; each participant (resource manager) answers <code>vote-commit</code> or <code>vote-abort</code>. <b>Phase 2 (decision):</b> if all votes are commit, the coordinator sends <code>global-commit</code>, else <code>global-abort</code>. Participants answer with <code>ack</code>.</p>
+        <div class="tbl"><table><tr><th>Node</th><th>State</th><th>Event → next state</th></tr>
+          <tr><td>Coordinator</td><td>Init</td><td>rcv commit T, send prepare → Wait</td></tr>
+          <tr><td>Coordinator</td><td>Wait</td><td>rcv all vote-commit, send global-commit → Commit; rcv a vote-abort (or timeout), send global-abort → Abort</td></tr>
+          <tr><td>Participant</td><td>Init</td><td>rcv prepare, send vote-commit → Ready; rcv prepare, send vote-abort → Abort</td></tr>
+          <tr><td>Participant</td><td>Ready</td><td>rcv global-commit, send ack → Commit; rcv global-abort, send ack → Abort</td></tr></table></div>
+        <p><b>Participant fails:</b> the coordinator waits in Wait; after a timeout it decides abort.</p>
         <p><b>Coordinator fails:</b></p>
         <ul>
-          <li>Participant in <b>Init</b> (no prepare yet): it can abort; nobody can have received commit.</li>
-          <li>Participant in <b>Ready</b>: it cannot decide alone. It asks the other participants: if one got the decision, follow it; if one is in Init, the coordinator crashed before the end of the prepare phase → abort. If <b>all are in Ready</b>, nothing can be decided until the coordinator recovers: the protocol <b>blocks</b>.</li>
+          <li>Participant in <b>Init</b> (waits for prepare): it can decide abort. No participant can have received global-commit.</li>
+          <li>Participant in <b>Ready</b> (waits for the decision): it cannot decide alone. It can wait for the coordinator to recover, or send a <code>decision-request</code> to the other participants. If one of them received the decision, it follows that decision. If one is in Init, the coordinator crashed before the end of the prepare phase, so it assumes abort. If <b>all are in Ready</b>, nothing can be decided until the coordinator recovers: the protocol <b>blocks</b>.</li>
         </ul>
       </div>
-      <div class="why"><h4>Why</h4><p>A participant in Ready promised to commit if asked, so it cannot abort; but it does not know the decision, so it cannot commit. 2PC is always safe, but it gives up liveness, and resources stay locked during the block.</p></div>
+      <div class="why"><h4>Why</h4><p>A participant in Ready promised to commit if asked, so it cannot abort. It does not know the decision, so it cannot commit. 2PC is always safe, but it is vulnerable to a single-node failure (the coordinator). If the restore is slow (for example a manual procedure), the system stays unavailable and the locks stay held.</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="compare" data-id="a-c2">
-    <div class="q-head"><span class="qid">Q2</span><span class="tag compare">Compare</span></div>
-    <p class="prompt">How does three-phase commit avoid blocking? List the recovery rules of a participant when the coordinator fails, and compare 3PC with 2PC.</p>
-    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
-    <div class="answer" hidden>
-      <div><h4>Model answer</h4>
-        <p>3PC splits the decision in two: first tell everyone the outcome (<code>prepare-commit</code> → state Pre-commit, ack <code>ready-commit</code>), then commit. Conditions for non-blocking: no state leads directly to both commit and abort, and no state where a decision is impossible can lead to commit.</p>
-        <p><b>Coordinator fails</b>, participant in Ready asks the others:</p>
-        <ul><li>someone in Abort → abort; someone in Init → abort;</li><li>someone in Commit → commit;</li><li>someone in Pre-commit, and Pre-commit + Ready form a majority → commit;</li><li>a majority in Ready, nobody in Pre-commit → abort.</li></ul>
-        <p>No two participants can be one in Pre-commit and the other in Init.</p>
-        <div class="tbl"><table><tr><th></th><th>2PC</th><th>3PC</th></tr>
-          <tr><td>Phases</td><td>2</td><td>3 always</td></tr>
-          <tr><td>Coordinator crash</td><td>May block, locks held</td><td>Survivors decide, locks released</td></tr>
-          <tr><td>Partitions</td><td>Safe</td><td>Quorum version: safe, but may lose liveness</td></tr>
-          <tr><td>Use</td><td>Widely used</td><td>Rarely used (cost)</td></tr></table></div>
-      </div>
-      <div class="why"><h4>Why</h4><p>Pre-commit is a "decision announced" state. If any survivor saw it, everybody knows the decision was commit; if nobody saw it, nobody can have committed. FLP still applies: with partitions in an asynchronous system, you cannot have both safety and liveness.</p></div>
-    </div>
-  </article>
-
-  <article class="q" data-type="describe" data-id="a-c3">
+  <article class="q" data-type="describe" data-id="a-c4">
     <div class="q-head"><span class="qid">Q3</span><span class="tag describe">Describe</span></div>
-    <p class="prompt">State the CAP theorem and explain its practical meaning for modern data systems.</p>
+    <p class="prompt">In the 2PC pseudocode, list what the coordinator and a participant write to their local log, and where they use a timeout. Why must a node write to the log <i>before</i> it sends the message? How does a node use the log when it restarts after a crash?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p>A system that stores replicated or partitioned data can have at most two of: <b>C</b>onsistency (as if there were one up-to-date copy), <b>A</b>vailability (reads and writes always answered), <b>P</b>artition tolerance.</p>
-        <p>Partitions can always happen, so the real choice is: during a partition, stay consistent (refuse some requests) or stay available (accept requests and risk divergence). Modern systems choose a balance for each application, often with weaker consistency models (chapter 08).</p>
+        <p>The log is on durable storage: it survives crashes.</p>
+        <div class="tbl"><table><tr><th>Node</th><th>Log writes (in order)</th><th>Timeouts</th></tr>
+          <tr><td>Coordinator</td><td><code>start_2PC</code>, then <code>global-commit</code> or <code>global-abort</code></td><td>While it collects votes. On timeout: write global-abort, multicast global-abort, exit.</td></tr>
+          <tr><td>Participant</td><td><code>init</code>, then <code>vote-commit</code> or <code>vote-abort</code>, then the global decision</td><td>(1) While it waits for prepare: on timeout, write vote-abort and exit. (2) After vote-commit, while it waits for the decision: on timeout, multicast decision-request to the other participants and remain blocked until a decision arrives.</td></tr></table></div>
+        <p><b>Log before send.</b> Suppose the coordinator sends global-commit and crashes before it logs it. At restart it finds no decision and could abort, while some participant already committed. Suppose a participant sends vote-commit and crashes before it logs it. At restart it could abort, while the coordinator decided commit. Writing first makes every promise survive the crash.</p>
+        <p><b>Restart.</b></p>
+        <ul>
+          <li>Participant with only <code>init</code>: it never voted commit, so it aborts.</li>
+          <li>Participant with <code>vote-commit</code> and no decision: it is in Ready. It must ask the coordinator or the other participants.</li>
+          <li>Participant with a decision: it applies the decision again.</li>
+          <li>Coordinator with only <code>start_2PC</code>: no decision exists anywhere, so it can safely decide abort.</li>
+          <li>Coordinator with a decision: it sends the decision again.</li>
+        </ul>
       </div>
-      <div class="why"><h4>Why</h4><p>During a partition, a replica that accepts a write cannot tell the other side. Either it answers (available but inconsistent) or it waits (consistent but unavailable). There is no third option.</p></div>
+      <div class="why"><h4>Why</h4><p>The log turns "what I said" into "what I will still say after a crash". The timeouts are asymmetric. Before the vote, a timeout can end in abort, because the node did not promise anything. After vote-commit, a timeout cannot end in a decision: the participant can only ask and wait. This is the exact place where 2PC blocks.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="a-c5">
+    <div class="q-head"><span class="qid">Q4</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Coordinator C, participants P1, P2, P3. All participants vote commit. C writes global-commit to its log, sends global-commit to P1, then crashes before it sends to P2 and P3. (a) What does each participant do? Does anybody block? (b) Same case, but P1 also crashes right after it commits. (c) What does C do when it restarts?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>P1 receives global-commit, logs it, commits, sends ack. P2 and P3 are in Ready. Their timeout expires; they multicast decision-request. P1 answers "commit". P2 and P3 log global-commit and commit. Nobody blocks.</li>
+          <li>P2 and P3 are in Ready. They can only reach each other, and both are in Ready. They cannot decide: they <b>block</b> until C or P1 restarts. The decision (commit) exists, but nobody who knows it is reachable.</li>
+          <li>C finds global-commit in its log. It sends global-commit again to all participants. P2 and P3 commit. P1 ignores the duplicate (it already committed).</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>Case (b) is the interesting one. P2 and P3 cannot abort, because P1 may have committed. They cannot commit, because C may have decided abort. From their point of view the two worlds look the same. Blocking does not mean "no decision was taken"; it means "the survivors cannot know it".</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="a-c6">
+    <div class="q-head"><span class="qid">Q5</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Coordinator C, participants P1, P2, P3. C writes start_2PC and starts to multicast prepare. Only P1 receives it; then C crashes. P1 votes commit. Trace what P1, P2, P3 and the restarted C do. What is the outcome?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol>
+          <li>P1 writes vote-commit, sends it (C is down), and is in Ready.</li>
+          <li>P2 and P3 are in Init. Their timeout for prepare expires. Each writes vote-abort and exits: they abort.</li>
+          <li>P1's timeout for the decision expires. It multicasts decision-request. P2 (or P3) answers that it is in Init or Abort.</li>
+          <li>P1 concludes that C crashed before the end of the prepare phase. It assumes abort.</li>
+          <li>C restarts. Its log has only start_2PC, with no decision. It decides abort and sends global-abort.</li>
+        </ol>
+        <p>Outcome: all nodes abort. Nobody blocks.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A participant in Init (or one that voted abort) proves that C could not have decided commit: commit needs all votes. So one such answer is enough to abort safely. The blocking case needs <i>all</i> reachable participants in Ready.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="a-c7">
+    <div class="q-head"><span class="qid">Q6</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Coordinator C, participants P1, P2, P3. P2 crashes. What is the global outcome, and what does P2 do when it restarts, in each case? (i) P2 crashes before it receives prepare. (ii) P2 writes vote-commit, sends it, and then crashes; P1 and P3 vote commit. (iii) P2 writes vote-commit to its log and crashes before it sends it.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>Case</th><th>Coordinator</th><th>Outcome</th><th>P2 at restart</th></tr>
+          <tr><td>(i)</td><td>Waits in Wait; timeout → writes and sends global-abort</td><td>Abort</td><td>Log: only init → abort</td></tr>
+          <tr><td>(ii)</td><td>Gets 3 vote-commit → global-commit</td><td>Commit</td><td>Log: vote-commit, no decision → Ready. Asks C or the others → commit</td></tr>
+          <tr><td>(iii)</td><td>Missing vote; timeout → global-abort</td><td>Abort</td><td>Log: vote-commit, no decision → Ready. Asks → abort</td></tr></table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>Compare (ii) and (iii). P2 has the same log in both cases, but the correct outcome is different. So a participant in Ready must never decide alone: it must ask. The trap is to say "P2 voted commit, so it commits at restart". That is wrong in (iii).</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="a-c8">
+    <div class="q-head"><span class="qid">Q7</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Coordinator C, participants P1, P2, P3. All three vote commit. C receives all votes and crashes before it writes any decision. (a) What do P1, P2, P3 do? (b) Why can they not abort, even if they know that C wrote no decision? (c) What changes if P3 had voted abort?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>All three are in Ready. They time out and send decision-request. Every answer is "I am in Ready". They <b>block</b> until C restarts. Their locks stay held.</li>
+          <li>They do not know it. From their point of view, this case is identical to "C wrote global-commit and crashed before it sent it". In that second case C commits at restart. If they aborted, the result would be inconsistent.</li>
+          <li>P3 is in Abort. It answers "abort" to the decision-request. P1 and P2 abort. Nobody blocks.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>This is the textbook blocking case: every participant voted commit and the only node that knows the outcome is down. Safety is kept, liveness is lost. 3PC was designed to remove exactly this case.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="a-c9">
+    <div class="q-head"><span class="qid">Q8</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">In 2PC the coordinator is down. Participant P1 is in Ready and sends decision-request. For each set of answers from the other participants, give P1's action: (a) Ready, Commit; (b) Init, Ready; (c) Abort; (d) Ready, Ready; (e) no answer at all.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>Answers</th><th>Action</th><th>Reason</th></tr>
+          <tr><td>(a) Ready, Commit</td><td>Commit</td><td>Someone received global-commit</td></tr>
+          <tr><td>(b) Init, Ready</td><td>Abort</td><td>A participant never voted, so C cannot have decided commit</td></tr>
+          <tr><td>(c) Abort</td><td>Abort</td><td>Someone received global-abort or voted abort</td></tr>
+          <tr><td>(d) Ready, Ready</td><td>Wait (block)</td><td>Nobody knows the decision</td></tr>
+          <tr><td>(e) No answer</td><td>Wait (block)</td><td>No information</td></tr></table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>One informative answer is enough: Commit or Abort gives the decision, Init excludes commit. Only "Ready" answers, or silence, give no information. Note that (b) is safe even though another participant is in Ready: that participant will reach the same conclusion.</p></div>
     </div>
   </article>
 </section>
 
+<!-- ===== §2 3PC, FLP, CAP ===== -->
 <section class="topic">
-  <div class="topic-head"><span class="num">§2</span><h2>Raft and replicated state machines</h2></div>
-  <div class="core"><p><b>Core idea.</b> A <b>replicated state machine</b>: identical copies apply the same commands in the same order, so clients see one fault-tolerant machine. Raft keeps a <b>replicated log</b> with a leader. It is equivalent to multi-Paxos but designed to be understandable: log replication, leader election, safety.</p></div>
+  <div class="topic-head"><span class="num">§2</span><h2>Three-phase commit, FLP and CAP</h2></div>
+  <div class="core"><p><b>Core idea.</b> 3PC adds a Pre-commit phase: first tell everybody the outcome, then commit. Survivors can then decide without the coordinator, so locks are released. The quorum version is always safe, but partitions can still stop it. FLP says this trade-off is unavoidable in an asynchronous system. CAP states the same tension for replicated data: during a partition, choose consistency or availability.</p></div>
+
+  <article class="q" data-type="compare" data-id="a-c2">
+    <div class="q-head"><span class="qid">Q9</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">How does three-phase commit avoid blocking? List the recovery rules of a participant when the coordinator fails, and compare 3PC with 2PC.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>3PC splits the decision phase in two. The coordinator collects the votes. If all are commit, it sends <code>prepare-commit</code>; participants go to <b>Pre-commit</b> and answer <code>ready-commit</code>. Then the coordinator sends <code>global-commit</code>; participants commit and ack.</p>
+        <p><b>Single participant fails.</b> Coordinator in Wait: it can decide abort (no participant can be in Pre-commit). Coordinator in Pre-commit: it can safely commit, and tells the failed participant to commit when it recovers.</p>
+        <p><b>Coordinator fails.</b> A participant in Init can decide abort. A participant in Ready contacts the others:</p>
+        <ul><li>at least one in Abort → abort; at least one in Init → abort;</li><li>at least one in Commit → commit;</li><li>at least one in Pre-commit, and #Pre-commit + #Ready form a majority → commit;</li><li>a majority in Ready, nobody in Pre-commit → abort.</li></ul>
+        <p>No two participants can be one in Pre-commit and the other in Init.</p>
+        <div class="tbl"><table><tr><th></th><th>2PC</th><th>3PC (quorum version)</th></tr>
+          <tr><td>Phases</td><td>2</td><td>3, always</td></tr>
+          <tr><td>Coordinator crash</td><td>May block; locks stay held</td><td>Survivors decide; locks released</td></tr>
+          <tr><td>Partitions</td><td>Safe, may block</td><td>Safe, may lose liveness</td></tr>
+          <tr><td>Use in practice</td><td>Widely used</td><td>Rarely used (cost)</td></tr></table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>Pre-commit is a "decision announced" state. If a survivor saw it, nobody voted abort, so commit is safe. If nobody in a majority saw it, nobody can have committed, so abort is safe. Both 2PC and 3PC still need a failover mechanism to recover failed nodes. The real gain of 3PC is that resources are unlocked even when the coordinator crashes.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="a-t1">
+    <div class="q-head"><span class="qid">Q10</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">State the two conditions that make a commit protocol non-blocking (Skeen and Stonebraker). Show which state of the 2PC participant violates them, and how 3PC satisfies them.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>A protocol is non-blocking if and only if:</p>
+        <ol>
+          <li>No state leads directly to both commit and abort.</li>
+          <li>No state where the final decision is impossible to determine can lead to commit.</li>
+        </ol>
+        <p><b>2PC.</b> The participant state <b>Ready</b> leads directly to Commit and to Abort: it violates condition 1. Ready is also a state where the decision cannot be determined (the coordinator is down and everybody is in Ready), and it leads to Commit: it violates condition 2.</p>
+        <p><b>3PC.</b> Ready leads to Abort or to Pre-commit, never directly to Commit. Pre-commit leads only to Commit. In Pre-commit the decision is known: every participant voted commit. The same holds for the coordinator: Wait → Abort or Pre-commit; Pre-commit → Commit.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The idea is to put a buffer state between "uncertain" and "committed". A node can commit only from a state where everybody already knows the outcome. So a node that is still uncertain knows that nobody has committed yet.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="a-t2">
+    <div class="q-head"><span class="qid">Q11</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Quorum-based 3PC with 5 participants P1–P5. The coordinator crashed. A participant in Ready collects the states of the participants it can reach. Give the decision in each case. (a) P1 Ready, P2 Pre-commit, P3 Ready; P4, P5 unreachable. (b) P1, P2, P3 Ready; P4, P5 unreachable. (c) P1 Ready, P2 Init, P3 Ready. (d) P1 Ready, P2 Pre-commit; P3, P4, P5 unreachable. (e) P1 Pre-commit, P2 Commit. (f) P1 Ready, P2 Abort.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Majority of 5 participants = 3.</p>
+        <div class="tbl"><table><tr><th>Case</th><th>Rule</th><th>Decision</th></tr>
+          <tr><td>(a)</td><td>One in Pre-commit; #Pre-commit + #Ready = 1 + 2 = 3, a majority</td><td>Commit</td></tr>
+          <tr><td>(b)</td><td>Majority (3) in Ready, nobody in Pre-commit</td><td>Abort</td></tr>
+          <tr><td>(c)</td><td>At least one in Init</td><td>Abort</td></tr>
+          <tr><td>(d)</td><td>One in Pre-commit, but 1 + 1 = 2 &lt; 3; no rule applies</td><td>Wait (no decision)</td></tr>
+          <tr><td>(e)</td><td>At least one in Commit</td><td>Commit</td></tr>
+          <tr><td>(f)</td><td>At least one in Abort</td><td>Abort</td></tr></table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>Case (b): P4 or P5 can be in Pre-commit. Abort is still safe, because a commit needs a majority that knows the decision, and 3 nodes in Ready leave at most 2. Two majorities always intersect, so the two sides of a partition cannot decide differently. Case (d) is the price: a minority cannot decide anything, so a partition costs liveness, not safety.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="a-t3">
+    <div class="q-head"><span class="qid">Q12</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Find the impossible combinations. After a coordinator crash, a student reports these pairs of participant states. For each pair, say if it is possible and why. (a) 3PC: P1 Pre-commit, P2 Init. (b) 2PC or 3PC: P1 Commit, P2 Abort. (c) 2PC: P1 Commit, P2 Init. (d) 3PC: P1 Commit, P2 Pre-commit. (e) 2PC: P1 Ready, P2 Abort.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li><b>Impossible.</b> The coordinator sends prepare-commit only after all participants voted commit, so nobody is still in Init.</li>
+          <li><b>Impossible.</b> This violates atomicity, which both protocols guarantee (safety).</li>
+          <li><b>Impossible.</b> global-commit is sent only after all votes are commit; P2 left Init when it voted.</li>
+          <li><b>Possible.</b> The coordinator sent global-commit to P1 and crashed before it reached P2.</li>
+          <li><b>Possible.</b> P2 voted abort (it goes directly to Abort), or global-abort reached P2 but not P1.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>Reason about which messages must already exist. A state that the coordinator reaches only after all votes excludes Init everywhere. Case (a) is exactly the property the slides state for 3PC, and it is why "someone in Init" safely means abort.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="a-t4">
+    <div class="q-head"><span class="qid">Q13</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">A transaction touches 4 participants and commits with no failures. Count the messages between coordinator and participants in 2PC and in 3PC (include the acks). How many communication round trips does each need?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>Protocol</th><th>Message types (each × n)</th><th>n = 4</th><th>Round trips</th></tr>
+          <tr><td>2PC</td><td>prepare, vote-commit, global-commit, ack → 4n</td><td>16</td><td>2</td></tr>
+          <tr><td>3PC</td><td>prepare, vote-commit, prepare-commit, ready-commit, global-commit, ack → 6n</td><td>24</td><td>3</td></tr></table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>3PC pays one more round trip on <i>every</i> transaction, also when nothing fails. Failures are rare, so this cost is paid for a rare benefit. This is why the slides say 3PC is not frequently used in practice.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="a-t5">
+    <div class="q-head"><span class="qid">Q14</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">What does 3PC guarantee? Distinguish the original protocol and the quorum-based version with respect to network partitions. What is the real advantage of 3PC over 2PC, and what is its cost?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><b>Original 3PC:</b> non-blocking with crash failures. With network partitions it can violate <b>safety</b>: the two sides can decide differently.</li>
+          <li><b>Quorum-based 3PC</b> (the version in the slides): <b>safety</b> is always guaranteed. Network partitions can still violate <b>liveness</b>: a side without a majority cannot decide.</li>
+          <li><b>Real advantage:</b> in 2PC resources (for example database rows or columns) stay locked while the decision is unknown. In 3PC they can be unlocked even if the coordinator crashes. In both protocols a failover mechanism is still necessary to recover the failed nodes.</li>
+          <li><b>Cost:</b> three phases of communication, always. It is not frequently used in practice.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>Without quorums, each side of a partition sees only part of the states, and each side can apply a different rule (one side sees Pre-commit, the other only Ready). Majorities fix this, because only one side can have a majority. The price is that the minority side must wait.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="a-t6">
+    <div class="q-head"><span class="qid">Q15</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">State the FLP result. Use it to summarize the commit protocols: what does 2PC sacrifice, what does 3PC sacrifice, and what does Raft do?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>FLP</b> (Fischer, Lynch, Paterson, 1985, "Impossibility of distributed consensus with one faulty process"): in an asynchronous system, no deterministic protocol can guarantee both safety and liveness if even one process can fail. In the words of the slides: you cannot have both liveness and safety in presence of network partitions in an asynchronous system.</p>
+        <ul>
+          <li><b>2PC:</b> keeps safety, sacrifices liveness (it blocks on a coordinator crash).</li>
+          <li><b>3PC:</b> more robust and more expensive; in theory it can still sacrifice liveness with network partitions.</li>
+          <li><b>Raft:</b> safety always; liveness is not guaranteed in theory, but it holds in practice under typical conditions, thanks to randomized timeouts.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>In an asynchronous system a slow process and a crashed process look the same. A protocol that waits may wait forever; a protocol that stops waiting may act without information that exists somewhere. Every practical protocol picks "never wrong" and accepts "sometimes stuck".</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="a-c3">
+    <div class="q-head"><span class="qid">Q16</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">State the CAP theorem and explain its practical meaning for modern data systems.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>A distributed system where nodes store some replicated or partitioned data can have at most two of these three properties: <b>C</b>onsistency (equivalent to a single up-to-date copy of the data), <b>A</b>vailability of the data for reads and updates (liveness), tolerance to network <b>P</b>artitions.</p>
+        <p>Partitions can always happen, so the real choice is: during a partition, stay consistent (refuse some requests) or stay available (accept requests and risk divergence). Modern data systems choose a suitable balance for the application at hand, often with weaker definitions of consistency (chapter "replication and consistency").</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>During a partition, a replica that accepts a write cannot tell the other side. Either it answers (available but inconsistent) or it waits (consistent but unavailable). There is no third option. Without partitions, a system can have both C and A.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="a-t7">
+    <div class="q-head"><span class="qid">Q17</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">For each application, choose what to keep during a network partition (C or A) and justify: (a) bank account transfers; (b) online shopping cart; (c) "likes" counter of a social network; (d) final seat booking for a flight; (e) a configuration and lock service built on Raft.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>App</th><th>Choice</th><th>Justification</th></tr>
+          <tr><td>(a) Bank transfers</td><td>C</td><td>Two sides that accept withdrawals can overdraw the account. Refusing for a while is acceptable.</td></tr>
+          <tr><td>(b) Shopping cart</td><td>A</td><td>A refused "add to cart" loses sales. Divergent carts can be merged later.</td></tr>
+          <tr><td>(c) Likes counter</td><td>A</td><td>A temporarily wrong count has no real cost.</td></tr>
+          <tr><td>(d) Seat booking</td><td>C</td><td>Two passengers must not get the same seat. Browsing free seats can still use A.</td></tr>
+          <tr><td>(e) Raft service</td><td>C</td><td>Raft commits only with a majority. The minority side cannot commit, so it is unavailable.</td></tr></table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>Ask: "what is worse, a wrong answer or no answer?" If a wrong answer cannot be repaired (money, seats, locks), choose C. If a divergence can be merged or tolerated, choose A. Note that one application can mix choices for different operations, as in (d).</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §3 RSM AND RAFT OVERVIEW ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§3</span><h2>Replicated state machines and Raft overview</h2></div>
+  <div class="core"><p><b>Core idea.</b> A <b>replicated state machine</b>: identical copies apply the same commands in the same order, so clients see one fault-tolerant machine. A replicated <b>log</b> fixes the order. Raft builds this log with a leader. It is equivalent to multi-Paxos, but designed to be understandable: log replication, leader election, safety. With 2f + 1 servers it tolerates f crashes.</p></div>
+
+  <article class="q" data-type="describe" data-id="a-r0">
+    <div class="q-head"><span class="qid">Q18</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">What is a state machine, and what is a replicated state machine? Explain the role of the replicated log with the example of a storage system.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>A <b>state machine</b> manages an internal state and responds to external requests (commands). Example: a storage system; the state is a set of variables, the commands are read and write operations.</p>
+        <p>A <b>replicated state machine</b> is a collection of servers that work as a coherent group. They operate on identical copies of the same state, offer a continuous service even if some servers fail, and clients see them as a single fault-tolerant machine.</p>
+        <p>Each server has a <b>log</b> and a consensus module. The consensus modules make all logs equal, for example <code>w(x)1, w(y)2, w(x)8</code> on every server. Each state machine executes the log in order, so all reach x = 8, y = 2. The client that sent <code>w(x)8</code> gets <code>ok</code>.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A deterministic state machine that starts from the same state and executes the same commands in the same order ends in the same state. So the hard problem reduces to one thing: agree on the order of the log. That is what consensus gives.</p></div>
+    </div>
+  </article>
 
   <article class="q" data-type="describe" data-id="a-r1">
-    <div class="q-head"><span class="qid">Q4</span><span class="tag describe">Describe</span><span class="seen">Exam 18 Nov 2023 · 6 Sep 2024</span></div>
+    <div class="q-head"><span class="qid">Q19</span><span class="tag describe">Describe</span><span class="seen">Exam 18 Nov 2023 · 6 Sep 2024</span></div>
     <p class="prompt">Consider the Raft consensus protocol. Which problem does it solve? Under which assumptions? Does it guarantee safety (it is always correct) and liveness (it always makes progress)? Motivate your answers.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
         <p><b>Problem.</b> Consensus on a sequence of commands for a replicated state machine: all non-failing machines execute the same commands in the same order.</p>
-        <p><b>Assumptions.</b> Asynchronous, unreliable communication (messages can be delayed, duplicated, lost). Processes fail by crashing and may restart; they record their state on durable storage. <b>No Byzantine</b> failures.</p>
+        <p><b>Assumptions.</b> Asynchronous, unreliable communication: messages can take arbitrarily long, be duplicated, be lost. Processes fail by stopping and may restart; they record their state on durable storage. <b>No Byzantine</b> failures.</p>
         <p><b>How (short).</b> Followers, candidates, leader. Time is divided into <b>terms</b>. A follower that hears no heartbeat within a randomized timeout (150–300 ms) becomes a candidate, increments the term, votes for itself and sends RequestVote. A majority of votes makes it leader (one vote per server per term). The leader appends client commands to its log and sends AppendEntries; an entry replicated on a majority is <b>committed</b> and executed.</p>
         <p><b>Safety: yes, always.</b></p>
         <ul>
@@ -213,14 +484,74 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
           <li>Log matching: AppendEntries carries the index and term of the previous entry; a follower rejects mismatches, and the leader retries with lower indexes. So equal index and term mean identical logs up to that point.</li>
           <li>Leader completeness: a candidate includes its last index and term; voters refuse candidates with less up-to-date logs. So every new leader has all committed entries.</li>
         </ul>
-        <p><b>Liveness: not guaranteed in theory</b> (FLP: deterministic consensus cannot also guarantee termination in an asynchronous system with a crash). Split votes can in principle repeat forever. In practice, randomized timeouts make this very unlikely, and the system makes progress whenever a majority is up and can communicate, with timeouts much longer than message delays.</p>
+        <p><b>Liveness: not guaranteed in theory</b> (FLP). Split votes can in principle repeat forever. In practice, randomized timeouts make this very unlikely. The system makes progress whenever a majority is up and can communicate, if timeouts are much longer than the communication time.</p>
       </div>
       <div class="why"><h4>Why</h4><p>Raft puts safety in the rules on terms, votes and logs, which never depend on timing. Timing is used only for liveness (timeouts). This is the standard way around FLP: never be wrong, and be fast most of the time.</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>Answer the four parts in order with a label each: problem, assumptions, safety, liveness. For liveness, name FLP and the randomized timeouts; this is what the grader looks for.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="a-r6">
+    <div class="q-head"><span class="qid">Q20</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">Compare Paxos and Raft. How does Raft decompose the consensus problem?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th></th><th>Paxos</th><th>Raft</th></tr>
+          <tr><td>History</td><td>Reference algorithm for about 30 years (proposed 1989, published 1998)</td><td>Ongaro and Ousterhout, 2014</td></tr>
+          <tr><td>Scope</td><td>Agreement on a single decision; multi-Paxos needed for a sequence</td><td>Directly a replicated log (a sequence)</td></tr>
+          <tr><td>Assumptions, guarantees, performance</td><td colspan="2">Equivalent (Raft is equivalent to multi-Paxos)</td></tr>
+          <tr><td>Understandability</td><td>Very difficult</td><td>Main design goal</td></tr>
+          <tr><td>Practice</td><td>No reference implementation; no agreement on the details</td><td>Several reference implementations</td></tr></table></div>
+        <p><b>Decomposition.</b></p>
+        <ol>
+          <li><b>Log replication</b> (normal operation): the leader accepts client commands, appends them to its log, and replicates its log to the other servers.</li>
+          <li><b>Leader election:</b> select one server as leader; detect crashes and choose a new leader.</li>
+          <li><b>Safety:</b> keep the logs consistent; only servers with up-to-date logs can become leader.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>Raft does not solve a different problem: it solves the same problem in a way people can reason about. A strong leader makes the data flow one-way (leader → followers), which removes most special cases.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="a-r7">
+    <div class="q-head"><span class="qid">Q21</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">(a) For a Raft cluster of N = 3, 4, 5, 6, 7 servers, give the majority size and the number of crashed servers it tolerates. (b) Why are even sizes not useful? (c) In a 5-server cluster, the round-trip times from the leader to its four followers are 2, 5, 9 and 40 ms. After how long can the leader commit a new entry? And with 7 servers and follower RTTs 2, 5, 9, 40, 41, 50 ms?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li><div class="tbl"><table><tr><th>N</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th></tr>
+            <tr><td>Majority ⌊N/2⌋ + 1</td><td>2</td><td>3</td><td>3</td><td>4</td><td>4</td></tr>
+            <tr><td>Tolerated crashes ⌊(N−1)/2⌋</td><td>1</td><td>1</td><td>2</td><td>2</td><td>3</td></tr></table></div></li>
+          <li>N = 4 tolerates the same number of crashes as N = 3, and N = 6 the same as N = 5. The extra server adds cost and makes the majority bigger, with no gain.</li>
+          <li>The leader counts itself. With 5 servers it needs 2 follower acks: after the second fastest, <b>5 ms</b>. With 7 servers it needs 3 follower acks: <b>9 ms</b>. The slow followers (40 ms and more) do not delay the commit.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>N = 2f + 1 tolerates f crashes. The commit latency depends on the median follower, not on the slowest one. This is the "one successful message to any majority" of the slides, and it is why a slow follower does not slow down the cluster.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="a-r8">
+    <div class="q-head"><span class="qid">Q22</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Raft cluster of 5 servers: leader L and followers F1–F4. All states have x = 0. A client sends w(x)5. List the steps of normal operation until all followers have x = 5. At each step, give the log and the state of L and of F1. What changes if F4 is crashed?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>Step</th><th>Event</th><th>L log / state</th><th>F1 log / state</th></tr>
+          <tr><td>1</td><td>Client sends w(x)5 to L</td><td>empty / x=0</td><td>empty / x=0</td></tr>
+          <tr><td>2</td><td>L appends w(x)5 to its log and sends AppendEntries to F1–F4</td><td>w(x)5 / x=0</td><td>empty / x=0</td></tr>
+          <tr><td>3</td><td>Followers append the entry and ack</td><td>w(x)5 / x=0</td><td>w(x)5 / x=0</td></tr>
+          <tr><td>4</td><td>Acks from a majority (L + 2 followers): the entry is committed. L executes it and replies to the client</td><td>w(x)5 / x=5</td><td>w(x)5 / x=0</td></tr>
+          <tr><td>5</td><td>L notifies the commit in the next AppendEntries (or heartbeat). Followers execute it</td><td>w(x)5 / x=5</td><td>w(x)5 / x=5</td></tr></table></div>
+        <p><b>F4 crashed:</b> L, F1, F2, F3 still form a majority, so the entry commits. L retries AppendEntries to F4 until it succeeds; F4 catches up when it restarts.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A follower has the entry in its log before it knows that the entry is committed. It must not execute an entry until the leader says it is committed: an uncommitted entry can still be overwritten. The client gets the answer after one round trip to a majority.</p></div>
     </div>
   </article>
 
   <article class="q" data-type="scenario" data-id="a-r2">
-    <div class="q-head"><span class="qid">Q5</span><span class="tag scenario">Scenario</span><span class="seen">Exam 17 Jan 2024 · 12 Jul 2024</span></div>
+    <div class="q-head"><span class="qid">Q23</span><span class="tag scenario">Scenario</span><span class="seen">Exam 17 Jan 2024 · 12 Jul 2024</span></div>
     <p class="prompt">A simple data store: (a) on a single machine; (b) replicated on 5 machines with Raft. Compare the two in terms of response time for client requests, replication consistency, and fault tolerance.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
@@ -232,11 +563,77 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
           <tr><td>Throughput</td><td>Limited by one machine</td><td>Not higher for writes: all go through the leader</td></tr></table></div>
       </div>
       <div class="why"><h4>Why</h4><p>Raft does not add performance, it adds availability and durability. The cost is the majority round trip on every write. With 2f + 1 replicas Raft tolerates f crashes.</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>A table with the three requested criteria as rows is the fastest correct answer. Give numbers: "majority = 3, tolerates 2 crashes".</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §4 LEADER ELECTION ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§4</span><h2>Leader election, terms and partitions</h2></div>
+  <div class="core"><p><b>Core idea.</b> Servers are follower, candidate or leader. A follower that hears nothing for a randomized timeout (150–300 ms) starts an election in a new <b>term</b>. Each server gives one vote per term, and a majority is needed, so there is at most one leader per term (safety). Random timeouts make split votes rare (liveness in practice). Terms identify obsolete information: a stale leader steps down when it sees a higher term.</p></div>
+
+  <article class="q" data-type="describe" data-id="a-e1">
+    <div class="q-head"><span class="qid">Q24</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Describe the three server states of Raft and all transitions between them. Then answer: a server whose current term is 7 receives (a) AppendEntries with term 5; (b) RequestVote with term 9; (c) it is a candidate in term 7 and receives AppendEntries with term 7. What does it do?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><b>Follower:</b> passive; it sends no messages on its own, but waits for regular heartbeats. All servers start as followers.</li>
+          <li><b>Candidate:</b> sends RequestVote messages to get elected.</li>
+          <li><b>Leader:</b> sends AppendEntries to replicate its log; empty AppendEntries are heartbeats.</li>
+        </ul>
+        <div class="tbl"><table><tr><th>From</th><th>To</th><th>Event</th></tr>
+          <tr><td>Follower</td><td>Candidate</td><td>Heartbeat timeout (leader crashed or unreachable?)</td></tr>
+          <tr><td>Candidate</td><td>Candidate</td><td>Timeout without a winner (split vote): new term, new election</td></tr>
+          <tr><td>Candidate</td><td>Leader</td><td>Votes from a majority</td></tr>
+          <tr><td>Candidate</td><td>Follower</td><td>Message from the leader of the term, or a higher term</td></tr>
+          <tr><td>Leader</td><td>Follower</td><td>Discovers a higher term ("I am not up to date")</td></tr></table></div>
+        <ol type="a">
+          <li>Term 5 &lt; 7: the message is obsolete. It rejects it and replies with term 7, so the old leader learns it must step down.</li>
+          <li>Term 9 &gt; 7: it sets its term to 9 and becomes a follower (if it was leader or candidate). It grants the vote if it has not voted in term 9 and the candidate's log is at least as up-to-date as its own.</li>
+          <li>Another server won the election of term 7. It becomes a follower of that leader.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>The term is exchanged in every message and works like a logical clock for leadership. The rule is simple: a lower term is ignored, a higher term is adopted at once. With this rule, an old leader can never overrule a newer one.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="a-e2">
+    <div class="q-head"><span class="qid">Q25</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">5 servers S1–S5. S1 is the leader of term 3. At t = 0 all followers receive a heartbeat; then S1 crashes. The election timeouts are S2 = 250 ms, S3 = 180 ms, S4 = 290 ms, S5 = 210 ms. Every message takes 5 ms. All logs are equal. Trace the election: who becomes candidate, in which term, who votes for whom, who wins and when.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol>
+          <li>t = 180: S3 times out first. It becomes candidate, sets currentTerm = 4, votes for itself, sends RequestVote(term 4) to all.</li>
+          <li>t = 185: S2, S4, S5 receive it. They are still followers (their timeouts are later). They have not voted in term 4, and S3's log is as up-to-date as theirs. They set term 4 and vote for S3. S1 is down.</li>
+          <li>t = 190: S3 has 4 votes (itself, S2, S4, S5) ≥ majority 3. S3 becomes leader of term 4 and sends heartbeats.</li>
+          <li>t = 195: the heartbeats reach the others before their timeouts (the earliest is S5 at 210). No other election starts.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>The majority is computed on all 5 servers of the cluster, crashed ones included: 3 votes. With randomized timeouts, one server usually times out first and wins before the others time out. This works because the timeout (hundreds of ms) is much longer than the message time (5 ms).</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="a-e3">
+    <div class="q-head"><span class="qid">Q26</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">5 servers; the leader S1 crashed. S2 times out at t = 200 ms and S4 at t = 201 ms; both start term 4. Message delays: S2→S3 5 ms, S2→S5 12 ms, S4→S5 4 ms, S4→S3 11 ms. (a) Who wins term 4? (b) The new random timeouts of the candidates are S2 = 160 ms and S4 = 270 ms, counted from the start of their election. S3 and S5 time out later than both. All logs are equal. What happens next?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>S3 receives S2's request at 205 and votes S2; S4's request arrives at 212, but S3 already voted in term 4 → denied. S5 receives S4's request at 205 and votes S4; S2's request arrives at 212 → denied. S2 and S4 voted for themselves, so they deny each other. Votes: S2 = 2 (S2, S3), S4 = 2 (S4, S5). Nobody has 3: <b>split vote</b>, no leader in term 4.</li>
+          <li>S2 times out at 200 + 160 = 360 ms, before S4 (201 + 270 = 471 ms). S2 starts term 5 and sends RequestVote(term 5). S3, S4, S5 see term 5 &gt; 4, adopt term 5 (S4 stops being a candidate) and vote S2, because nobody voted in term 5. S2 wins term 5 with 4 votes.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>Split votes happen when two servers time out at almost the same time. The fix is a new randomized timeout: it is unlikely that the same two servers collide again. Each failed attempt still costs one term number, so a term can have no leader at all. The safety rule is "at most one leader per term", not "exactly one".</p></div>
     </div>
   </article>
 
   <article class="q" data-type="exercise" data-id="a-r3">
-    <div class="q-head"><span class="qid">Q6</span><span class="tag exercise">Exercise</span></div>
+    <div class="q-head"><span class="qid">Q27</span><span class="tag exercise">Exercise</span></div>
     <p class="prompt">5 nodes A–E; A is the leader of term 4. A partition separates {A, B} from {C, D, E}. Describe what happens in both sides, and after the partition heals.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
@@ -246,15 +643,75 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
           <li>One of C, D, E times out first, say D: it becomes candidate for term 5 and gets votes from C and E (3 of 5): D is leader of term 5.</li>
           <li>Clients that write to A: A appends to its log but cannot reach a majority, so nothing commits and clients get no success.</li>
           <li>Clients that write to D: D replicates on C, E and commits.</li>
-          <li>When the partition heals, A receives a message with term 5 &gt; 4: it learns it is out of date and steps down to follower. Its uncommitted entries are overwritten by D's log through the consistency check.</li>
+          <li>When the partition heals, A receives a message with term 5 &gt; 4: it learns it is not up to date and steps down to follower. Its uncommitted entries (and B's) are overwritten by D's log through the consistency check.</li>
         </ol>
       </div>
-      <div class="why"><h4>Why</h4><p>Two leaders can exist at the same time, but in different terms, and only the one with a majority can commit. Terms identify obsolete information, so the old leader is safe: it cannot do harm.</p></div>
+      <div class="why"><h4>Why</h4><p>Two leaders can exist at the same time, but in different terms, and only the one with a majority can commit. Terms identify obsolete information, so the old leader is harmless: it cannot commit anything.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="a-e4">
+    <div class="q-head"><span class="qid">Q28</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">5 nodes A–E; A is the leader of term 4. (a) A partition separates {A, B, C} from {D, E}. What happens on each side? When the partition heals, D has term 7. What happens, and who can become the next leader? (b) Instead, the network splits into {A, B}, {C, D}, {E}. What happens?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li><b>During the partition.</b> A keeps its majority (A, B, C = 3) and keeps committing client commands. D and E time out again and again: they become candidates in terms 5, 6, 7, but they get at most 2 votes and never win. Clients that reach only D or E get no service.
+            <br><b>After healing.</b> A receives a message with term 7 &gt; 4. It adopts term 7 and steps down. D's log lacks the entries committed during the partition, so A, B and C deny their votes to D. D and E cannot win. One of A, B, C times out, starts term 8 and wins with the votes of the others. The consistency check then repairs the logs of D and E. No committed entry is lost.</li>
+          <li>No group has 3 nodes. A cannot commit (only 2 of 5). No election can succeed anywhere. The system is <b>safe but stops</b> until the network heals.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>In (a) the high term of D forces a leader change, but the up-to-date rule stops D from becoming leader. So the extra election costs time, never correctness. Case (b) is FLP and CAP in practice: Raft keeps consistency and gives up availability when no majority can communicate.</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §5 LOG REPLICATION AND SAFETY ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§5</span><h2>Log replication, safety and clients</h2></div>
+  <div class="core"><p><b>Core idea.</b> Each log entry has an index, a term and a command, and is stored on disk. An entry is <b>committed</b> when the leader of its term has replicated it on a majority. The <b>consistency check</b> in AppendEntries guarantees the <b>log matching property</b>. The vote rule (deny a candidate with a less up-to-date log: last term first, then length) guarantees <b>leader completeness</b>. Clients talk to the leader and attach request ids, so retries do not execute twice.</p></div>
+
+  <article class="q" data-type="exercise" data-id="a-l1">
+    <div class="q-head"><span class="qid">Q29</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">5 servers; the leader of term 3 has the log below (terms by index). Which entries are committed? Which follower is the most behind, and how is it repaired?</p>
+    <div class="tbl"><table><tr><th>Index</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th></tr>
+      <tr><td>Leader</td><td>1</td><td>1</td><td>1</td><td>2</td><td>2</td><td>3</td><td>3</td><td>3</td><td>3</td></tr>
+      <tr><td>F1</td><td>1</td><td>1</td><td>1</td><td>2</td><td>2</td><td>3</td><td></td><td></td><td></td></tr>
+      <tr><td>F2</td><td>1</td><td>1</td><td>1</td><td>2</td><td>2</td><td>3</td><td>3</td><td>3</td><td>3</td></tr>
+      <tr><td>F3</td><td>1</td><td>1</td><td>1</td><td>2</td><td>2</td><td>3</td><td>3</td><td></td><td></td></tr>
+      <tr><td>F4</td><td>1</td><td>1</td><td>1</td><td></td><td></td><td></td><td></td><td></td><td></td></tr></table></div>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>Index</th><th>1–3</th><th>4–6</th><th>7</th><th>8–9</th></tr>
+          <tr><td>Copies (leader included)</td><td>5</td><td>4</td><td>3</td><td>2</td></tr>
+          <tr><td>Committed (≥ 3)?</td><td>yes</td><td>yes</td><td>yes</td><td>no</td></tr></table></div>
+        <p>Entries 1–7 are committed; 8 and 9 are not yet. F4 is the most behind. The leader keeps sending AppendEntries: the consistency check succeeds at index 3, and F4 receives entries 4–9. The leader retries until it succeeds.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Count copies per index, leader included, and compare with the majority (3 of 5). Entry 7 is committed and also entries 1–6 are committed: if an entry is committed, all preceding entries are committed too. This is the figure of the slides; the leader is the leader of term 3 and these entries are from its term.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="a-l2">
+    <div class="q-head"><span class="qid">Q30</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">State the log matching property. Then apply the consistency check. The leader's log is 1:1 w(x)1, 2:1 w(y)2, 3:2 w(x)3, 4:3 w(y)7 (index:term command). It sends the new entry at index 4 with the previous entry ⟨3, 2⟩. Give the result for: (1) a follower with 1:1 w(x)1, 2:1 w(y)2, 3:2 w(x)3; (2) a follower with 1:1 w(x)1, 2:1 w(y)2, 3:1 w(x)5, 4:1 w(y)9. (3) After (2), what does the leader send, and what is the final log?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Log matching property.</b> If entries on different servers have the same index and term, they store the same command, and the logs are identical in all preceding entries. Also: if an entry is committed, all preceding entries are committed.</p>
+        <ol>
+          <li>Index 3 has term 2: <b>match</b>. The follower appends 4:3 w(y)7. Result: ok.</li>
+          <li>Index 3 has term 1 ≠ 2: <b>mismatch</b>. The follower rejects; its log does not change.</li>
+          <li>The leader retries with a lower index: entries 3 and 4, previous ⟨2, 1⟩. Index 2 has term 1: match. The follower replaces 3:1 w(x)5, 4:1 w(y)9 with 3:2 w(x)3, 4:3 w(y)7. Final log = leader's log.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>The check is an induction step. Base: empty logs match. Step: if the logs match up to the previous entry and the follower appends the same entry, they match up to the new entry. So one comparison of ⟨index, term⟩ proves the whole prefix equal. The entries w(x)5 and w(y)9 were never committed, so overwriting them is safe.</p></div>
     </div>
   </article>
 
   <article class="q" data-type="exercise" data-id="a-r4">
-    <div class="q-head"><span class="qid">Q7</span><span class="tag exercise">Exercise</span></div>
+    <div class="q-head"><span class="qid">Q31</span><span class="tag exercise">Exercise</span></div>
     <p class="prompt">Leader log (index: term): 1:1, 2:1, 3:2, 4:3. A follower has 1:1, 2:1, 3:1, 4:1. The leader sends AppendEntries for index 4 with previous entry ⟨3, 2⟩. What happens step by step?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
@@ -266,39 +723,188 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
           <li>Now the follower's log equals the leader's.</li>
         </ol>
       </div>
-      <div class="why"><h4>Why</h4><p>This is an induction: if logs match at the previous entry, appending the same new entry keeps them matching. The leader always assumes its log is correct; normal operation repairs the followers, with no special recovery code. The follower's entries 3:1 and 4:1 were never committed (otherwise this leader would have them).</p></div>
+      <div class="why"><h4>Why</h4><p>The leader always assumes its log is correct; normal operation repairs the followers, with no special recovery code. The follower's entries 3:1 and 4:1 were never committed (otherwise this leader would have them, by leader completeness).</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="describe" data-id="a-r5">
-    <div class="q-head"><span class="qid">Q8</span><span class="tag describe">Describe</span></div>
-    <p class="prompt">How do modern distributed databases (e.g. Spanner) combine replicated state machines and 2PC?</p>
+  <article class="q" data-type="exercise" data-id="a-l3">
+    <div class="q-head"><span class="qid">Q32</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">The leader of term 6 has the log 1:1, 2:1, 3:3, 4:3, 5:5, 6:6 and receives a client command, which it appends as 7:6. A follower has 1:1, 2:1, 3:3, 4:4, 5:4, 6:4, 7:4 (it is longer than the leader's old log). Trace every AppendEntries until the follower is consistent. How many are rejected? What is the final follower log?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p>The database is <b>partitioned</b>; each partition is <b>replicated</b> with Paxos/Raft, so a partition behaves like one machine that does not fail (5 replicas survive 2 crashes). Across partitions, <b>2PC</b> gives atomic commit. The 2PC coordinator and participants are themselves replicated groups, so the blocking case of 2PC (coordinator crash) practically disappears, and channels can be assumed reliable as long as a majority of each partition is reachable.</p>
+        <div class="tbl"><table><tr><th>Try</th><th>Previous ⟨index, term⟩</th><th>Entries sent</th><th>Follower entry at that index</th><th>Result</th></tr>
+          <tr><td>1</td><td>⟨6, 6⟩</td><td>7</td><td>6:4</td><td>reject</td></tr>
+          <tr><td>2</td><td>⟨5, 5⟩</td><td>6–7</td><td>5:4</td><td>reject</td></tr>
+          <tr><td>3</td><td>⟨4, 3⟩</td><td>5–7</td><td>4:4</td><td>reject</td></tr>
+          <tr><td>4</td><td>⟨3, 3⟩</td><td>4–7</td><td>3:3</td><td>accept</td></tr></table></div>
+        <p>3 rejections. The follower deletes its entries 4:4, 5:4, 6:4, 7:4 and appends the leader's entries. Final log: 1:1, 2:1, 3:3, 4:3, 5:5, 6:6, 7:6.</p>
       </div>
-      <div class="why"><h4>Why</h4><p>2PC is blocking only because a single node can fail. Replace each node with a replicated state machine and the weak point is gone. The two layers solve two different problems: consensus inside a partition, atomic commit across partitions.</p></div>
+      <div class="why"><h4>Why</h4><p>A longer log is not a better log. The follower's term-4 entries came from a leader of term 4 that never got them on a majority. The leader of term 6 has all committed entries (leader completeness), so its log wins. Trap: in try 3 the index exists on both, but the terms differ (3 vs 4), so it is still a mismatch.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="a-l4">
+    <div class="q-head"><span class="qid">Q33</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">5 servers; the leader crashed. All servers are reachable and nobody voted in the new term. The logs (term of each entry, index 1 first) are: S1: 1 1 2 3 3 · S2: 1 1 2 3 · S3: 1 1 2 2 2 2 · S4: 1 1 2 3 3 3 · S5: 1 1 2. For each server, can it become leader if it is the first candidate? List who would vote for it.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Compare (last term, length). Order from most to least up-to-date: S4 (3, 6) &gt; S1 (3, 5) &gt; S2 (3, 4) &gt; S3 (2, 6) &gt; S5 (2, 3). A voter grants its vote if the candidate's log is at least as up-to-date as its own.</p>
+        <div class="tbl"><table><tr><th>Candidate</th><th>Votes from</th><th>Count</th><th>Can win (≥ 3)?</th></tr>
+          <tr><td>S1</td><td>S1, S2, S3, S5</td><td>4</td><td>yes</td></tr>
+          <tr><td>S2</td><td>S2, S3, S5</td><td>3</td><td>yes</td></tr>
+          <tr><td>S3</td><td>S3, S5</td><td>2</td><td>no</td></tr>
+          <tr><td>S4</td><td>all</td><td>5</td><td>yes</td></tr>
+          <tr><td>S5</td><td>S5</td><td>1</td><td>no</td></tr></table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>The last term is compared first; the length matters only if the last terms are equal. So S3, with 6 entries, is <i>less</i> up-to-date than S2 with 4 entries: S2's last entry comes from a newer leader. This is the most common trap. The entry at index 4 with term 3 is on S1, S2, S4 (a majority), so it may be committed; all servers that can win have it.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="a-l5">
+    <div class="q-head"><span class="qid">Q34</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">5 servers. The leader S1 of term 2 commits the entry at index 5 after S2 and S3 store it. Logs (terms): S1, S2, S3: 1 1 2 2 2 · S4: 1 1 2 2 · S5: 1 1 2. Then S1 crashes. (a) S4 times out first. Can it win? (b) Who can win? (c) Explain the general argument for leader completeness.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>S4 has (2, 4). S2 and S3 have (2, 5): same last term, longer log, so they deny. S5 (2, 3) grants. S4 gets S4 + S5 = 2 votes &lt; 3: it cannot win. The election times out.</li>
+          <li>S2 or S3. For example S3 gets votes from S2 (equal log), S4 and S5: 4 votes. The new leader has entry 5.</li>
+          <li>Leader completeness: once an entry is committed, all future leaders store it. The entry is on a majority M1. A winner needs votes from a majority M2. M1 and M2 intersect in at least one server. That server has the entry, and denies its vote to a candidate whose log is less up-to-date. So the winner's log is at least as up-to-date, and contains the entry.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>Raft never moves entries from followers to the leader. So the only way to keep committed entries is to elect a leader that already has them. The vote denial does exactly this, using the same majority intersection as the commit rule.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="a-l6">
+    <div class="q-head"><span class="qid">Q35</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">A client of a Raft key-value store sends "increment x" with request id 17. The leader commits the entry and crashes before it replies. (a) How does the client find the leader at the start and after the crash? (b) The client times out and resends request 17 to the new leader. Without extra mechanisms, what goes wrong? (c) How does Raft avoid it, and which semantics does it guarantee?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>Clients always interact with the leader. At start the client connects to a random server, which tells it the leader of the current term. If the leader crashes, the request times out, and the client asks again.</li>
+          <li>The entry is committed, so the new leader has it (leader completeness). A second "increment x" would add a second entry: x is incremented twice for one client request.</li>
+          <li>The client attaches a sequential request id. Servers store the last id of each client as part of the log (so all replicas have it). The new leader sees id 17 already executed, discards the duplicate and returns the result. Raft guarantees <b>linearizable</b> semantics: every operation behaves as if executed once and only once on a single copy.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>Retrying is necessary (the reply may be lost) but dangerous for non-idempotent commands. Storing the ids in the replicated log, not in the memory of one server, is the key point: the filter survives the leader change.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="a-l7">
+    <div class="q-head"><span class="qid">Q36</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">The slides refer to the extended Raft paper for log compaction and membership change. What problem does each one address, and what is the main risk?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><b>Log compaction.</b> The log grows forever and takes space; a restarted server would replay all of it. Question: when is it safe to delete old entries? Committed entries that are already applied can be replaced by a snapshot of the state machine. Risk: deleting entries that are not committed, or that a slow follower still needs (the leader must then send the snapshot).</li>
+          <li><b>Membership change.</b> Add or remove servers from the group consistently. Risk: if servers switch from the old to the new configuration at different times, an old majority and a new majority can be disjoint, and two leaders can be elected in the same term. The paper uses a special procedure (a transitional configuration) to prevent this.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>Both mechanisms touch the two things safety depends on: the log content and the definition of "majority". This is why they need extra care, and why the course mentions them without details.</p></div>
     </div>
   </article>
 </section>
 
+<!-- ===== §6 DBMS AND BYZANTINE ===== -->
 <section class="topic">
-  <div class="topic-head"><span class="num">§3</span><h2>Byzantine conditions: blockchains</h2></div>
-  <div class="core"><p><b>Core idea.</b> BFT replication needs 3f + 1 nodes for f traitors. Permissionless blockchains (Bitcoin) work with an unknown, very large set of nodes. Proof of work orders blocks; guarantees are only probabilistic.</p></div>
+  <div class="topic-head"><span class="num">§6</span><h2>Distributed DBMS and Byzantine conditions</h2></div>
+  <div class="core"><p><b>Core idea.</b> Modern distributed databases (e.g. Spanner) use two layers: Raft or Paxos per partition so that a partition does not fail, and 2PC across partitions for atomic commit. With Byzantine processes, BFT replication needs 3f + 1 nodes. Permissionless blockchains (Bitcoin) are replicated state machines with unknown membership: proof of work orders the blocks, and the guarantees are only probabilistic.</p></div>
+
+  <article class="q" data-type="describe" data-id="a-r5">
+    <div class="q-head"><span class="qid">Q37</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">How do modern distributed databases (e.g. Spanner) combine replicated state machines and 2PC?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>The database is <b>partitioned</b>; inter-partition transactions need atomic commit. Each partition is <b>replicated</b> with Paxos/Raft, so all replicas process the same sequence of operations, and a partition behaves like one machine that does not fail (5 replicas survive 2 simultaneous crashes). Across partitions, <b>2PC</b> gives atomic commit. The coordinator (transaction manager) and the participants (partitions) are assumed not to fail, because they are replicated. Channels are assumed reliable: it is sufficient that a majority of nodes in each partition is reachable.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>2PC is blocking only because a single node can fail. Replace each node with a replicated state machine and the weak point is gone. The two layers solve two different problems: consensus inside a partition, atomic commit across partitions.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="a-b2">
+    <div class="q-head"><span class="qid">Q38</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">A database has partitions PA and PB, each replicated on 5 servers with Raft. A transaction updates both; PA's group is the 2PC coordinator. What happens in each case? (a) 2 servers of PB crash during the vote. (b) 3 servers of PB crash after PB voted commit. (c) The leader of PA crashes right after "global-commit" is committed in PA's log, before it is sent.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>PB still has 3 of 5 servers, a majority. Its leader (or a new one) continues. 2PC is not affected.</li>
+          <li>PB has only 2 of 5 servers: it cannot commit new log entries, so it is unavailable. Its vote and its Ready state are in its replicated log, so they are not lost. The transaction cannot finish on PB until a majority of PB is back. This is a loss of liveness, not of safety.</li>
+          <li>PA elects a new leader. By leader completeness, the new leader has the committed "global-commit" entry. It sends global-commit to PB. No blocking.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>"The coordinator writes to its log" now means "the coordinator group commits an entry in its Raft log". The decision survives the crash of any minority, so the blocking case of 2PC needs a majority failure of a group. That is much rarer than one crashed machine.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="a-b3">
+    <div class="q-head"><span class="qid">Q39</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">(a) How many nodes are needed to tolerate f = 1, 2, 3 failures with crash-only consensus (Raft) and with BFT replication? (b) A BFT group has 10 nodes: how many traitors does it tolerate? (c) Give the intuition for 3f + 1.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li><div class="tbl"><table><tr><th>f</th><th>1</th><th>2</th><th>3</th></tr>
+            <tr><td>Crash failures: 2f + 1</td><td>3</td><td>5</td><td>7</td></tr>
+            <tr><td>Byzantine (BFT): 3f + 1</td><td>4</td><td>7</td><td>10</td></tr></table></div></li>
+          <li>3f + 1 ≤ 10 → f ≤ 3. It tolerates 3 traitors.</li>
+          <li>A node can wait for only n − f answers, because f nodes may never answer. Two such quorums overlap in at least n − 2f nodes. Up to f of those can be traitors that tell each quorum a different story. So the overlap needs at least one honest node: n − 2f ≥ f + 1, that is n ≥ 3f + 1.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>With crashes, an overlap of one node is enough, because that node tells the truth. With traitors, the overlap must outnumber the traitors. BFT keeps the same assumptions as Paxos and Raft (and a known set of nodes); the course does not study these protocols, only the related technology: blockchains.</p></div>
+    </div>
+  </article>
 
   <article class="q" data-type="describe" data-id="a-b1">
-    <div class="q-head"><span class="qid">Q9</span><span class="tag describe">Describe</span></div>
+    <div class="q-head"><span class="qid">Q40</span><span class="tag describe">Describe</span></div>
     <p class="prompt">Explain how a proof-of-work blockchain acts as a replicated state machine in a Byzantine environment. What are its assumptions and guarantees? What is double spending?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p><b>State:</b> the balance of each user. <b>Log:</b> the ledger of signed transactions, grouped in blocks, replicated by all nodes.</p>
-        <p>Miners collect pending transactions in a block and search a proof of work over the chain + the new block: hard to find (brute force, about one every 10 minutes, difficulty adapted to the computing power), easy to verify. The winner broadcasts the block; others verify it and start on the next one. This gives global agreement on the order of blocks. If two chains appear, the one that grows faster (longer) survives.</p>
-        <p><b>Assumptions:</b> very many nodes; unknown membership; no entity controls the majority of computing power. <b>Guarantees:</b> only probabilistic; a longer chain that you do not know may always exist.</p>
-        <p><b>Double spending:</b> an attacker with enough computing power builds two concurrent chains, one paying A and one paying B, and shows each to its target. A and B can never be 100% sure that a conflicting chain does not exist; waiting for more blocks lowers the risk.</p>
+        <p><b>State:</b> the current balance of each user. <b>Log:</b> the ledger of all transactions since the beginning, grouped in blocks and replicated by all nodes. Transactions are digitally signed: if the private key is lost, the bitcoins are lost too.</p>
+        <p>Miners collect pending transactions in a block and search a proof of work over the existing chain + the new block. This links the block to the chain. The proof is hard to find (brute force, on average one every 10 minutes, difficulty adapted to the computing power) and easy to verify. The winner broadcasts the block and earns bitcoins. The others verify it and start on the next block: global agreement on the order of blocks. If two chains appear, the one that grows faster (more blocks) survives; with the same length, a deterministic choice.</p>
+        <p><b>Assumptions:</b> very many nodes; the set of nodes is unknown upfront; no single entity owns the majority of compute resources. <b>Guarantees:</b> no provable safety, only with high probability; a longer chain that you do not know may always exist.</p>
+        <p><b>Double spending:</b> a misbehaving user with enough computing power and 1 bitcoin builds two concurrent chains, one paying A (shown to A) and one paying B (shown to B). A and B can never be 100% sure that a conflicting chain does not exist.</p>
       </div>
-      <div class="why"><h4>Why</h4><p>With unknown membership you cannot count votes (anyone could create many identities). Proof of work makes a "vote" cost computing power, so the majority of power decides, not the majority of identities.</p></div>
+      <div class="why"><h4>Why</h4><p>With unknown membership you cannot count votes: anyone could create many identities. Proof of work makes a "vote" cost computing power, so the majority of power decides, not the majority of identities.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="a-b4">
+    <div class="q-head"><span class="qid">Q41</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">The chain ends with block 100. Miner M1 finds block 101a (transactions T1, T2) and miner M2 finds block 101b (T2, T3) at almost the same time. Half of the network receives 101a first, the other half 101b. Then a miner that builds on 101b finds block 102b. (a) What does each node do at each step? (b) What happens to T1, T2, T3? (c) A shop accepted T1 as soon as it saw 101a. What risk did it take?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>Each node keeps the first valid block it receives and mines on top of it: there is a fork, two chains of equal length. When 102b arrives, the chain 100–101b–102b is longer. All nodes switch to it and mine on 102b. Block 101a is discarded.</li>
+          <li>T2 and T3 are in the surviving chain. T1 was only in 101a: it goes back to the pending transactions and will be included in a later block (if still valid).</li>
+          <li>Its payment disappeared from the accepted chain for a while. If the payer had sent a conflicting transaction in the other branch, the shop would lose the money. One block is weak evidence; the more blocks follow, the less likely it is that a longer conflicting chain exists.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>Simultaneous proofs are unlikely because the proof is very hard, but they are possible. The longest-chain rule resolves them, but only after the fact. This is why the guarantee is probabilistic: no node can be 100% sure of a given sequence.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="a-b5">
+    <div class="q-head"><span class="qid">Q42</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">Someone proposes to replace proof of work in an open cryptocurrency with Raft: "every node votes, the majority decides". Explain why this does not work. Then explain what an attacker needs for a double-spending attack on a proof-of-work chain, and how a merchant reduces the risk.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><b>Raft does not fit.</b> Raft assumes a known set of servers (to compute a majority) and no Byzantine behavior. In an open system the set of nodes is unknown upfront, and an attacker can create many fake nodes and win any vote. Nodes can also lie, which Raft does not tolerate.</li>
+          <li><b>Double spending.</b> The attacker needs enough computing power to build a second chain, in which the same bitcoin pays someone else, and make it grow faster than the honest chain. This is why the assumption "no single entity owns the majority of compute resources" is essential.</li>
+          <li><b>Merchant.</b> It waits until several blocks follow the block with its payment. Each extra block makes a longer conflicting chain less likely. It can never reach 100% certainty.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>Raft counts identities; proof of work counts computing power. Identities are free to create, computing power is not. The trade-off is the guarantee: Raft gives proven safety in a closed system, a blockchain gives only high-probability safety in an open one.</p></div>
     </div>
   </article>
 </section>
@@ -307,7 +913,7 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
 
 <script>
 (function(){
-  const KEY = "ds-agreement-marks-v1";
+  const KEY = "ds-agreement-marks-v2";
   let marks = {};
   try { marks = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e) { marks = {}; }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(marks)); } catch(e) {} };

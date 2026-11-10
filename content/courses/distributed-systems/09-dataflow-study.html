@@ -110,8 +110,8 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
 <header class="top">
   <a class="eyebrow" href="/courses.html?c=distributed-systems" style="text-decoration:none">← Distributed Systems notes</a>
   <div class="eyebrow">Distributed Systems · Prof. Margara · Chapter 09</div>
-  <h1>Dataflow systems</h1>
-  <p class="lede">Exam drill for MapReduce, the dataflow model, scheduling vs pipelining (Spark vs Flink), and stream processing with windows and watermarks.</p>
+  <h1>Distributed data processing with dataflow systems</h1>
+  <p class="lede">Exam drill for big data processing: the problem scope, MapReduce and its platform, the dataflow model with its two architectures (Spark and Flink), and stream processing with windows and watermarks. Answer on paper first, then open the model answer.</p>
 </header>
 <div class="toolbar" role="toolbar" aria-label="Filter and controls">
   <button class="chip" data-filter="all" aria-pressed="true">All</button>
@@ -129,19 +129,151 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
 
 <div class="exam-map">
   <h2>How the exam asks about this chapter</h2>
-  <p>The same question appeared three times in 2024 (question 6 or 7):</p>
+  <p>The same question appeared three times in 2024 (question 6 or 7). It is also in the p2p exercise slides.</p>
   <ul>
-    <li>"Consider the dataflow model for big data processing. (a) Describe the key characteristics of the model. (b) Describe the two architectures to implement it: scheduling of tasks and pipelining of tasks." <span class="date">14 Feb 2024</span> <span class="date">18 Jun 2024</span> <span class="date">6 Sep 2024</span> (also in the p2p exercise slides)</li>
+    <li>"Consider the dataflow model for big data processing. (a) Describe the key characteristics of the model. (b) Describe what are the two architectures to implement it: scheduling of tasks and pipelining of tasks." <span class="date">14 Feb 2024</span> <span class="date">18 Jun 2024</span> <span class="date">6 Sep 2024</span></li>
   </ul>
-  <p>Learn Q3 and Q4 below by heart; the others prepare you for variations.</p>
+  <p>Learn the two exam questions in §4 by heart. A good answer to part (a) uses the MapReduce ideas of §2 and §3. A good answer to part (b) mentions elasticity, load balancing, lineage, snapshots and latency. The exercises prepare you for variations and for an oral discussion.</p>
 </div>
 
+<!-- ===== §1 ===== -->
 <section class="topic">
-  <div class="topic-head"><span class="num">§1</span><h2>MapReduce</h2></div>
-  <div class="core"><p><b>Core idea.</b> Data-intensive problems (terabytes, commodity clusters that fail often) need a different approach: move from global mutable state to <b>transformations of immutable data</b>. The programmer writes <code>map</code> and <code>reduce</code>; the platform handles scheduling, data distribution, and fault tolerance.</p></div>
+  <div class="topic-head"><span class="num">§1</span><h2>Big data: the problem and the gas-station example</h2></div>
+  <div class="core"><p><b>Core idea.</b> Data science needs large amounts of data. The data has <b>volume</b>, <b>velocity</b>, <b>variety</b> and <b>veracity</b> problems. At scale, reading the input and storing the state become the bottleneck. The solution is to split the work into independent parallel steps that transform <b>immutable data</b>, connected by channels.</p></div>
+
+  <article class="q" data-type="describe" data-id="d-b1">
+    <div class="q-head"><span class="qid">Q1</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">What is data science? List the four "V" consequences of large data availability and explain each one in one sentence.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Data science</b> is an interdisciplinary field. It uses scientific methods, processes, algorithms and systems to extract knowledge from structured and unstructured data. Examples: recommender algorithms, genomic data, medicine, transportation, finance.</p>
+        <ul>
+          <li><b>Volume</b> (data at rest): there is a lot of data. In 2008 Google processed 20 PB per day.</li>
+          <li><b>Velocity</b> (data in motion): data arrives fast. In many domains it loses value as it becomes old, so we must process it as soon as possible.</li>
+          <li><b>Variety</b>: data comes in many formats, versions and sources.</li>
+          <li><b>Veracity</b>: data is not always correct.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>Volume motivates batch systems like MapReduce. Velocity motivates stream processing. Keep this link in mind: the chapter follows the same order, first volume (MapReduce), then velocity (streams).</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="d-b2">
+    <div class="q-head"><span class="qid">Q2</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Which "V" is the main challenge in each case? (a) A bank must block a fraudulent card payment before it completes. (b) A genomics lab stores 2 PB of DNA sequences. (c) A city joins traffic data from GPS traces, CSV files from buses and JSON feeds from taxis. (d) Smart watches send heart rates, but some sensors are badly placed and send wrong values.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li><b>Velocity.</b> The information is useful only while it is fresh.</li>
+          <li><b>Volume.</b> The data does not fit on one disk.</li>
+          <li><b>Variety.</b> Different sources and formats must be combined.</li>
+          <li><b>Veracity.</b> Some values are not correct.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>One application often has more than one V. Ask which property makes a simple single-machine solution fail. In (a) a very fast batch job is still too late; this is the velocity problem.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="d-b3">
+    <div class="q-head"><span class="qid">Q3</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">What is the problem scope of data processing platforms? Which functions must such a platform provide?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Scope:</b> scalability to large data volumes, and support for quickly changing data.</p>
+        <p><b>Required functions:</b></p>
+        <ul>
+          <li>Automatic parallelization and distribution.</li>
+          <li>Fault tolerance.</li>
+          <li>Status and monitoring tools.</li>
+          <li>A clean abstraction for programmers.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>The programmer must write only the application logic. The platform hides the hard distributed problems. Every system in this chapter (MapReduce, Spark, Flink) is judged on how well it gives these four functions.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="d-b4">
+    <div class="q-head"><span class="qid">Q4</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">A map is a graph: nodes are points of interest, edges are roads. We want the shortest path from each node to the nearest gas station. Describe the naive solution. Which hidden assumptions does it make? Which assumptions on the scale of the problem and on the computing infrastructure change the picture?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Naive solution:</b> run a single-source shortest-path algorithm (for example Dijkstra, O((N + E) log N)) from each gas station. For each node, keep the best distance found so far and update it when a better path appears. Optimization: discard paths longer than a maximum distance (for example 50 km).</p>
+        <p><b>Hidden assumptions:</b></p>
+        <ul>
+          <li>We can easily access the entire input data.</li>
+          <li>We can easily store and update the state of the computation (discovered paths, current minimum per node).</li>
+          <li>The state fits in memory, or at least on the disk of one node. Random access to disk then becomes a problem.</li>
+        </ul>
+        <p><b>Scale assumptions:</b> terabytes or more. The data does not fit on one disk (or it is too slow to read from one disk). It certainly does not fit in memory.</p>
+        <p><b>Infrastructure assumptions</b> (a Google datacenter in the early 2000s): a cluster of hundreds to thousands of normal computers, no dedicated hardware. It is cheap and easy to update, but not reliable: hardware failures are common.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Some problems appear only at scale. With one machine, the bottleneck is reading the input and the state. With many machines, the bottleneck moves to coordination and communication. A good solution must reduce both, and it must survive failures.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="d-b5">
+    <div class="q-head"><span class="qid">Q5</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Two gas stations G1 and G2. Phase 1 splits the data into blocks centered on each station and computes distances in each block (in km): block b<sub>1</sub> (G1): n1 = 3, n2 = 5, n3 = 9. Block b<sub>2</sub> (G2): n2 = 4, n3 = 2, n4 = 6. (a) Show the result of phase 2. (b) How is the data partitioned in each phase, and what can run in parallel? (c) Map this solution to MapReduce.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>(a) Phase 2 repartitions the data <b>by node</b> and keeps the minimum:</p>
+        <div class="tbl"><table>
+          <tr><th>Node</th><th>Values received</th><th>Result</th></tr>
+          <tr><td>n1</td><td>(G1, 3)</td><td>G1, 3 km</td></tr>
+          <tr><td>n2</td><td>(G1, 5), (G2, 4)</td><td>G2, 4 km</td></tr>
+          <tr><td>n3</td><td>(G1, 9), (G2, 2)</td><td>G2, 2 km</td></tr>
+          <tr><td>n4</td><td>(G2, 6)</td><td>G2, 6 km</td></tr>
+        </table></div>
+        <p>(b) Phase 1: data split <b>by gas station</b>. Each block is processed independently, on a different computer, and nodes read input blocks in parallel. Phase 2: data split <b>by node</b>. Each node is processed independently. Between the phases, communication is necessary: n2 and n3 are in both blocks.</p>
+        <p>(c) Phase 1 is the <b>map</b>: for each block it emits ⟨node, (station, distance)⟩. The repartition is the <b>shuffle</b> by key = node. Phase 2 is the <b>reduce</b>: for each node it outputs the minimum.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The 50 km assumption makes the blocks small and independent. The only shared information (nodes in several blocks) is solved by a repartition, not by a shared mutable table. This is the full MapReduce idea in one example.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="d-b6">
+    <div class="q-head"><span class="qid">Q6</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">Compare "global and mutable state" with "transformations of immutable data". Why is the second approach better for a cluster of unreliable machines?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Global mutable state:</b> all workers read and update a shared structure (for example the current minimum per node). At scale, it needs random access, locks or coordination, and it is a single point of contention. If a worker fails during an update, the state can become inconsistent.</p>
+        <p><b>Transformations of immutable data:</b> each step reads an input that never changes and writes a new output. Steps are independent, so they run in parallel. Data moves between steps through channels.</p>
+        <p><b>Why better:</b> no synchronization on shared state, sequential reads, and simple fault tolerance. If a step fails, the platform runs it again on the same immutable input and gets the same output.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Re-execution is safe only if the input did not change. This single property makes fault tolerance in MapReduce (re-run tasks) and in Spark (lineage) possible. Remember it as the root of all the later mechanisms.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="d-b7">
+    <div class="q-head"><span class="qid">Q7</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">Data moves between transformations through channels: a distributed file system, messages (for example TCP), or queues (for example Kafka). Pick a channel for each case: (a) a nightly batch job whose intermediate results must survive the crash of any machine; (b) two operators of a streaming job that must exchange data with minimum latency; (c) sensors produce data continuously, and the processing job must be able to replay old data after a failure.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li><b>Distributed file system.</b> Data is stored durably and replicated. The next step can read it later.</li>
+          <li><b>TCP messages.</b> Data flows directly from task to task, with no storage in the middle. This is what Flink does.</li>
+          <li><b>Queue (Kafka).</b> It decouples producers and consumers, keeps data durably and lets the consumer read again from an old position.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>The trade-off is always durability and decoupling against latency. Case (c) is the "durable input" that Flink needs to replay elements after a snapshot recovery.</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §2 ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§2</span><h2>The MapReduce programming model</h2></div>
+  <div class="core"><p><b>Core idea.</b> The programmer writes two functions. <b>Map</b> processes one input element and emits ⟨key, value⟩ pairs. <b>Reduce</b> receives all the values with the same key, as an iterator, and emits a result. The platform guarantees that all pairs with the same key reach the same reducer.</p></div>
 
   <article class="q" data-type="exercise" data-id="d-m1">
-    <div class="q-head"><span class="qid">Q1</span><span class="tag exercise">Exercise</span></div>
+    <div class="q-head"><span class="qid">Q8</span><span class="tag exercise">Exercise</span></div>
     <p class="prompt">Word count on "All you need is love / All you need is love / All you need is love, love / Love is all you need", split into 4 map tasks (one per line) and 3 reducers by key range (a–h, i–p, q–z). Show the map output, what each reducer receives, and the final result. Words are case-insensitive.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
@@ -150,35 +282,312 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
         <p><b>Shuffle</b> (same key → same reducer): a–h gets all; i–p gets is, love, need; q–z gets you.</p>
         <p><b>Reduce</b> (sum the list): ⟨all, [1,1,1,1]⟩ → 4; ⟨is, [1,1,1,1]⟩ → 4; ⟨need, [1,1,1,1]⟩ → 4; ⟨love, [1,1,2,1]⟩ → <b>5</b>; ⟨you, [1,1,1,1]⟩ → 4.</p>
       </div>
-      <div class="why"><h4>Why</h4><p>Map is stateless per element (here, per block). The platform guarantees that all pairs with the same key reach the same reducer (partition by hash(k) mod R or by range). The reducer gets an iterator, so it reads its input sequentially and only once.</p></div>
+      <div class="why"><h4>Why</h4><p>The pair ⟨love, 2⟩ shows that the mapper counts inside its own block before it emits. This reduces the data sent to reducers. The reducer does not care: it sums the values, whatever they are.</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="describe" data-id="d-m2">
-    <div class="q-head"><span class="qid">Q2</span><span class="tag describe">Describe</span></div>
+  <article class="q" data-type="code" data-id="d-m2c">
+    <div class="q-head"><span class="qid">Q9</span><span class="tag code">Code</span></div>
+    <p class="prompt">Write the map and reduce functions of word count in pseudocode. What are the input key and value of each function? The slides say that "the map function is stateless". What does it mean, and why is it important?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+<pre><code>// key: document name, value: document contents
+def map(key: String, value: String):
+  count = {}
+  for w in value:
+    if not w in count: count[w] = 1
+    else: count[w] = count[w] + 1
+  for w in count:
+    emit(w, count[w])
+
+// key: a word, values: an iterator over counts
+def reduce(key: String, values: Iterator):
+  result = 0
+  for v in values:
+    result += v
+  emit(result)</code></pre>
+        <p><b>Stateless:</b> the output of map depends only on its own input element (here, its part of the document). It keeps no state between inputs and shares no state with other mappers.</p>
+        <p><b>Why important:</b> any map task can run on any machine, in any order, in parallel, and it can be re-executed after a failure with the same result.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The local dictionary <code>count</code> is not "state" in this sense: it lives only during one call and it is rebuilt from the same input on re-execution. The trap is to think that a mapper may keep a counter across blocks: then a re-run would give a different result.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="d-m3">
+    <div class="q-head"><span class="qid">Q10</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Reducers receive an immutable list, actually an iterator, over the values of each key. Why an iterator and not a normal list?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>The iterator ensures that the data is <b>read sequentially, from disk, only once</b>. The list of values for one key can be larger than the memory of the reducer. The platform sorts the intermediate pairs by key and streams them from disk to the reduce function.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Sequential disk reads are fast; random reads are slow. An iterator forbids random access and repeated scans, so the platform can stream any amount of data. The trap: a reduce function that stores all values in a list, or sorts them, can run out of memory on a frequent key.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="code" data-id="d-m4">
+    <div class="q-head"><span class="qid">Q11</span><span class="tag code">Code</span></div>
+    <p class="prompt">Inverted index. Input: d1 = "red fish blue fish", d2 = "blue sky", d3 = "red sky red". Output: for each word, the sorted list of documents that contain it. Write map and reduce in pseudocode and show the result.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+<pre><code>// key: document id, value: document text
+def map(docId, text):
+  for w in distinct(words(text)):
+    emit(w, docId)
+
+// key: a word, values: iterator of document ids
+def reduce(word, docIds: Iterator):
+  emit(word, sorted(distinct(docIds)))</code></pre>
+        <p>Map output: d1 → ⟨red,d1⟩ ⟨fish,d1⟩ ⟨blue,d1⟩; d2 → ⟨blue,d2⟩ ⟨sky,d2⟩; d3 → ⟨red,d3⟩ ⟨sky,d3⟩.</p>
+        <p>Result: blue → [d1, d2]; fish → [d1]; red → [d1, d3]; sky → [d2, d3].</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The key of the output is the word, so the word must be the intermediate key. The mapper removes duplicates inside one document ("fish" twice, "red" twice), so it sends less data. The list of documents for a word is usually small enough to sort; for very frequent words a real system relies on the platform's sort by key and value.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="d-m5">
+    <div class="q-head"><span class="qid">Q12</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Average temperature per city. Mapper 1 reads A: 10, 20 and B: 6. Mapper 2 reads A: 30 and B: 2, 4. A student lets each mapper emit the local average, and the reducer averages the averages. (a) Which results does the student get? (b) Which are the correct ones? (c) Write correct map and reduce functions that still aggregate inside the mapper.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>(a) Student: A = (15 + 30) / 2 = <b>22.5</b>; B = (6 + 3) / 2 = <b>4.5</b>.</p>
+        <p>(b) Correct: A = (10 + 20 + 30) / 3 = <b>20</b>; B = (6 + 2 + 4) / 3 = <b>4</b>.</p>
+        <p>(c) Emit partial sums and counts:</p>
+<pre><code>def map(blockId, readings):
+  acc = {}                       // city -&gt; (sum, count)
+  for (city, t) in readings:
+    (s, c) = acc.get(city, (0, 0))
+    acc[city] = (s + t, c + 1)
+  for city in acc:
+    emit(city, acc[city])
+
+def reduce(city, pairs: Iterator):
+  s = 0; c = 0
+  for (ps, pc) in pairs:
+    s += ps; c += pc
+  emit(city, s / c)</code></pre>
+        <p>With the data: A receives (30, 2), (30, 1) → 60 / 3 = 20. B receives (6, 1), (6, 2) → 12 / 3 = 4.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Sum and count can be combined in any order and grouping; the average cannot. A partial result must be "mergeable". The trap: averaging averages gives too much weight to small groups (mapper 2 has only one value of A).</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="d-m6">
+    <div class="q-head"><span class="qid">Q13</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Maximum temperature per city. Mapper 1: (Milan,12) (Rome,18) (Milan,15). Mapper 2: (Rome,21) (Turin,9) (Milan,11). Mapper 3: (Turin,14) (Rome,17). There are R = 2 reducers, and the partition function is length(city) mod 2. (a) Write map and reduce. (b) Which reducer gets which city? (c) Show the final output. (d) Is the load balanced?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+<pre><code>def map(blockId, readings):
+  best = {}
+  for (city, t) in readings:
+    if city not in best or t &gt; best[city]: best[city] = t
+  for city in best: emit(city, best[city])
+
+def reduce(city, temps: Iterator):
+  m = -infinity
+  for t in temps: if t &gt; m: m = t
+  emit(city, m)</code></pre>
+        <p>(b) Milan: 5 mod 2 = 1. Rome: 4 mod 2 = 0. Turin: 5 mod 2 = 1. Reducer 0 gets Rome. Reducer 1 gets Milan and Turin.</p>
+        <p>(c) Mapper outputs: M1 → (Milan,15) (Rome,18); M2 → (Rome,21) (Turin,9) (Milan,11); M3 → (Turin,14) (Rome,17). Reducer 0: Rome [18, 21, 17] → <b>21</b>. Reducer 1: Milan [15, 11] → <b>15</b>; Turin [9, 14] → <b>14</b>.</p>
+        <p>(d) Reducer 0 receives 3 values, reducer 1 receives 4 values. With only 3 keys the balance depends on luck; with many keys a hash spreads them evenly.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Max, like sum, is associative and commutative, so the mapper can pre-aggregate safely. The partition function decides only <i>where</i> a key goes, never <i>what</i> the result is.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="code" data-id="d-m7">
+    <div class="q-head"><span class="qid">Q14</span><span class="tag code">Code</span></div>
+    <p class="prompt">Join. Users(uid, name) = {(1, Ada), (2, Bob)}. Orders(oid, uid, amount) = {(o1, 1, 30), (o2, 2, 10), (o3, 1, 5)}. Produce (name, oid, amount) for every order. Write a reduce-side join in MapReduce and show what each reduce call receives.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+<pre><code>def map(source, record):
+  if source == "Users":
+    (uid, name) = record
+    emit(uid, ("U", name))
+  else:
+    (oid, uid, amount) = record
+    emit(uid, ("O", oid, amount))
+
+def reduce(uid, tagged: Iterator):
+  names = []; orders = []
+  for t in tagged:
+    if t[0] == "U": names.append(t[1])
+    else: orders.append((t[1], t[2]))
+  for n in names:
+    for (oid, a) in orders:
+      emit(n, oid, a)</code></pre>
+        <p>reduce(1, [("U",Ada), ("O",o1,30), ("O",o3,5)]) → (Ada, o1, 30), (Ada, o3, 5).</p>
+        <p>reduce(2, [("U",Bob), ("O",o2,10)]) → (Bob, o2, 10).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The join attribute (uid) must be the intermediate key, so matching records meet in the same reducer. The tag tells the reducer the source of each value, because the order of values in the iterator is not guaranteed. The trap: this reducer stores lists in memory, so a user with millions of orders can be a problem; a real system sorts values so that the "U" record comes first.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="code" data-id="d-m8">
+    <div class="q-head"><span class="qid">Q15</span><span class="tag code">Code</span></div>
+    <p class="prompt">A web log contains (user, page) pairs: (u1,p) (u2,p) (u1,p) (u3,q) (u2,q) (u1,p). (a) Count the number of distinct users in the whole log. (b) Count the number of distinct users per page. Write the MapReduce jobs and give the results.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>(a) Two chained jobs.</p>
+<pre><code>// Job 1: remove duplicates
+def map1(_, (user, page)):  emit(user, null)
+def reduce1(user, _vals):   emit(user)
+
+// Job 2: count
+def map2(_, user):          emit("all", 1)
+def reduce2(k, ones):       s = 0; for v in ones: s += v; emit(s)</code></pre>
+        <p>Job 1 gives u1, u2, u3. Job 2 gives <b>3</b>.</p>
+        <p>(b) One job, with the page as key:</p>
+<pre><code>def map(_, (user, page)):   emit(page, user)
+def reduce(page, users):    emit(page, size(distinct(users)))</code></pre>
+        <p>p receives [u1, u2, u1, u1] → <b>2</b>. q receives [u3, u2] → <b>2</b>.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>In (a) the grouping key (the user) is not the output key (one global number), so one step is not enough without a single reducer that sees all users. Chaining jobs is the typical MapReduce application: "a sequence of steps, each one a map and a reduce". In (b) a reducer that keeps a set of users can use a lot of memory for a popular page; an alternative is to use (page, user) as key in a first job.</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §3 ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§3</span><h2>The MapReduce platform: scheduling, locality, fault tolerance</h2></div>
+  <div class="core"><p><b>Core idea.</b> The platform does scheduling, data distribution and fault tolerance. One <b>master</b> assigns M map tasks (about 64 MB of input each) and R reduce tasks (key k goes to hash(k) mod R) to free workers. It puts map tasks close to the GFS replicas of their input. It re-runs the tasks of failed workers and launches backup copies of stragglers.</p></div>
+
+  <article class="q" data-type="describe" data-id="d-p0">
+    <div class="q-head"><span class="qid">Q16</span><span class="tag describe">Describe</span></div>
     <p class="prompt">How does MapReduce schedule tasks, exploit data locality, and tolerate failures and stragglers? What are its strengths and limits?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
         <ul>
-          <li><b>Scheduling:</b> one master, many workers. Input split into M map tasks (~64 MB); R reduce tasks. The master assigns tasks to free workers dynamically. Mappers write R local files; reducers fetch their part from all mappers, sort, and reduce.</li>
-          <li><b>Locality:</b> GFS stores 3 replicas of each 64 MB block; the master puts a map task on a machine with a replica (or in the same rack), so input is read at local disk speed.</li>
-          <li><b>Worker failure</b> (heartbeats): re-run its completed <i>and</i> in-progress map tasks (their output is on its local disk); re-run only in-progress reduce tasks (completed output is in the global file system). Reducers are told about re-executed maps. <b>Master failure:</b> state checkpointed to GFS; a new master continues.</li>
-          <li><b>Stragglers:</b> near the end, launch backup copies of the remaining tasks; take the first to finish.</li>
+          <li><b>Scheduling:</b> one master, many workers. Input split into M map tasks (typically 64 MB); R reduce tasks, partitioned by hash(k) mod R. The master assigns tasks to free workers dynamically. Each mapper writes R local files; each reducer fetches its part from all mappers, sorts, and applies reduce.</li>
+          <li><b>Locality:</b> GFS stores 3 replicas of each 64 MB block. The master puts a map task on a machine with a replica (or in the same rack), so input is read at local disk speed.</li>
+          <li><b>Worker failure</b> (detected by heartbeats): re-run its completed <i>and</i> in-progress map tasks (their output is on its local disk); re-run only in-progress reduce tasks (completed output is in the global file system). Reducers are told about re-executed maps. <b>Master failure:</b> state checkpointed to GFS; a new master recovers and continues.</li>
+          <li><b>Stragglers:</b> near the end, reschedule the remaining tasks as backup copies; take the first copy that finishes.</li>
         </ul>
-        <p><b>Strengths:</b> simple functions, the system handles the hard parts, very general, good for large-scale analysis. <b>Limits:</b> high overhead, lower raw performance than HPC, rigid two-step paradigm: each step must complete before the next starts.</p>
+        <p><b>Strengths:</b> developers write simple functions; the system manages allocation, synchronization, communication, fault tolerance and stragglers; very general; good for large-scale analysis. <b>Limits:</b> high overhead, lower raw performance than HPC, very fixed paradigm: each MapReduce step must complete before the next one starts.</p>
       </div>
       <div class="why"><h4>Why</h4><p>Immutable intermediate data is the key to simple fault tolerance: a lost result can always be recomputed from its input. This idea carries over to Spark's lineage.</p></div>
     </div>
   </article>
+
+  <article class="q" data-type="exercise" data-id="d-p1">
+    <div class="q-head"><span class="qid">Q17</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">The input is three files of 200 MB, 100 MB and 30 MB. Splits are 64 MB and a split never crosses a file. R = 4. (a) How many map tasks M? (b) How many intermediate local files are written in total? (c) From how many workers does each reducer read? (d) How many map tasks for 1 TB (1 TB = 1 048 576 MB)?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>(a) 200 MB → ⌈200/64⌉ = 4 splits (64, 64, 64, 8). 100 MB → 2 splits (64, 36). 30 MB → 1 split. <b>M = 7</b>.</p>
+        <p>(b) Each map task writes R = 4 local files: 7 × 4 = <b>28</b> files.</p>
+        <p>(c) Each reducer reads its partition from every map task: <b>7</b> map outputs (on at most 7 workers).</p>
+        <p>(d) 1 048 576 / 64 = <b>16 384</b> map tasks.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>M follows the input size; R is chosen by the user and fixes the number of output files. The shuffle is an M × R exchange: this is why it is the most expensive phase. Many small map tasks also help load balancing and fast recovery: a lost task is short to re-run.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="d-p2">
+    <div class="q-head"><span class="qid">Q18</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">R = 3. The hash of a word is the sum of the positions of its letters (a = 1, …, z = 26). Keys: cat, dog, owl, bee, ant, fox, yak. (a) Which reduce task gets each key? (b) Comment on the load. (c) Why must all mappers use the same function?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table>
+          <tr><th>Key</th><th>hash</th><th>hash mod 3</th></tr>
+          <tr><td>cat</td><td>3+1+20 = 24</td><td>0</td></tr>
+          <tr><td>dog</td><td>4+15+7 = 26</td><td>2</td></tr>
+          <tr><td>owl</td><td>15+23+12 = 50</td><td>2</td></tr>
+          <tr><td>bee</td><td>2+5+5 = 12</td><td>0</td></tr>
+          <tr><td>ant</td><td>1+14+20 = 35</td><td>2</td></tr>
+          <tr><td>fox</td><td>6+15+24 = 45</td><td>0</td></tr>
+          <tr><td>yak</td><td>25+1+11 = 37</td><td>1</td></tr>
+        </table></div>
+        <p>(a) Reducer 0: cat, bee, fox. Reducer 1: yak. Reducer 2: dog, owl, ant.</p>
+        <p>(b) Unbalanced: reducer 1 has one key. With few keys, or with one very frequent key, the hash cannot balance the load. Reducer 1 finishes early and stays idle.</p>
+        <p>(c) The guarantee "same key → same reducer" holds only if every mapper sends key k to the same partition. Each mapper writes R local files, one per partition, using the same function.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>MapReduce fixes the partition before the data is known. This is the "fixed paradigm" limit. A scheduling dataflow system such as Spark can look at the intermediate results first and redistribute them (load balancing).</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="d-p3">
+    <div class="q-head"><span class="qid">Q19</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">All map tasks are finished. W1 ran maps m1, m4 (completed) and reduce r1 (completed). W2 ran maps m2, m5 (completed) and reduce r2 (in progress). W3 ran maps m3, m6 (completed) and reduce r3 (in progress). (a) W2 crashes. Which tasks are re-executed, and why? What happens to r3? (b) Instead, W1 crashes. Which tasks are re-executed? (c) Instead, the master crashes. What happens?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>(a) The master detects the failure because W2 stops answering heartbeats. It re-executes <b>m2, m5</b> and <b>r2</b> on other workers.</p>
+        <ul>
+          <li>m2, m5: completed, but their output (R local files) is on W2's local disk, which is now unreachable.</li>
+          <li>r2: in progress, so its work is lost.</li>
+        </ul>
+        <p>r3 continues on W3. The master notifies all reduce workers about the re-execution of m2 and m5, so r3 reads the missing partitions from the new workers.</p>
+        <p>(b) Re-execute <b>m1, m4</b> (completed map, output on a local disk). Do <b>not</b> re-execute r1: it is completed, and its output is in the global file system (GFS), which is replicated.</p>
+        <p>(c) The master state (which tasks are idle, in progress or completed, and where intermediate files are) is checkpointed to GFS. A new master reads the last checkpoint and continues.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The rule depends on <b>where the output is stored</b>, not on the type of task: local disk is lost with the worker, GFS survives it. The common trap is to answer "re-run only the in-progress tasks". Completed map tasks also go back, because the reducers may still need their output.</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>Say explicitly: "completed map: output on local disk, re-run; completed reduce: output in GFS, keep".</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="d-p4">
+    <div class="q-head"><span class="qid">Q20</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">GFS block b7 has replicas on N3 (rack 1), N8 (rack 2) and N12 (rack 3). Map task m7 reads b7. The free workers are N5 (rack 1) and N20 (rack 4). (a) Where does the master put m7, and why? (b) What would the master do if N8 were free? (c) What is the goal of this policy?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>(a) On <b>N5</b>. No free worker has a replica, so the master picks a worker on the same rack (switch) as a replica (N3, rack 1). N5 reads b7 through the rack switch only.</p>
+        <p>(b) On <b>N8</b>: it has a local replica, so the task reads at local disk speed.</p>
+        <p>(c) Limit the use of network bandwidth. If thousands of mappers read over the network, the rack switches limit the read rate. With locality, thousands of machines read input in parallel at local disk speed.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The idea is "move the computation to the data, not the data to the computation". Code is small; 64 MB blocks are big. The 3 replicas give the master 3 good choices for each task.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="d-p5">
+    <div class="q-head"><span class="qid">Q21</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">A job has 200 map tasks on 20 workers. Each task takes 1 minute on a normal machine. At minute 10, 199 tasks are done. The last task started at minute 9 on a machine with a bad disk that works at 1/10 of the normal speed. (a) When does the map phase end without backup tasks? (b) When does it end if the master starts a backup copy on a normal machine at minute 10? (c) What is the cost of this technique?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>(a) The task needs 10 minutes on the slow machine: it ends at minute 9 + 10 = <b>19</b>. No reducer can complete before that.</p>
+        <p>(b) The backup needs 1 minute: it ends at minute <b>11</b>. The master takes the first copy that finishes and ignores the other one. The map phase is 8 minutes shorter.</p>
+        <p>(c) Some redundant work (one extra task here), and the master must track redundant executions. The extra resources are small, because backups start only when most tasks are done.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The job ends when the slowest task ends. A straggler can come from slow hardware, poor partitioning or a bug. The re-execution is safe because map is deterministic and its input is immutable. Note: backups do not help if the cause is poor partitioning (a huge key), because the copy is as slow as the original.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="d-p6">
+    <div class="q-head"><span class="qid">Q22</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">You run PageRank with 30 iterations in MapReduce. Each iteration is one MapReduce job. Explain why this is slow, and which limit of MapReduce it shows. What would a more general model change?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li>Each job writes its full output to the global file system, and the next job reads it again: 30 writes and 30 reads of the whole graph.</li>
+          <li>Each job must complete before the next one starts, and each one pays the scheduling overhead.</li>
+          <li>The graph structure, which never changes, is read again in every iteration.</li>
+        </ul>
+        <p>Limits shown: high overhead and a very fixed paradigm. A dataflow system (Spark) describes the whole computation as one graph of many stages and <b>caches</b> reused data (the graph structure) in main memory.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A typical MapReduce application is "a series of data transformations, iterating until convergence". MapReduce can express it, but it pays storage and scheduling costs at every step. This is exactly the motivation for the dataflow model.</p></div>
+    </div>
+  </article>
 </section>
 
+<!-- ===== §4 ===== -->
 <section class="topic">
-  <div class="topic-head"><span class="num">§2</span><h2>The dataflow model and its two architectures</h2></div>
-  <div class="core"><p><b>Core idea.</b> Generalize MapReduce from two steps to an arbitrary <b>directed acyclic graph</b> of transformations, each run as many parallel tasks, with one abstraction for batch and streams. Two ways to run it: <b>scheduling</b> of tasks (Spark) and <b>pipelining</b> of tasks (Flink).</p></div>
+  <div class="topic-head"><span class="num">§4</span><h2>The dataflow model: scheduling (Spark) vs pipelining (Flink)</h2></div>
+  <div class="core"><p><b>Core idea.</b> Generalize MapReduce from two steps to an arbitrary <b>directed acyclic graph</b> of transformations, each one run as many parallel tasks, with one abstraction for batch and streams. Two ways to run it: <b>scheduling</b> of tasks (Spark) decouples stages through storage; <b>pipelining</b> of tasks (Flink) connects always-active tasks directly.</p></div>
 
   <article class="q" data-type="describe" data-id="d-f1">
-    <div class="q-head"><span class="qid">Q3</span><span class="tag describe">Describe</span><span class="seen">Exam 14 Feb 2024 · 18 Jun 2024 · 6 Sep 2024 (part a)</span></div>
+    <div class="q-head"><span class="qid">Q23</span><span class="tag describe">Describe</span><span class="seen">Exam 14 Feb 2024 · 18 Jun 2024 · 6 Sep 2024 (part a)</span></div>
     <p class="prompt">Describe the key characteristics of the dataflow model for big data processing.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
@@ -197,7 +606,7 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
   </article>
 
   <article class="q" data-type="compare" data-id="d-f2">
-    <div class="q-head"><span class="qid">Q4</span><span class="tag compare">Compare</span><span class="seen">Exam 14 Feb 2024 · 18 Jun 2024 · 6 Sep 2024 (part b)</span></div>
+    <div class="q-head"><span class="qid">Q24</span><span class="tag compare">Compare</span><span class="seen">Exam 14 Feb 2024 · 18 Jun 2024 · 6 Sep 2024 (part b)</span></div>
     <p class="prompt">Describe the two architectures to implement the dataflow model: scheduling of tasks and pipelining of tasks.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
@@ -223,7 +632,7 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
   </article>
 
   <article class="q" data-type="scenario" data-id="d-f3">
-    <div class="q-head"><span class="qid">Q5</span><span class="tag scenario">Scenario</span></div>
+    <div class="q-head"><span class="qid">Q25</span><span class="tag scenario">Scenario</span></div>
     <p class="prompt">Choose an architecture: (a) a nightly job over 50 TB of logs on a shared cluster whose free resources change; (b) fraud detection on card payments with a 50 ms latency target; (c) an hourly dashboard that tolerates a few seconds of delay but has bursty load.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
@@ -237,14 +646,121 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
       <div class="why"><h4>Why</h4><p>Decide on two axes: required latency, and how much resources or load change over time.</p></div>
     </div>
   </article>
+
+  <article class="q" data-type="scenario" data-id="d-f4">
+    <div class="q-head"><span class="qid">Q26</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">A batch job has stage A (filter, 4 tasks) and stage B (group by customer). After stage A you discover that one customer owns 60% of the data, and that A produced 10 times less data than expected. Which architecture can react, and how? What would the other architecture do?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Scheduling (Spark)</b> can react, because the decision for stage B is taken at run time, after A has written its results to storage.</p>
+        <ul>
+          <li><b>Elasticity:</b> A produced little data, so the scheduler gives B fewer tasks and cores.</li>
+          <li><b>Load balancing:</b> it looks at the distribution of the intermediate results and allocates the data across B<sub>1</sub>, B<sub>2</sub>, … so that no task gets far more than the others.</li>
+        </ul>
+        <p><b>Pipelining (Flink)</b> fixed the number of B tasks and the routing when the job started. The task that gets the big customer becomes a bottleneck, and the extra B tasks stay idle. The only way to change is snapshot, stop, restart with new resources, resume: expensive.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Both advantages come from the decoupling between upstream and downstream stages. In pipelining, B is already running while A produces data, so nobody knows the full output of A when B starts.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="d-f5">
+    <div class="q-head"><span class="qid">Q27</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Spark job: stage 1 has tasks A1–A4 (read a GFS/HDFS file, map). A shuffle by key follows. Stage 2 has tasks B1–B3 (reduce by key). Stage 3 has tasks C1–C3 (map each B partition); B results are cached in memory. Worker W2 holds the shuffle output of A2 and the cached result of B2. W2 fails while C1–C3 run. Which tasks are re-executed? Which are not, and why?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>The lost data is the cached partition of B2 (needed by C2) and the output of A2.</p>
+        <ol>
+          <li>Follow the lineage of B2: B2 needs its key partition from <b>all</b> A tasks. A1, A3, A4 outputs are still available; A2's output is lost. So re-run <b>A2</b> (it reads its input block again from the replicated file system).</li>
+          <li>Re-run <b>B2</b> with the outputs of A1–A4.</li>
+          <li>Re-run <b>C2</b> if it was running on W2 or had not completed.</li>
+        </ol>
+        <p>Not re-executed: A1, A3, A4, B1, B3, and C1, C3 (if they are on other workers). Their data is not lost.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Lineage is the "recipe" of each partition: which input and which transformations produced it. Because data is immutable, the system re-runs only that recipe. Compare with Flink: there, a failure restarts the whole graph from the last snapshot. The trap: forgetting A2. B2 needs one partition from every A task, so the loss of any A output blocks it.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="d-f6">
+    <div class="q-head"><span class="qid">Q28</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Flink snapshot. Task C2 has two input channels, from B2 and from B3. Its state is the sum of all values it has processed. Elements arrive at C2 in this order (M = marker of snapshot 1): B2:1, B3:10, B2:2, B2:M, B2:4, B3:20, B3:M, B3:30. (a) Trace the alignment: what does C2 do at each arrival? (b) Which state does C2 save? What is the final state? (c) C2 fails after it processed everything. What does recovery do, and which state do we get? (d) What happens if C2 does not align and saves its state when the last marker arrives, after it processed every element so far?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table>
+          <tr><th>Arrival</th><th>Action</th><th>State</th></tr>
+          <tr><td>B2:1</td><td>process</td><td>1</td></tr>
+          <tr><td>B3:10</td><td>process</td><td>11</td></tr>
+          <tr><td>B2:2</td><td>process</td><td>13</td></tr>
+          <tr><td>B2:M</td><td>marker on B2: stop processing B2</td><td>13</td></tr>
+          <tr><td>B2:4</td><td>buffer (B2 is blocked)</td><td>13</td></tr>
+          <tr><td>B3:20</td><td>process (B3 has no marker yet)</td><td>33</td></tr>
+          <tr><td>B3:M</td><td>markers from all inputs: save state 33, forward marker, resume</td><td>33</td></tr>
+          <tr><td>(buffer) 4</td><td>process</td><td>37</td></tr>
+          <tr><td>B3:30</td><td>process</td><td>67</td></tr>
+        </table></div>
+        <p>(b) Saved state = <b>33</b> (= 1 + 10 + 2 + 20: all elements before the markers). Final state = <b>67</b>.</p>
+        <p>(c) Re-deploy the entire graph. Restore the last snapshot that all tasks completed (C2 = 33). Replay the elements after the markers: 4 and 30. State = 33 + 4 + 30 = <b>67</b>: correct, each element counted once.</p>
+        <p>(d) The saved state would be 1 + 10 + 2 + 4 + 20 = <b>37</b>. It includes 4, which is after the marker on B2. Recovery replays 4 and 30 → 37 + 4 + 30 = <b>71</b>: the value 4 is counted twice.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The marker separates "before the snapshot" from "after the snapshot" on each channel. Alignment makes sure the saved state contains exactly the "before" part of every input. This is why it is similar to Chandy–Lamport: the snapshot is a consistent cut. Markers come from the sources and flow with the data, so no extra channel state must be saved: the channel content is replayed from the durable input.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="d-f7">
+    <div class="q-head"><span class="qid">Q29</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">In the pipelining architecture: (a) what are the steps of recovery after a failure, and which storage do they need? (b) How can the snapshot mechanism give dynamic adaptation for a long-running job, and why is it expensive compared to scheduling?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>(a) Recovery:</p>
+        <ol>
+          <li>Re-deploy the entire graph of tasks.</li>
+          <li>Recover the last saved state: the snapshot of the last marker received by all nodes.</li>
+          <li>Replay all elements that were not part of the snapshot, that is, the elements received after the marker.</li>
+        </ol>
+        <p>It needs <b>durable storage for the input data</b> (to replay it, for example a Kafka queue) and <b>durable storage for the state snapshots</b>.</p>
+        <p>(b) Adaptation:</p>
+        <ol>
+          <li>Take a global snapshot.</li>
+          <li>Stop the job.</li>
+          <li>Restart the job with a different amount of resources.</li>
+          <li>Resume from the last stored snapshot.</li>
+        </ol>
+        <p>It is expensive because the whole job stops and restarts. A scheduler changes resources at every stage, at run time, with no stop.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>In pipelining there is no intermediate storage between stages, so one failed task cannot be recomputed alone: its upstream tasks did not keep their outputs. The whole graph goes back to a consistent cut. This is the price of low latency.</p></div>
+    </div>
+  </article>
 </section>
 
+<!-- ===== §5 ===== -->
 <section class="topic">
-  <div class="topic-head"><span class="num">§3</span><h2>Stream processing</h2></div>
-  <div class="core"><p><b>Core idea.</b> Static job, dynamic data: results are updated continuously. <b>Windows</b> give precise semantics (count- or time-based, size and slide). <b>Event time</b> with <b>watermarks</b> gives correct order despite network and processing delays.</p></div>
+  <div class="topic-head"><span class="num">§5</span><h2>Stream processing: windows, time and watermarks</h2></div>
+  <div class="core"><p><b>Core idea.</b> Stream processing reverses batch: a static query runs on dynamic data and outputs new results continuously. <b>Windows</b> (count- or time-based, with a size and a slide) give precise semantics. <b>Event time</b> with <b>watermarks</b> gives a correct order despite network and processing delays. Pipelining runs streams with low latency; micro-batches trade latency for elasticity.</p></div>
+
+  <article class="q" data-type="describe" data-id="d-s0">
+    <div class="q-head"><span class="qid">Q30</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">How does stream processing differ from batch processing? For the job "compute the average temperature in the last hour for each room", which semantic questions are not clear, and what solves them?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Batch:</b> static data, on-demand query; the job analyzes the data and produces one output. <b>Stream:</b> static query (job), dynamic data; the job continuously outputs new results as new data arrives.</p>
+        <p><b>Unclear points:</b></p>
+        <ul>
+          <li>When should the result be updated?</li>
+          <li>What happens if no value arrives for several minutes?</li>
+          <li>What happens if no value arrives for more than one hour?</li>
+        </ul>
+        <p><b>Solution: windows.</b> A window isolates the portion of the stream on which the computation runs, and defines when the computation runs. The job becomes "average per room in a sliding time-based window of size 1 hour, slide 5 minutes".</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>"The last hour" is relative to a moment, and in a stream the moment always moves. The slide fixes the moments; the size fixes the data. Even then a question stays open: which clock measures the hour? This leads to processing time vs event time.</p></div>
+    </div>
+  </article>
 
   <article class="q" data-type="exercise" data-id="d-s1">
-    <div class="q-head"><span class="qid">Q6</span><span class="tag exercise">Exercise</span></div>
+    <div class="q-head"><span class="qid">Q31</span><span class="tag exercise">Exercise</span></div>
     <p class="prompt">Stream: 1 3 1 3 3 5 0 0 0 4. Compute the average (a) in a count-based window of size 4, slide 2; (b) in a tumbling window of size 5. Which one is sliding and which tumbling?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
@@ -252,43 +768,160 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
         <p>(a) Windows [1 3 1 3] → 2; [1 3 3 5] → 3; [3 5 0 0] → 2; [0 0 0 4] → 1. Results: <b>2, 3, 2, 1</b>. Slide &lt; size: <b>sliding</b> (overlapping) window.</p>
         <p>(b) [1 3 1 3 3] → 2.2; [5 0 0 0 4] → 1.8. Slide = size: <b>tumbling</b> window (no overlap).</p>
       </div>
-      <div class="why"><h4>Why</h4><p>The slide decides when a result is produced; the size decides how much data each result uses. Count-based windows are "physical" (number of elements); time-based are "logical".</p></div>
+      <div class="why"><h4>Why</h4><p>The slide decides when a result is produced; the size decides how much data each result uses. Count-based windows are "physical" (number of elements); time-based are "logical" (amount of time).</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="compare" data-id="d-s2">
-    <div class="q-head"><span class="qid">Q7</span><span class="tag compare">Compare</span></div>
+  <article class="q" data-type="exercise" data-id="d-s2">
+    <div class="q-head"><span class="qid">Q32</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Same stream: 1 3 1 3 3 5 0 0 0 4. A window produces a result only when it is full. Compute: (a) sum, count-based, size 3, slide 1; (b) max, count-based, size 3, slide 3; (c) sum, size 2, slide 3. What is special about (c)?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>(a) [1 3 1] 5; [3 1 3] 7; [1 3 3] 7; [3 3 5] 11; [3 5 0] 8; [5 0 0] 5; [0 0 0] 0; [0 0 4] 4. Results: <b>5, 7, 7, 11, 8, 5, 0, 4</b> (8 windows).</p>
+        <p>(b) Tumbling: [1 3 1] 3; [3 3 5] 5; [0 0 0] 0. Results: <b>3, 5, 0</b>. The last element (4) waits for two more elements.</p>
+        <p>(c) Windows start at positions 1, 4, 7: [1 3] 4; [3 3] 6; [0 0] 0. Results: <b>4, 6, 0</b>. Slide &gt; size: the elements at positions 3, 6 and 9 (values 1, 5, 0) belong to no window. They are never used. The window that starts at position 10 waits for one more element.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Count windows: number of results ≈ (n − size) / slide + 1. With slide = 1 every new element gives a result. The slides define only sliding (slide &lt; size) and tumbling (slide = size). Case (c) is a trap: it samples the stream and loses data, so it is rarely what you want.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="d-s3">
+    <div class="q-head"><span class="qid">Q33</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Event-time stream of (timestamp in s, value): (1,4) (3,2) (4,6) (7,1) (9,3) (12,5) (13,2) (16,8) (18,1) (19,4). A window [s, s + size) contains elements with s ≤ t &lt; s + size. Compute (a) the sum and average in a time-based sliding window of size 10 s, slide 5 s, for the windows [0,10), [5,15), [10,20); (b) the sum in a tumbling window of size 5 s.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>(a)</p>
+        <div class="tbl"><table>
+          <tr><th>Window</th><th>Values</th><th>Sum</th><th>Average</th></tr>
+          <tr><td>[0,10)</td><td>4 2 6 1 3</td><td>16</td><td>3.2</td></tr>
+          <tr><td>[5,15)</td><td>1 3 5 2</td><td>11</td><td>2.75</td></tr>
+          <tr><td>[10,20)</td><td>5 2 8 1 4</td><td>20</td><td>4</td></tr>
+        </table></div>
+        <p>(b) [0,5): 4+2+6 = <b>12</b>; [5,10): 1+3 = <b>4</b>; [10,15): 5+2 = <b>7</b>; [15,20): 8+1+4 = <b>13</b>.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>In a time-based window the number of elements changes (5, 4, 5 here), because it depends on how many events happen in each period. Each element belongs to size/slide = 2 sliding windows. The sliding window [0,10) is the union of the tumbling windows [0,5) and [5,10): 12 + 4 = 16. This is the idea behind micro-batches.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="d-s4">
+    <div class="q-head"><span class="qid">Q34</span><span class="tag compare">Compare</span></div>
     <p class="prompt">Compare processing time and event time. What is a watermark and how does it propagate in a distributed job?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
         <p><b>Processing time:</b> the wall clock of the machine that computes. Easy, but out of the application's control: with overload, multiple sources, or distributed processing, the order and grouping depend on queues, network delays and executor speed. A receiver cannot tell how up to date its results are.</p>
-        <p><b>Event time:</b> a timestamp attached to each element by the source (or the ingestion system). The application controls the order, but elements can arrive out of order, so the processor must buffer them.</p>
+        <p><b>Event time:</b> a timestamp attached to each element by the source (or the ingestion system). The application controls the order, but elements can arrive out of order, so the processor must buffer them until it is sure no earlier element will arrive. This can add delay.</p>
         <p><b>Watermark:</b> a contract from a source: "a watermark with time t means no element with time ≤ t will follow". When a processor has a watermark ≥ t from <b>all</b> its inputs, it can safely process all elements with time ≤ t, then forward the watermark downstream.</p>
       </div>
       <div class="why"><h4>Why</h4><p>A watermark plays the role of a token: it separates "complete" from "still incomplete" data, like the marker in Chandy–Lamport. Waiting for all inputs is what makes the result deterministic.</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="compare" data-id="d-s3">
-    <div class="q-head"><span class="qid">Q8</span><span class="tag compare">Compare</span></div>
+  <article class="q" data-type="scenario" data-id="d-s5">
+    <div class="q-head"><span class="qid">Q35</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">Two sensors measure the temperature of the same room. Sensor 1 is on a fast LAN (2 ms delay). Sensor 2 is on a mobile link that sometimes buffers data for 90 s. The job computes a 1-minute tumbling average using processing time. Describe what goes wrong. How does event time fix it, and what does it cost?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>With processing time:</b> readings of sensor 2 arrive late, so they fall into a later window than the minute in which they were measured. A window can contain readings from two different real minutes, and another window can lack sensor 2 entirely. The result depends on network delays, not on the room. If the processor is overloaded, queues add even more shift, and nobody can tell how up to date a result is.</p>
+        <p><b>With event time:</b> each reading carries the time of measurement. The processor puts it in the correct window whatever its arrival time.</p>
+        <p><b>Cost:</b> the processor must buffer the window until it is sure that no earlier reading will come (watermark from both sensors). With sensor 2, the result of a minute can be delayed by up to about 90 s.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Processing time is "out of the control of the application": order depends on network delays between sources and system, and on the speed and load of each executor. Event time moves control to the sources, and the price is latency.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="d-s6">
+    <div class="q-head"><span class="qid">Q36</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Operator O has two input channels, S1 and S2. It computes the sum in event-time tumbling windows: W1 holds event times 1–10, W2 holds event times 11–20 (integer timestamps). e(t, v) is an element; wm(t) is a watermark. Arrival order at O:<br/>1 S1 e(2,5) · 2 S2 e(4,1) · 3 S1 e(8,3) · 4 S1 wm(6) · 5 S2 e(9,2) · 6 S1 e(12,7) · 7 S2 wm(8) · 8 S1 wm(11) · 9 S2 e(10,4) · 10 S2 e(14,6) · 11 S2 wm(12) · 12 S1 e(15,1) · 13 S1 wm(20) · 14 S2 e(19,2) · 15 S2 wm(21).<br/>(a) After which arrival can O emit W1, and with which result? (b) The same for W2. (c) Which watermarks does O forward downstream, and when? (d) What would go wrong if O used only the watermark of S1?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>O tracks the last watermark of each input. Its own "event-time clock" is the <b>minimum</b>.</p>
+        <div class="tbl"><table>
+          <tr><th>After arrival</th><th>wm S1</th><th>wm S2</th><th>min</th><th>Action</th></tr>
+          <tr><td>4</td><td>6</td><td>–</td><td>–</td><td>nothing (no watermark from S2)</td></tr>
+          <tr><td>7</td><td>6</td><td>8</td><td>6</td><td>forward wm(6)</td></tr>
+          <tr><td>8</td><td>11</td><td>8</td><td>8</td><td>forward wm(8)</td></tr>
+          <tr><td>11</td><td>11</td><td>12</td><td>11</td><td>emit W1, forward wm(11)</td></tr>
+          <tr><td>13</td><td>20</td><td>12</td><td>12</td><td>forward wm(12)</td></tr>
+          <tr><td>15</td><td>20</td><td>21</td><td>20</td><td>emit W2, forward wm(20)</td></tr>
+        </table></div>
+        <p>(a) W1 needs min ≥ 10. This happens after arrival <b>11</b>. W1 = 5 + 1 + 3 + 2 + 4 = <b>15</b> (times 2, 4, 8, 9, 10).</p>
+        <p>(b) W2 needs min ≥ 20. This happens after arrival <b>15</b>. W2 = 7 + 6 + 1 + 2 = <b>16</b> (times 12, 14, 15, 19).</p>
+        <p>(c) wm(6) after 7, wm(8) after 8, wm(11) after 11, wm(12) after 13, wm(20) after 15. Downstream operators then apply the same rule.</p>
+        <p>(d) After arrival 8 (S1 wm 11) O would emit W1 = 11 too early. Element e(10, 4) from S2 arrives at step 9 and would be missed, so W1 would be wrong.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Each watermark is a promise of one source only. S2 has promised nothing beyond 8 when S1 says 11, so time 10 may still come from S2, and it does. The minimum over all inputs is the only safe promise, and it is also the promise O can give downstream. Check: every element respects its own source's contract (for example S2 sends 10 after wm(8), which is allowed).</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>Draw a table with one column per input watermark and one for the minimum. The slowest input decides.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="d-s7">
+    <div class="q-head"><span class="qid">Q37</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">A job has three sources S1, S2, S3 → operator A (inputs S1, S2) and operator B (input S3) → operator C (inputs A, B). The last watermarks received are: S1 = 40, S2 = 35, S3 = 28. (a) Which watermark do A, B and C forward? (b) C computes 10-second windows covering times 21–30 and 31–40. Which windows can C close? (c) S3 then sends wm(45). What changes?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>(a) A: min(40, 35) = <b>35</b>. B: <b>28</b>. C: min(35, 28) = <b>28</b>.</p>
+        <p>(b) Window 21–30 needs a watermark ≥ 30, and window 31–40 needs ≥ 40. With 28 C can close <b>neither</b>.</p>
+        <p>(c) B forwards 45. C: min(35, 45) = 35. Now C can close window <b>21–30</b> (35 ≥ 30), but not 31–40: it waits for S2 (through A) to reach 40.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A watermark propagates only when it holds on all incoming channels. Each operator forwards the minimum of its inputs, so the slowest source in the whole upstream graph limits every downstream window. This is how order is preserved in distributed processing, and it is also the source of the extra delay of event time.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="d-s8">
+    <div class="q-head"><span class="qid">Q38</span><span class="tag compare">Compare</span></div>
     <p class="prompt">"Average temperature over a sliding time window of 1 hour, slide 5 minutes": how is it implemented with pipelining, and with micro-batches?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p><b>Pipelining:</b> operator A is always active and keeps the last hour of readings in its local state; every 5 minutes it emits the new average. Results with no batching overhead.</p>
+        <p><b>Pipelining:</b> operator A is always active and keeps the last hour of readings in its local state; every 5 minutes it emits the new average. Results with no batching or scheduling overhead.</p>
         <p><b>Micro-batch:</b> the system cuts the input into batches that divide both size and slide (e.g. 5 minutes each). A separate job runs per micro-batch; the window state is saved to external storage after each batch and read back at the next one. Latency of hundreds of ms to seconds; resources can change between batches.</p>
       </div>
       <div class="why"><h4>Why</h4><p>Micro-batching turns a stream into many small batch jobs, so it inherits the strengths (elasticity) and weaknesses (latency) of the scheduling architecture.</p></div>
     </div>
   </article>
+
+  <article class="q" data-type="exercise" data-id="d-s9">
+    <div class="q-head"><span class="qid">Q39</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">A micro-batch system must run a window of size 10 minutes, slide 4 minutes. Micro-batch lengths are whole minutes. (a) Which lengths are valid? (b) With the longest valid length, how many micro-batches form one window, and after how many micro-batches does a new result appear? (c) Same questions for size 1 hour, slide 5 minutes, with 5-minute batches.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>(a) The length must divide both 10 and 4: <b>1 or 2 minutes</b> (divisors of gcd(10, 4) = 2). A 5-minute batch is not valid: 5 does not divide 4.</p>
+        <p>(b) With 2-minute batches: one window = 10 / 2 = <b>5</b> micro-batches; a new result every 4 / 2 = <b>2</b> micro-batches.</p>
+        <p>(c) One window = 60 / 5 = <b>12</b> micro-batches; a new result after <b>every</b> micro-batch.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A window must start and end on a batch boundary, otherwise a batch would belong partly to a window. Smaller batches mean lower latency, but more jobs to schedule and more reads and writes of the window state in external storage.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="d-s10">
+    <div class="q-head"><span class="qid">Q40</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">Choose a stream implementation (pipelining or micro-batch) and justify: (a) collision alerts for autonomous robots in a warehouse, deadline 20 ms; (b) a social-media trending-topics page refreshed every 10 s, with traffic that grows 20 times during big events; (c) monitoring of a power grid that must react in under 100 ms and runs for months with stable load.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li><b>Pipelining.</b> 20 ms is far below the hundreds of ms of micro-batches. Data must flow continuously from task to task.</li>
+          <li><b>Micro-batch.</b> A latency of seconds is acceptable. Dynamic resource allocation adds resources across micro-batches when the traffic grows.</li>
+          <li><b>Pipelining.</b> Low latency is required. The load is stable, so the lack of elasticity is not a problem; a rare change can use snapshot, stop and restart.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>The slides summarize it: pipelining is ideal for low-latency jobs; micro-batch suits jobs that tolerate hundreds of milliseconds to seconds and gains dynamic resource allocation. Ask first "what latency?", then "does the load change?".</p></div>
+    </div>
+  </article>
 </section>
-<footer>Source: lecture slides "09 – Dataflow" (Margara) and the past exams in your course folder (2024). Your "Got it" and "Review again" marks stay only in this browser.</footer>
+<footer>Source: lecture slides "09 – Distributed data processing with dataflow systems" (Margara) and the past exams in your course folder (2024). Your "Got it" and "Review again" marks stay only in this browser.</footer>
 </div>
 
 <script>
 (function(){
-  const KEY = "ds-dataflow-marks-v1";
+  const KEY = "ds-dataflow-marks-v2";
   let marks = {};
   try { marks = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e) { marks = {}; }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(marks)); } catch(e) {} };

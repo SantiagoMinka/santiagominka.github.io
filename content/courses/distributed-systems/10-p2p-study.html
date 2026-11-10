@@ -111,7 +111,7 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
   <a class="eyebrow" href="/courses.html?c=distributed-systems" style="text-decoration:none">← Distributed Systems notes</a>
   <div class="eyebrow">Distributed Systems · Prof. Margara · Chapter 10</div>
   <h1>Peer-to-peer</h1>
-  <p class="lede">Exam drill for P2P retrieval: centralized search (Napster), flooding (Gnutella), super-peers (Kazaa), BitTorrent, Freenet, and DHTs (Chord). The Chord exercise is in almost every exam.</p>
+  <p class="lede">Exam drill for P2P retrieval: centralized search (Napster), flooding (Gnutella), super-nodes (Kazaa), BitTorrent, Freenet, and DHTs (Chord). The Chord finger-table exercise is in almost every recent exam. Answer on paper first, then open the model answer.</p>
 </header>
 <div class="toolbar" role="toolbar" aria-label="Filter and controls">
   <button class="chip" data-filter="all" aria-pressed="true">All</button>
@@ -129,174 +129,886 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
 
 <div class="exam-map">
   <h2>How the exam asks about this chapter</h2>
+  <p>In the 2023–2024 exams (Prof. Cugola), question 6 is usually a Chord exercise: build the finger tables of a small ring and trace one lookup. Sometimes it is a design scenario instead. The older exams ask open questions about the history of P2P systems and about routing. Real examples:</p>
   <ul>
-    <li>Chord finger tables and lookup (question 6). <span class="date">18 Nov 2023</span> <span class="date">17 Jan 2024</span> <span class="date">14 Feb 2024</span> <span class="date">18 Jun 2024</span> — worked solutions are on the Naming page.</li>
-    <li>"Document lookup service: tens of thousands of dynamic hosts vs fewer than a hundred static hosts. Where would you use Chord?" <span class="date">12 Jul 2024</span></li>
-    <li>"Describe the journey from Napster to eMule/BitTorrent: how each product solved the previous problems." <span class="date">1 Feb 2013</span> · "Define a pure P2P system; which applications are pure?" <span class="date">5 Sep 2013</span> · "Compare the routing of Freenet and Chord." <span class="date">3 Dec 2014</span></li>
+    <li>"Three peers (IDs = 2, 9, 12) … 4 bits. Show the routing tables. Peer 2 wants to retrieve the object with key 10." <span class="date">18 Nov 2023</span> · peers 4, 9, 12, key 5 <span class="date">17 Jan 2024</span> · peers 2, 3, 4, 6 (3 bits), key 5 <span class="date">14 Feb 2024</span> · peers 2, 6, 11, key 7, "and the line in the finger table each node uses" <span class="date">18 Jun 2024</span></li>
+    <li>"Document lookup service: tens of thousands of dynamic hosts vs fewer than a hundred static hosts. In which scenario would you use Chord, and why? How would you implement the other one?" <span class="date">12 Jul 2024</span></li>
+    <li>"Briefly illustrate the Chord algorithm, the routing table size, the routing and joining time. Why is it better than Gnutella and Kazaa?" <span class="date">27 Jun 2013</span></li>
+    <li>"Describe the journey from Napster to eMule/BitTorrent: how each product tried to solve the previous problems." <span class="date">1 Feb 2013</span> · "Define a pure P2P system; which applications are pure?" <span class="date">5 Sep 2013</span> · "Describe the evolution from client-server to hybrid to full P2P." <span class="date">9 Sep 2015</span></li>
+    <li>"Describe the routing mechanisms of Freenet and Chord (with finger tables), and compare them." <span class="date">3 Dec 2014</span></li>
   </ul>
 </div>
-<a class="simbox" href="/exercises/distributed-systems/sim-chord.html" target="_blank" rel="noopener"><b>Open the Chord and flooding simulator</b><span>All exam presets and Margara's exercises, plus Gnutella flooding with hops-to-live.</span></a>
 
+<!-- ===== §1 BASICS ===== -->
 <section class="topic">
-  <div class="topic-head"><span class="num">§1</span><h2>Unstructured systems</h2></div>
-  <div class="core"><p><b>Core idea.</b> P2P uses resources at the edges of the network. Every node is client, server and router; nodes come and go; there is no global view. The central problem is <b>retrieval</b>: search (find all items about X) or lookup (find one specific item).</p></div>
+  <div class="topic-head"><span class="num">§1</span><h2>What P2P is: paradigm, characteristics, overlays, retrieval</h2></div>
+  <div class="core"><p><b>Core idea.</b> P2P takes advantage of resources at the edges of the network. Every node is a client, a server and a router. Nodes are independent, dynamic and heterogeneous, and nobody has a global view. The peers form an <b>overlay network</b> on top of the physical network. The central problem of the chapter is <b>retrieval</b>: search for something, or look up a specific item.</p></div>
 
-  <article class="q" data-type="compare" data-id="p-u1">
-    <div class="q-head"><span class="qid">Q1</span><span class="tag compare">Compare</span><span class="seen">Exam 1 Feb 2013 · Margara questions</span></div>
-    <p class="prompt">Compare centralized search, query flooding, hierarchical query flooding and structured topologies in terms of search expressivity and performance. Describe how each system tried to solve the problems of the previous one.</p>
+  <article class="q" data-type="compare" data-id="p-f1">
+    <div class="q-head"><span class="qid">Q1</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">Compare the client-server paradigm and the P2P paradigm. What changed in the Internet to make P2P possible? Which resources can peers share? Where does P2P live today?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <div class="tbl"><table><tr><th></th><th>Centralized (Napster)</th><th>Flooding (Gnutella)</th><th>Super-peers (Kazaa)</th><th>DHT (Chord)</th></tr>
-          <tr><td>Join / publish</td><td>Contact server; send file list</td><td>Contact a few neighbors (PING/PONG); no publish</td><td>Contact a super-node; send file list to it</td><td>Bootstrap node; route publication to the key's node</td></tr>
-          <tr><td>Search</td><td>Ask the server</td><td>Neighbors, recursively, limited by hops-to-live</td><td>Flood among super-nodes only</td><td>Route by key, O(log N) hops</td></tr>
-          <tr><td>Expressivity</td><td>Any query</td><td>Any query (text, fuzzy…)</td><td>Any query</td><td>Exact key only</td></tr>
-          <tr><td>Search scope</td><td>O(1)</td><td>O(N); C<sup>D</sup> messages</td><td>Smaller, no guarantee</td><td>O(log N), guaranteed</td></tr>
-          <tr><td>Weak point</td><td>O(N) state at server; single point of failure and of control</td><td>Traffic; may miss items; unstable</td><td>Still no guarantees</td><td>Fragile; no fuzzy search; ignores physical topology</td></tr></table></div>
-        <p><b>The journey.</b> Napster's central server was a single point of failure and of legal control → Gnutella removed it with flooding, but flooding wastes bandwidth and scales badly → Kazaa used heterogeneity: powerful nodes become super-nodes and flood only among themselves → BitTorrent attacked free riders with tit-for-tat, and moved search out of band (web, magnet links) → DHTs give guaranteed lookups (BitTorrent's trackerless Mainline DHT is Kademlia-based).</p>
+        <div class="tbl"><table><tr><th></th><th>Client-server</th><th>P2P</th></tr>
+          <tr><td>Paradigm</td><td>A client requests data or a service; a server satisfies the request.</td><td>Peers share resources and services by direct exchange.</td></tr>
+          <tr><td>Examples</td><td>Web, mail, web services</td><td>BitTorrent, Freenet, Folding@Home</td></tr>
+          <tr><td>Problems</td><td>Hard to scale (clouds and CDNs add cost and complexity); single point of failure; needs administration; leaves resources at the edges unused.</td><td>No global view; nodes come and go; retrieval is difficult.</td></tr></table></div>
+        <p><b>What changed:</b> end-host resources increased dramatically, and broadband connectivity became common.</p>
+        <p><b>Shared resources:</b> network bandwidth (ad hoc networking, Internet), processing cycles (Folding@Home), storage space (Freenet), data (most of the other systems).</p>
+        <p><b>P2P today:</b> file distribution (BitTorrent), content-addressed storage (IPFS), blockchains (peer discovery and replicated data), browser-to-browser communication (WebRTC), anonymity (Tor, Freenet/Hyphanet). File sharing declined because of streaming platforms, but BitTorrent still dominates upload traffic.</p>
       </div>
-      <div class="why"><h4>Why</h4><p>The trade-off is expressivity vs guarantees: unstructured systems can answer any query but cannot promise to find anything; structured systems promise to find a key but cannot search by content.</p></div>
+      <div class="why"><h4>Why</h4><p>The key sentence is "take advantage of resources at the edges of the network". Each client-server problem is the reverse of a P2P advantage: more users bring more resources, and there is no single machine to fail or to administer. Remember also the price: without a center, finding things becomes the hard problem.</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="exercise" data-id="p-u2">
-    <div class="q-head"><span class="qid">Q2</span><span class="tag exercise">Exercise</span></div>
-    <p class="prompt">In the simulator's flooding network, peer 3 searches for an item held by peers 0 and 6, with hops-to-live = 3. List the query messages per hop and the replies. How many messages in total?</p>
+  <article class="q" data-type="describe" data-id="p-f2">
+    <div class="q-head"><span class="qid">Q2</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">List the characteristics of a P2P system. Then explain what an overlay network is. Two peers are neighbors in the overlay. Are they also close in the physical network?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p>Edges: 0–1, 1–2, 1–3, 3–4, 2–5, 4–6, 2–6, 5–7, 6–7, 0–3.</p>
         <ul>
-          <li>Hop 1: 3 → 1, 3 → 4, 3 → 0 (hit at 0).</li>
-          <li>Hop 2: 1 → 0 (duplicate), 1 → 2, 4 → 6 (hit at 6), 0 → 1 (duplicate).</li>
-          <li>Hop 3 (last): 2 → 5, 2 → 6 (duplicate), 6 → 2 (duplicate), 6 → 7.</li>
+          <li>All nodes are potential users and potential providers of a service. Nodes act as servers, clients and routers (ad hoc communication).</li>
+          <li>Each node is independent: no central administration is necessary.</li>
+          <li>Nodes are dynamic: they come and go unpredictably.</li>
+          <li>The capabilities of nodes are highly variable.</li>
+          <li>The scale can be Internet-wide: there is no global view, and resources are geographically distributed.</li>
         </ul>
-        <p>11 query messages. Replies follow the reverse path: 0 → 3 and 6 → 4 → 3. The requester then downloads directly from 0 or 6. Open the simulator's flooding tab to check.</p>
+        <p>An <b>overlay network</b> is a logical network built on top of the physical network. Its links are <b>virtual links</b>: one virtual link is a transport connection that can cross many routers and physical links.</p>
+        <p>Overlay neighbors are <b>not necessarily</b> close physically. A peer in Milan can have an overlay neighbor in Tokyo. One overlay hop can cost hundreds of milliseconds.</p>
       </div>
-      <div class="why"><h4>Why</h4><p>Peers drop queries they have already seen (same id), but the duplicate messages are still sent: that waste is the price of flooding. Peers beyond the hops-to-live are never asked, even if they hold the item.</p></div>
+      <div class="why"><h4>Why</h4><p>Every P2P protocol in this chapter (flooding, super-nodes, Freenet, Chord) defines who the neighbors are in the overlay. The overlay ignores the physical topology unless the protocol takes care of it. This is why "it does not consider physical topology" is a con of Chord, and why Kazaa was rumored to consider network locality.</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="describe" data-id="p-u3">
-    <div class="q-head"><span class="qid">Q3</span><span class="tag describe">Describe</span><span class="seen">Exam 5 Sep 2013</span></div>
+  <article class="q" data-type="scenario" data-id="p-f3">
+    <div class="q-head"><span class="qid">Q3</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">For each request, say if it is a <i>search</i> or a <i>lookup</i>, and if the system should return the data or a reference to it: (a) "all documents about distributed systems"; (b) "a copy of RFC 3268"; (c) "the 4 GB file with hash h"; (d) "the IP address of the host that stores the document with key k".</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li><b>Search</b>: it can match many items. Return <b>references</b>: returning the data is meaningless for a search, because it returns multiple items.</li>
+          <li><b>Lookup</b> of one specific item. Data or reference are both possible. A short document can come back as data.</li>
+          <li><b>Lookup</b>. Return a <b>reference</b>: 4 GB routed through the overlay is a burden for every intermediate peer. The requester then fetches the file directly.</li>
+          <li><b>Lookup</b>. The value is small, so the system returns it as data. Note: the value itself is a reference to the host.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>Search asks "which items match this description?". Lookup asks "where is this exact item?". The answer to a search is a list, so it must be references. For a lookup, the choice depends on the size: query results that travel through the overlay load every peer on the path.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="p-f4">
+    <div class="q-head"><span class="qid">Q4</span><span class="tag describe">Describe</span><span class="seen">Exam 9 Sep 2015</span></div>
+    <p class="prompt">Describe the evolution of distributed systems, from client-server interactions to hybrid implementations (partly client-server, partly P2P), to full P2P implementations.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol>
+          <li><b>Client-server.</b> Web, mail. Simple, but hard to scale, a single point of failure, needs administration, and leaves edge resources unused.</li>
+          <li><b>Hybrid.</b> A central part keeps the hard function, the peers do the heavy work. Napster: a central server indexes the files, the peers transfer the files directly. Kazaa: super-nodes index and search, normal nodes only publish and fetch. BitTorrent: a tracker lists the peers of a torrent, the peers exchange fragments.</li>
+          <li><b>Full P2P.</b> All nodes have the same role. Gnutella floods queries. Freenet routes queries by "best guess". DHTs such as Chord route on a structured overlay with guaranteed lookup. Trackerless BitTorrent uses the Mainline DHT.</li>
+        </ol>
+        <p>The driving forces: the server is a single point of failure and of "control" (Napster was shut down); flooding does not scale; free riders must get an incentive to contribute.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Hybrid systems keep a small central part exactly where it helps most: search or coordination. Full P2P removes it, and pays with either a lot of traffic (flooding) or a structure that must be maintained (DHT). Structure your answer as a sequence of problems and solutions.</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §2 UNSTRUCTURED ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§2</span><h2>Unstructured retrieval: Napster, Gnutella, Kazaa</h2></div>
+  <div class="core"><p><b>Core idea.</b> Describe each system with the same four operations: <b>join, publish, search, fetch</b>. Napster centralizes search on a server (O(1) scope, O(N) state). Gnutella floods queries to neighbors with a hops-to-live limit (up to C<sup>D</sup> messages, O(N) scope, O(2D) time). Kazaa floods only among <b>super-nodes</b>. In all three, the fetch is direct between peers.</p></div>
+  <a class="simbox" href="/exercises/distributed-systems/sim-chord.html" target="_blank" rel="noopener"><b>Open the Chord and flooding simulator</b><span>The flooding tab shows Gnutella query messages hop by hop, with hops-to-live and duplicates.</span></a>
+
+  <article class="q" data-type="describe" data-id="p-n1">
+    <div class="q-head"><span class="qid">Q5</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Describe Napster with join, publish, search and fetch. Give its pros and cons, its search scope and the state at the server.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Napster was the first P2P file-sharing application (free music). Key idea: share the storage and bandwidth of home users.</p>
+        <ul>
+          <li><b>Join:</b> the client contacts the central server.</li>
+          <li><b>Publish:</b> the client sends the list of its files to the server.</li>
+          <li><b>Search:</b> the client asks the server who owns the requested file.</li>
+          <li><b>Fetch:</b> the client gets the file directly from the peer.</li>
+        </ul>
+        <p><b>Pros:</b> simple; search scope is <b>O(1)</b> (one query to the server).</p>
+        <p><b>Cons:</b> the server keeps <b>O(N)</b> state; the server does all the search processing; single point of failure; single point of "control" (legal attacks).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Napster is P2P only for the transfer. The search is client-server. This gives perfect search (any query, one hop), but it puts all the state and all the risk on one machine. The legal "control" problem is what killed Napster, and it motivated the decentralized successors.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="p-n2">
+    <div class="q-head"><span class="qid">Q6</span><span class="tag describe">Describe</span><span class="seen">Exam 5 Sep 2013</span></div>
     <p class="prompt">Define a "pure" P2P system. Among Napster, Gnutella, Kazaa, the eDonkey network and BitTorrent, which are pure, and why not the others?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
         <p>In a <b>pure</b> P2P system all nodes have the same role and there is no central component: any node can leave without breaking the system.</p>
         <ul>
-          <li><b>Napster:</b> not pure: the central index server is needed for search (peers still serve files).</li>
-          <li><b>Gnutella</b> (original): pure: all peers are equal; flooding.</li>
-          <li><b>Kazaa:</b> hybrid: super-nodes have a special role.</li>
-          <li><b>eDonkey:</b> hybrid: servers index files (the later Kad network is a DHT, so closer to pure).</li>
-          <li><b>BitTorrent:</b> not pure with a tracker (central for each torrent); trackerless with a DHT is closer to pure, but search is still out of band.</li>
+          <li><b>Napster:</b> not pure. It depends on the availability of the central index server. Many researchers said it is not P2P at all. Still, all peers are active providers, not only consumers.</li>
+          <li><b>Gnutella</b> (original): pure. All peers are equal and search by flooding.</li>
+          <li><b>Kazaa:</b> hybrid. Super-nodes have a special role.</li>
+          <li><b>eDonkey:</b> hybrid. Servers index the files. Its later Kad network is a DHT, so it is closer to pure.</li>
+          <li><b>BitTorrent:</b> not pure with a tracker, which is central for each torrent. Trackerless BitTorrent with the Mainline DHT is closer to pure, but search is still out of band (web, magnet links).</li>
         </ul>
       </div>
-      <div class="why"><h4>Why</h4><p>Pure systems pay for the missing center with inefficient search or complex structure. Most successful systems are hybrid: they keep a small central part where it helps most.</p></div>
+      <div class="why"><h4>Why</h4><p>Ask one test question for each system: "if this special node disappears, does the system still work?". Pure systems pay for the missing center with inefficient search or with complex structure. Most successful systems are hybrid.</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="describe" data-id="p-u4">
-    <div class="q-head"><span class="qid">Q4</span><span class="tag describe">Describe</span></div>
-    <p class="prompt">How does BitTorrent distribute content and fight free riders? Explain fragments, rarest-first, choking and the optimistic unchoke.</p>
+  <article class="q" data-type="describe" data-id="p-g1">
+    <div class="q-head"><span class="qid">Q7</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Describe Gnutella: how a node joins the network, how a query propagates, and what limits it. Give the pros and cons with their costs.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
         <ul>
-          <li>Join: contact the tracker, get a list of peers. Search is out of band (.torrent file or magnet link). A torrent has file names, sizes, block checksums, tracker address.</li>
-          <li>Files are split into fragments (~256 KB) with hashes for integrity. Peers download missing fragments from each other in any order, and upload what they have.</li>
-          <li><b>Rarest-first:</b> request the fragment held by the fewest peers, to keep many sources for each fragment.</li>
-          <li>Seeds have the whole file; leeches are still downloading; the swarm is all of them. Everyone can finish as long as one distributed copy exists.</li>
-          <li><b>Choking:</b> a temporary refusal to upload. Every 10 s a peer unchokes a fixed number of peers, chosen by their download rate to it (rolling 20 s average): tit-for-tat.</li>
-          <li><b>Optimistic unchoke:</b> one extra peer, rotated every 30 s, gets uploads regardless. It lets newcomers start and discovers better partners.</li>
+          <li><b>Join:</b> there is no central authority, so the new node connects to a well-known <b>anchor</b> node. It sends a <b>PING</b>; the PING is forwarded to other nodes. Hosts that offer new connections answer with a <b>PONG</b>. The new node then opens direct connections to the discovered nodes: they become its neighbors.</li>
+          <li><b>Publish:</b> no need. Files stay where they are.</li>
+          <li><b>Search:</b> flooding. The node asks its neighbors, they ask their neighbors, and so on. A <b>HopsToLive</b> field limits the propagation: each hop decrements it, and at zero the query stops. A node that sees the same query again drops it. When a node has the file, it replies to the sender (back along the query path).</li>
+          <li><b>Fetch:</b> directly from the peer.</li>
         </ul>
+        <p><b>Pros:</b> fully decentralized; search cost distributed; any kind of query ("search for S" can be a database query, simple text matching, fuzzy matching…).</p>
+        <p><b>Cons:</b> a "flood" of requests: with C neighbors on average and hops-to-live D, each search can cause <b>C<sup>D</sup></b> messages; search scope O(N); search time O(2D) (D hops out, D hops back); nodes leave often, so the network is unstable.</p>
       </div>
-      <div class="why"><h4>Why</h4><p>Incentives replace trust: the more you upload to me, the more I upload to you. Earlier credit systems (eMule, Kazaa) were easy to cheat with modified clients; tit-for-tat needs no global accounting. It approximates Pareto efficiency.</p></div>
+      <div class="why"><h4>Why</h4><p>Flooding needs no structure, so churn cannot break it and any query works. But the traffic grows exponentially with D, and hops-to-live cuts the scope: an item outside the horizon is never found, even if it exists. This is the opposite trade-off of a DHT.</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="compare" data-id="p-u5">
-    <div class="q-head"><span class="qid">Q5</span><span class="tag compare">Compare</span><span class="seen">Exam 3 Dec 2014</span></div>
-    <p class="prompt">Describe the routing of Freenet and of Chord (with finger tables), and compare them.</p>
+  <article class="q" data-type="exercise" data-id="p-g2">
+    <div class="q-head"><span class="qid">Q8</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">(Margara, exercise 1, on the simulator's network.) Edges: 0–1, 1–2, 1–3, 3–4, 2–5, 4–6, 2–6, 5–7, 6–7, 0–3. Node 3 searches for item A, stored at nodes 0 and 6. Peers use query flooding with hops-to-live = 3. List the query messages hop by hop, the replies, and the total number of query messages.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p><b>Freenet:</b> goals are anonymity and censorship resistance. A request for a file id goes to the neighbor that is the "best guess" (closest known id): steepest-ascent hill climbing with backtracking, limited by hops-to-live. The file returns along the same chain and every node caches it (LRU). Inserts follow the same route, so data is placed where requests will look. Similar ids cluster on the same nodes; the network becomes a small world; popular files spread, unpopular ones may disappear. Link and document encryption, content-hash ids.</p>
-        <p><b>Chord:</b> ring of m-bit ids; a key is stored at its successor; each node has m fingers (succ(n + 2<sup>i</sup>)); each hop halves the distance: O(log N) hops, O(log N) state; join costs O(log² N); successor lists and stabilization handle churn.</p>
-        <div class="tbl"><table><tr><th></th><th>Freenet</th><th>Chord</th></tr>
-          <tr><td>Guarantee</td><td>None (may not find)</td><td>Always finds the key</td></tr>
-          <tr><td>Routing state</td><td>Learned, approximate</td><td>Structured, exact</td></tr>
-          <tr><td>Caching / replication</td><td>Along request paths, popularity-driven</td><td>Not built in (successor list)</td></tr>
-          <tr><td>Anonymity</td><td>Yes, by design</td><td>No</td></tr></table></div>
+        <p>Rule: a node forwards a new query to all its neighbors except the one it received it from. It drops a query it has already seen.</p>
+        <ul>
+          <li>Hop 1: 3 → 1, 3 → 4, 3 → 0 (<b>hit</b> at 0).</li>
+          <li>Hop 2: 1 → 0 (duplicate), 1 → 2, 4 → 6 (<b>hit</b> at 6), 0 → 1 (duplicate).</li>
+          <li>Hop 3 (last): 2 → 5, 2 → 6 (duplicate), 6 → 2 (duplicate), 6 → 7.</li>
+        </ul>
+        <p>Total: <b>11 query messages</b>. Nodes 5 and 7 receive the query at hop 3 and do not forward it (hops-to-live is used up).</p>
+        <p>Replies follow the reverse path: <b>0 → 3</b> and <b>6 → 4 → 3</b>. Node 3 then downloads A directly from 0 or from 6.</p>
       </div>
-      <div class="why"><h4>Why</h4><p>Both route "towards closer ids", but Freenet learns its routing tables from traffic, while Chord builds them from a mathematical structure. Learning gives adaptivity and anonymity; structure gives guarantees.</p></div>
+      <div class="why"><h4>Why</h4><p>Duplicates are dropped, but they are still sent: this waste is the price of flooding on a graph with cycles. A node that has the item still forwards the query, because the requester may want all copies (it is a search, not a lookup).</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>The figure in Margara's slides is a different graph. Its official solution lists the search messages 3 → 4, 3 → 1, 1 → 0, 1 → 2, 2 → 5 and the reply 0 → 1 → 3 (or directly 0 → 3). Whatever the graph, write the messages hop by hop, mark hits and duplicates, and stop at hops-to-live.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="p-g3">
+    <div class="q-head"><span class="qid">Q9</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Overlay edges: A–B, A–C, A–D, B–E, C–E, C–F, D–G, F–H, G–H, E–H. (a) D searches for an item stored only at E, hops-to-live = 3. List the messages per hop and count them. Which path does the reply follow? (b) A searches for an item stored only at H, hops-to-live = 2. Is it found? How many messages? What is the minimum hops-to-live to find it?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>(a)</b></p>
+        <ul>
+          <li>Hop 1: D → A, D → G.</li>
+          <li>Hop 2: A → B, A → C, G → H.</li>
+          <li>Hop 3 (last): B → E (<b>hit</b>), C → E (duplicate), C → F, H → E (duplicate), H → F (duplicate: F gets two copies in the same hop).</li>
+        </ul>
+        <p>Total: <b>10 messages</b>. E receives three copies in hop 3. It answers once, along the path of the copy it accepts first. All three paths have 3 hops: E → B → A → D, or E → C → A → D, or E → H → G → D.</p>
+        <p><b>(b)</b> Hop 1: A → B, A → C, A → D. Hop 2: B → E, C → E (duplicate), C → F, D → G. Total <b>7 messages</b>. H is <b>not found</b>: H is 3 hops away from A, and the query dies after 2 hops. The minimum hops-to-live is <b>3</b>.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Part (b) shows the main weakness of flooding: no guarantee. The item exists, but it is outside the horizon of the query. Increasing hops-to-live finds it, but each extra hop multiplies the traffic.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="p-g4">
+    <div class="q-head"><span class="qid">Q10</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">In a Gnutella network, each peer has C = 4 neighbors on average. (a) How many query messages can one search cause with hops-to-live D = 7? And with D = 4? (b) The network receives 100 searches per second. How many messages per second with D = 7? (c) One overlay hop takes 50 ms. What is the worst-case search time with D = 7?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>With the slide formula C<sup>D</sup>: 4<sup>7</sup> = <b>16,384</b> messages. With D = 4: 4<sup>4</sup> = <b>256</b> messages, but the search reaches far fewer peers.</li>
+          <li>100 × 16,384 = <b>1,638,400</b> messages per second, only for queries.</li>
+          <li>Search time is O(2D): the query travels up to D hops, the reply travels D hops back. 2 × 7 × 50 ms = <b>700 ms</b>.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>C<sup>D</sup> is an order of magnitude, not an exact count. Real counts are lower, because nodes do not send back to the sender and cycles cause duplicates. In exercise 1 the graph has 8 nodes and 10 edges: average degree 2.5, 2.5<sup>3</sup> ≈ 15.6, and the real count was 11. The important point is the exponential growth with D: reducing D saves traffic but shrinks the scope.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="p-k1">
+    <div class="q-head"><span class="qid">Q11</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Describe Kazaa's hierarchical topology with join, publish, search and fetch. Which problem of Gnutella does it address, and which problem remains?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Kazaa distinguishes normal nodes and <b>super-nodes</b>.</p>
+        <ul>
+          <li><b>Join:</b> the client contacts a super-node. It may become a super-node itself later.</li>
+          <li><b>Publish:</b> the client sends its list of files to its super-node.</li>
+          <li><b>Search:</b> the client sends the query to its super-node. Super-nodes flood the query among themselves.</li>
+          <li><b>Fetch:</b> directly from the peer(s). A client can fetch from <b>multiple peers simultaneously</b>.</li>
+        </ul>
+        <p><b>Pros:</b> it considers node heterogeneity: bandwidth, computational resources, availability. Kazaa was rumored to consider network locality too. Flooding involves only the super-nodes, so it costs less and each super-node answers for many normal nodes.</p>
+        <p><b>Cons:</b> still no real guarantees on search scope or search time.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Kazaa is a mix of Napster and Gnutella: each super-node is a small Napster server for its normal nodes, and super-nodes form a Gnutella network. Flooding is still flooding, only on a smaller and more stable set of nodes.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="p-k2">
+    <div class="q-head"><span class="qid">Q12</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">A Kazaa-like system must promote two of these peers to super-nodes. P1: home desktop, 100 Mbit/s, on 24 h a day, 8 cores. P2: smartphone on 4G, sessions of 20 minutes. P3: laptop, 50 Mbit/s, on 2 h a day. P4: university server, 1 Gbit/s, always on, 32 cores. P5: old home PC, 5 Mbit/s, on 10 h a day. Which two do you choose, and why not the others?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Choose <b>P4</b> and <b>P1</b>. They have the best bandwidth, computational resources and availability: the three criteria of the slides.</p>
+        <ul>
+          <li>P2: very short sessions and limited resources. Each departure forces its normal nodes to join another super-node and to publish their file lists again.</li>
+          <li>P3: good bandwidth, but it is on only 2 h a day: low availability.</li>
+          <li>P5: low bandwidth and an old CPU. Super-nodes receive the queries of all their normal nodes and flood queries among super-nodes.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>A super-node holds the index of its normal nodes and carries search traffic. If it leaves, this state is lost and must be rebuilt. So availability matters as much as bandwidth: a fast node that leaves often is a bad super-node.</p></div>
     </div>
   </article>
 </section>
 
+<!-- ===== §3 BITTORRENT ===== -->
 <section class="topic">
-  <div class="topic-head"><span class="num">§2</span><h2>Structured systems: DHTs and Chord</h2></div>
-  <div class="core"><p><b>Core idea.</b> A DHT offers <code>put(id, item)</code> and <code>get(id)</code> on a structured overlay. In Chord the key k lives at succ(k); finger i of node n is succ(n + 2<sup>i</sup>); a lookup forwards to the finger whose interval contains k.</p></div>
+  <div class="topic-head"><span class="num">§3</span><h2>Free riders and BitTorrent</h2></div>
+  <div class="core"><p><b>Core idea.</b> Free riders download without contributing. BitTorrent makes contribution pay: peers swap fragments of a file, and each peer uploads to the peers that upload most to it (<b>tit-for-tat</b>, through <b>choking</b>). One <b>optimistic unchoke</b> lets newcomers start and discovers better partners. Search stays out of band: a .torrent file or a magnet link, with a tracker or the Mainline DHT.</p></div>
 
-  <article class="q" data-type="exercise" data-id="p-c1">
-    <div class="q-head"><span class="qid">Q6</span><span class="tag exercise">Exercise</span><span class="seen">Margara, exercise 3</span></div>
-    <p class="prompt">Three peers (0, 1, 4), 3 bits. (a) Show the routing tables. (b) Peer 4 looks up key 1. (c) Peer 0 looks up key 6. (d) Peer 0 looks up key 3.</p>
+  <article class="q" data-type="describe" data-id="p-b1">
+    <div class="q-head"><span class="qid">Q13</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">What is a free rider? Describe the first attempts to stop free riders in Napster, Direct Connect, eMule and Kazaa, and explain why they did not work well.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <div class="tbl"><table><tr><th>i</th><th>Node 0: start, interval → succ</th><th>Node 1</th><th>Node 4</th></tr>
-          <tr><td>0</td><td>1, [1,2) → 1</td><td>2, [2,3) → 4</td><td>5, [5,6) → 0</td></tr>
-          <tr><td>1</td><td>2, [2,4) → 4</td><td>3, [3,5) → 4</td><td>6, [6,0) → 0</td></tr>
-          <tr><td>2</td><td>4, [4,0) → 4</td><td>5, [5,1) → 0</td><td>0, [0,4) → 0</td></tr></table></div>
-        <p>Storage: node 0 holds (4, 0] = {5, 6, 7, 0}; node 1 holds {1}; node 4 holds {2, 3, 4}.</p>
-        <p>(b) Key 1 at node 1. Node 4: 1 is in [0, 4) → node 0. Node 0: 1 is in [1, 2) → node 1. Path <b>4 → 0 → 1</b>.</p>
-        <p>(c) Key 6 is stored at node 0 itself: <b>no message</b>.</p>
-        <p>(d) Key 3 at node 4. Node 0: 3 is in [2, 4) → node 4. Path <b>0 → 4</b>.</p>
+        <p>A <b>free rider</b> only downloads and does not contribute to the network.</p>
+        <ul>
+          <li><b>Napster:</b> user-based: "I refuse to upload if you do not share anything worth it". It depends on each user's decision.</li>
+          <li><b>Direct Connect:</b> you must share something to join. But there is no guarantee that you share something valuable.</li>
+          <li><b>eMule / Kazaa:</b> credit systems control the priority of clients. They proved easy to circumvent with unofficial clients that fake their credits.</li>
+        </ul>
       </div>
-      <div class="why"><h4>Why</h4><p>Case (c) is the trap: always first check whether the asking node stores the key. Intervals make wrap-around explicit: [5, 1) at node 1 means 5, 6, 7, 0.</p></div>
+      <div class="why"><h4>Why</h4><p>All these solutions trust information that the client controls: what it says it shares, or the credits it reports. A modified client can lie. BitTorrent's tit-for-tat uses only what each peer measures by itself: the rate at which it receives data. You cannot fake bytes you never sent.</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="describe" data-id="p-c2">
-    <div class="q-head"><span class="qid">Q7</span><span class="tag describe">Describe</span></div>
-    <p class="prompt">How does a node join Chord, and how does Chord handle concurrent joins and failures? Give the costs.</p>
+  <article class="q" data-type="describe" data-id="p-b2">
+    <div class="q-head"><span class="qid">Q14</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Describe BitTorrent: join, publish, search, fetch; the terms torrent, seed, leech, swarm and tracker; how fragments are distributed and verified.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
         <ul>
-          <li>Each node also keeps its <b>predecessor</b>.</li>
-          <li><b>Join of n:</b> n knows some node n′. (1) Initialize n's predecessor and fingers through n′ (finger i = successor of n + 2<sup>i</sup>). (2) Update other nodes: n becomes finger i of p iff p precedes n by at least 2<sup>i</sup> and the current finger i of p succeeds n; the first such p is the predecessor of n − 2<sup>i</sup>. One lookup per finger: log N × log N = <b>O(log² N)</b>. Keys in (pred(n), n] move to n.</li>
-          <li><b>Stabilization:</b> concurrent joins/leaves can break successor pointers, so each node periodically re-looks up the successor of n + 2<sup>i</sup> for each finger.</li>
-          <li><b>Failures:</b> each node keeps a list of its first R successors; if the successor does not answer, try the next. Survives R − 1 simultaneous failures.</li>
+          <li><b>Join:</b> contact the centralized tracker, get a list of peers. <b>Publish:</b> run a tracker. <b>Search:</b> out of band: find a .torrent file or a magnet link on the Web. <b>Fetch:</b> download chunks from your peers, and upload the chunks you have to them.</li>
+          <li><b>Torrent:</b> metadata file. It contains the names and sizes of the files, the checksum of every block, the address of the tracker (and of peers).</li>
+          <li><b>Seed:</b> a peer with the complete file that still offers it for upload. <b>Leech:</b> a peer with an incomplete download. <b>Swarm:</b> all seeds and leeches of a torrent. <b>Tracker:</b> a server that tracks seeds and peers in the swarm and gathers statistics. A new peer asks it for a list of peers.</li>
+          <li>The file is split into fragments (usually 256 KB). The .torrent holds the SHA hash of each fragment, so a peer verifies the integrity of each fragment it receives.</li>
+          <li>Fragments are not downloaded in order; the receiver assembles them. Clients upload the fragments they have before the download ends. When a peer finishes, it should stay and become an extra seed.</li>
         </ul>
-        <p>Table size O(log N); lookup O(log N) hops; join O(log² N).</p>
+        <p>Each new downloader uses bandwidth, but also gives bandwidth back to the swarm. So many people can download the same file without slowing down each other. BitTorrent is still the dominant P2P file-sharing protocol (since 2007).</p>
       </div>
-      <div class="why"><h4>Why</h4><p>Correctness depends only on successor pointers: with correct successors a lookup always succeeds, maybe slowly. Fingers are only shortcuts, so they can be repaired lazily.</p></div>
+      <div class="why"><h4>Why</h4><p>Fragments turn one big transfer into many small independent transfers. A leech can upload after its first fragment, so capacity grows with the number of downloaders. Per-fragment hashes make it safe to accept data from untrusted peers: a bad fragment is detected and downloaded again.</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="compare" data-id="p-c3">
-    <div class="q-head"><span class="qid">Q8</span><span class="tag compare">Compare</span></div>
-    <p class="prompt">Compare structured and unstructured topologies (flooding and hierarchical flooding) in terms of network traffic, search scope, and resilience to disconnections.</p>
+  <article class="q" data-type="exercise" data-id="p-b3">
+    <div class="q-head"><span class="qid">Q15</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">A file has 6 fragments. Peer P has fragments {1, 2}. Its neighbors have: A {1, 2, 3, 4}, B {1, 3, 5}, C {1, 2, 3, 6}, D {3, 4, 5}. With rarest-first, which fragment does P request first, and from whom? In which order does it continue? Why is this policy useful?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>Missing fragment</th><th>Held by</th><th>Count</th></tr>
+          <tr><td>3</td><td>A, B, C, D</td><td>4</td></tr>
+          <tr><td>4</td><td>A, D</td><td>2</td></tr>
+          <tr><td>5</td><td>B, D</td><td>2</td></tr>
+          <tr><td>6</td><td>C</td><td>1</td></tr></table></div>
+        <p>P requests <b>fragment 6 from C</b> first. Then 4 and 5 (tie, 2 holders each), and fragment 3 last.</p>
+        <p>Rarest-first keeps the number of sources for each fragment as high as possible and spreads the load. If C leaves before anyone copies fragment 6, nobody in this neighborhood can complete the file.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Common fragments can wait: many peers can give them later. Rare fragments are at risk, and they are also the most valuable for trading: once P has fragment 6, A, B and D want it from P. The trap: do not pick the fragment that is easiest to get (fragment 3).</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="p-b4">
+    <div class="q-head"><span class="qid">Q16</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Peer X unchokes 3 peers by rate, plus 1 optimistic unchoke. At t = 0 it picks the newcomer E as optimistic unchoke. The table gives the download rate from each peer to X (rolling 20-second average, KB/s). Which peers does X unchoke after each evaluation (t = 10, 20, 30 s)? When does the optimistic unchoke change?</p>
+    <div class="tbl"><table><tr><th>t</th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th></tr>
+      <tr><td>10 s</td><td>50</td><td>10</td><td>80</td><td>30</td><td>0</td><td>20</td></tr>
+      <tr><td>20 s</td><td>50</td><td>60</td><td>80</td><td>30</td><td>40</td><td>20</td></tr>
+      <tr><td>30 s</td><td>45</td><td>60</td><td>75</td><td>30</td><td>70</td><td>20</td></tr></table></div>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>t</th><th>Unchoked by rate</th><th>Optimistic</th><th>Choked</th></tr>
+          <tr><td>10 s</td><td>C (80), A (50), D (30)</td><td>E</td><td>B, F</td></tr>
+          <tr><td>20 s</td><td>C (80), B (60), A (50)</td><td>E (kept)</td><td>D, F</td></tr>
+          <tr><td>30 s</td><td>C (75), E (70), B (60)</td><td>new: one choked peer, e.g. A, D or F</td><td>the others</td></tr></table></div>
+        <ul>
+          <li>Choking is evaluated every 10 s, only on the download rate.</li>
+          <li>At t = 20, B (60) replaces D (30).</li>
+          <li>The optimistic unchoke rotates every 30 s. At t = 30, E has proved a good partner (70) and enters the regular set by rate. A (45) is choked. X picks a new optimistic unchoke among the choked peers.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>E started at rate 0: without the optimistic unchoke, nobody would ever upload to E, and E could never start. The optimistic slot also discovers connections that are better than the current ones (E at 70 beats A). B's rate grew while X choked it: B uploads to X for its own reasons (for example, X is B's optimistic unchoke). This is tit-for-tat: "I share with you if you share with me", plus some optimism. It approximates <b>Pareto efficiency</b>: two peers that get poor rates for their uploads can start uploading to each other and both get better rates. Pareto efficiency is a weak condition, which is a con on the slides.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="p-b5">
+    <div class="q-head"><span class="qid">Q17</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">A file has 6 fragments. The only seed leaves the swarm. The remaining leeches have: L1 {1, 2, 3}, L2 {2, 4, 5}, L3 {1, 4}. (a) Can any leech complete the file? (b) Same question if L3 has {1, 6}. (c) Which slide principle does this show?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>The union of the fragments is {1, 2, 3, 4, 5}. Fragment 6 is missing: <b>nobody</b> can complete the file until a seed comes back.</li>
+          <li>The union is {1, 2, 3, 4, 5, 6}: <b>all</b> leeches can eventually complete the file by exchanging fragments.</li>
+          <li>Everyone can get the complete file as long as there is "one distributed copy" of the file in the network, even with no seed.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>No single peer needs the whole file: the swarm as a whole is the "server". This is why rarest-first matters: it spreads rare fragments before their only holder leaves, so the distributed copy survives departures.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="p-b6">
+    <div class="q-head"><span class="qid">Q18</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Give the pros and cons of BitTorrent. How does BitTorrent work without a tracker?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Pros:</b> works reasonably well in practice; gives peers an incentive to share resources; avoids free riders.</p>
+        <p><b>Cons:</b> Pareto efficiency is a relatively weak condition; search is performed out of band; the tracker is a central server.</p>
+        <p><b>Trackerless BitTorrent:</b> a <b>magnet link</b> carries only the hash of the torrent. Peers use a P2P network, the <b>Mainline DHT</b>, to find the peers for that hash. The Mainline DHT is based on Kademlia. It is the largest structured P2P network in the world: on the order of 10 million or more nodes per day.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The DHT replaces only the tracker: it answers the lookup "who has the torrent with this hash?". It does not replace keyword search, because a DHT supports only exact keys. So users still find magnet links on the Web.</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §4 FREENET ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§4</span><h2>Freenet: secure, anonymous storage</h2></div>
+  <div class="core"><p><b>Core idea.</b> Freenet (now Hyphanet) lets anybody publish and read information with reasonable anonymity. A request goes to the neighbor that is the <b>best guess</b> for the file id (steepest-ascent hill climbing with backtracking), limited by hops-to-live. The file returns along the same chain, and each node caches it (LRU). Inserts follow the same route, so data is where requests look for it.</p></div>
+
+  <article class="q" data-type="describe" data-id="p-r1">
+    <div class="q-head"><span class="qid">Q19</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">What are the goals of Freenet? Describe join, publish, search and fetch, and the routing protocol.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Goals:</b> practical one-to-many publishing; reasonable anonymity for producers and consumers; no centralized control or administration; scalable from tens to hundreds of thousands of users; robust against node failures and malicious attacks.</p>
+        <ul>
+          <li><b>Join:</b> contact a few known nodes; get a unique node id.</li>
+          <li><b>Publish:</b> route the file contents toward the node that stores other files with the closest ids.</li>
+          <li><b>Search:</b> route the query for the file id with steepest-ascent hill climbing and backtracking.</li>
+          <li><b>Fetch:</b> when the query reaches a node that has the file, that node returns the file to the sender.</li>
+        </ul>
+        <p><b>Routing:</b> each node stores some information locally and has approximate knowledge of what its neighbors store. If it does not have the information, it forwards the request to its "best guess" neighbor. If that path fails, it backtracks and tries the next best neighbor. If the information is found within the request's hops-to-live, it goes back through the chain of nodes to the requester. Intermediate nodes store it in their LRU cache.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Freenet is between flooding and a DHT. Like a DHT it routes toward "closer" ids, so only the nodes on one path work (no flooding). Unlike a DHT, its routing tables are learned and approximate, so there is no guarantee. Returning data along the chain is what hides the origin and what spreads copies.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="p-r2">
+    <div class="q-head"><span class="qid">Q20</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Slide example. Routing tables: A has key 8 → B. B has 7 → C and 10 → D. D has 8 → E. C has nothing useful. E owns a copy of file 8. Closeness is numeric distance between keys. (a) A requests file 8. List the messages. (b) What changes in caches and routing tables? (c) Afterwards, A inserts a new file with key 9 with hops-to-live 3. Where does the file go?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>(a)</b></p>
+        <ol>
+          <li>A → B: "8?" (A's only entry for 8 points to B).</li>
+          <li>B → C: "8?" (best guess: key 7 is at distance 1, key 10 at distance 2).</li>
+          <li>C → B: "No, sorry" (dead end).</li>
+          <li>B → D: "8?" (backtracking: next best guess, key 10).</li>
+          <li>D → E: "8?" (D's entry 8 → E).</li>
+          <li>E → D: "8!" (file 8).</li>
+          <li>D → B: "8!".</li>
+          <li>B → A: "8!".</li>
+        </ol>
+        <p>8 messages.</p>
+        <p><b>(b)</b> D, B and A store file 8 in their LRU caches. Each node adds a routing entry that associates key 8 with the data source; for anonymity this source can be decided at random (for example, B can point 8 to D, or claim to be the source itself). The next request for 8 that reaches B is answered by B directly.</p>
+        <p><b>(c)</b> The insert is routed like a request for 9. A → B (A's closest key is 8). At B, keys 8 and 10 are both at distance 1 and both point to D: B → D. At D, the closest key is 8: D → E. Hops-to-live is used up and id 9 was not found, so the data is sent along the same path: B, D and E store file 9.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Backtracking is what makes Freenet "steepest ascent with backtracking": a dead end is not a failure, the previous node tries its next best guess. Part (c) shows why close ids cluster on the same nodes: a request for 9 will follow the same path A → B → D and meet the file. Part (b) shows why data migrates toward the interested parties.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="p-r3">
+    <div class="q-head"><span class="qid">Q21</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Freenet node B has an LRU cache for 3 files. Files pass through B in this order: 8, 3, 8, 12, 5, 3, 9. Give the cache content after each file and the evicted files. What does this show about popular and unpopular files?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>File</th><th>Cache (least recent first)</th><th>Evicted</th></tr>
+          <tr><td>8</td><td>8</td><td>–</td></tr>
+          <tr><td>3</td><td>8, 3</td><td>–</td></tr>
+          <tr><td>8</td><td>3, 8</td><td>– (8 becomes most recent)</td></tr>
+          <tr><td>12</td><td>3, 8, 12</td><td>–</td></tr>
+          <tr><td>5</td><td>8, 12, 5</td><td>3</td></tr>
+          <tr><td>3</td><td>12, 5, 3</td><td>8</td></tr>
+          <tr><td>9</td><td>5, 3, 9</td><td>12</td></tr></table></div>
+        <p>Final cache: {5, 3, 9}.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Files are prioritized by popularity: popular information is cached widely and migrates toward areas of demand. Unpopular files are deleted when disk space runs out, and unrequested information may be lost from the network. Freenet is not a reliable archive.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="p-r4">
+    <div class="q-head"><span class="qid">Q22</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Explain the routing properties of Freenet (clustering, small world), its anonymity and security mechanisms, and its pros and cons.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><b>Clustering:</b> close file ids tend to be stored on the same node, because publications of similar ids route toward the same place.</li>
+          <li><b>Small world:</b> most nodes have few local connections, but a few nodes have many neighbors. Well-known nodes see more requests and become even better connected. So most queries traverse only a few hops.</li>
+          <li><b>Anonymity:</b> messages are forwarded back and forth, so a node cannot tell where a message originated.</li>
+          <li><b>Censorship resistance:</b> two file ids must not collide, otherwise an attacker could create a denial of service. Solution: robust hashing, so the id of a file is directly related to its content.</li>
+          <li><b>Link-level encryption:</b> prevents snooping of messages. Messages are quantized to hinder traffic analysis (still possible, but a huge task).</li>
+          <li><b>Document encryption:</b> node operators do not know what data they cache.</li>
+          <li><b>Document verification:</b> documents can be authenticated; secure date-based publishing (the sender publishes a new version).</li>
+        </ul>
+        <p><b>Pros:</b> intelligent routing makes queries short; small search scope (only nodes on the path, no flooding); anonymity can give "plausible deniability". <b>Cons:</b> still no provable guarantees; anonymity makes the system hard to measure and debug.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Each mechanism protects one party: link encryption protects the messages, document encryption protects the node operator (it cannot know what it stores), content-hash ids protect the publisher against fake files with the same id. The same features that protect users also hide the system from its developers.</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §5 DHT AND CHORD LOOKUP ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§5</span><h2>DHTs and Chord: ring, finger tables, lookup</h2></div>
+  <div class="core"><p><b>Core idea.</b> A DHT offers <code>put(id, item)</code> and <code>item = get(id)</code> on a structured overlay. In Chord, node ids and keys are m-bit numbers on a ring; key k is stored at its <b>successor</b>, the first node with id ≥ k (with wrap-around). Row i of the finger table of node n has start = n + 2<sup>i</sup> mod 2<sup>m</sup>, the interval [start<sub>i</sub>, start<sub>i+1</sub>) (the last interval ends at n), and succ = successor(start). <b>Routing rule:</b> if k is in (predecessor, n], node n stores k; otherwise it forwards to the succ of the row whose interval contains k.</p></div>
+  <a class="simbox" href="/exercises/distributed-systems/sim-chord.html" target="_blank" rel="noopener"><b>Open the Chord simulator</b><span>All exam presets and Margara's exercises: finger tables, intervals and lookup paths.</span></a>
+
+  <article class="q" data-type="describe" data-id="p-d1">
+    <div class="q-head"><span class="qid">Q23</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Describe the DHT abstraction and the four operations join, publish, search and fetch on a structured overlay.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>A DHT is a distributed hash table: <code>put(id, item)</code> and <code>item = get(id)</code>. The item can be any resource, for example a reference to a file. Each node holds a part of the table.</p>
+        <ul>
+          <li><b>Join:</b> contact a "bootstrap" node and integrate into the distributed data structure; get a node id.</li>
+          <li><b>Publish:</b> route the publication for file id toward a close node id along the data structure.</li>
+          <li><b>Search:</b> route a query for file id toward a close node id. The data structure <b>guarantees</b> that the query meets the publication.</li>
+          <li><b>Fetch:</b> if the publication contains the file, fetch it from where the query stops. If it contains a reference, fetch from the location in the reference.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>Publish and search use the same deterministic function of the id, so they always end at the same node. That is the guarantee that flooding and Freenet do not have. The price: you must know the exact id, so only lookup is possible, not search.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="p-c1">
+    <div class="q-head"><span class="qid">Q24</span><span class="tag describe">Describe</span><span class="seen">Exam 27 Jun 2013</span></div>
+    <p class="prompt">Briefly illustrate the Chord algorithm. Explain the routing table size and the routing and joining time complexity. Explain why it is better than the algorithms historically used in P2P systems (Gnutella, Kazaa). Give numbers for N ≈ 10<sup>6</sup> nodes.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li>Nodes and keys are on a logical ring of m-bit ids. A node id is usually the hash of its IP address; a key is usually the hash of the item. The item with key k is stored at the successor of k.</li>
+          <li>Basic lookup: each node knows its successor; search goes linearly around the ring: O(N).</li>
+          <li>Finger table: m entries; entry i of node n is the first node with id ≥ n + 2<sup>i</sup>. The i-th finger points 1/2<sup>m−i</sup> of the way around the ring.</li>
+          <li>Routing: if the node does not store k, it forwards to the finger responsible for the interval that contains k.</li>
+        </ul>
+        <p><b>Table size:</b> log N fingers. <b>Routing time:</b> each hop halves the distance to the target: O(log N) hops. <b>Joining:</b> O(log² N) messages with high probability.</p>
+        <p><b>Numbers</b> for N ≈ 10<sup>6</sup> ≈ 2<sup>20</sup>: about 20 distinct fingers; at most about 20 hops per lookup; about 20<sup>2</sup> = 400 messages per join. Gnutella with C = 4 and D = 7: up to 4<sup>7</sup> = 16,384 messages per search, with no guarantee of success.</p>
+        <p><b>Why better:</b> lookup is guaranteed (if the key exists, it is found); traffic per lookup is O(log N), not exponential; state per node is small, O(log N), not O(N) at a server; there is no special node (no super-node, no server).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The halving argument is the heart of Chord: the fingers sit at distances 1, 2, 4, …, 2<sup>m−1</sup>, so the best finger always covers at least half of the remaining distance. Do not forget the honest limits in the comparison: exact-match only, more fragile under churn, and no physical locality.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="p-c2">
+    <div class="q-head"><span class="qid">Q25</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Slide ring: nodes N10, N32, N60, N90, N105, N120, with m = 7 (ids 0–127). (a) With basic lookup (successor pointers only), which nodes does a query for key 80 visit, starting at N10? And starting at N120? (b) Repeat with finger tables.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Key 80 is stored at N90 (the first node ≥ 80).</p>
+        <p><b>(a) Basic lookup.</b> From N10: N10 → N32 → N60 → N90 (3 hops). From N120: N120 → N10 → N32 → N60 → N90 (4 hops).</p>
+        <p><b>(b) Finger tables.</b> The rows used:</p>
+        <div class="tbl"><table><tr><th>i</th><th>Node 10: start, interval → succ</th><th>Node 60: start, interval → succ</th><th>Node 120: start, interval → succ</th></tr><tr><td>0</td><td>11, [11, 12) → 32</td><td>61, [61, 62) → 90</td><td>121, [121, 122) → 10</td></tr><tr><td>1</td><td>12, [12, 14) → 32</td><td>62, [62, 64) → 90</td><td>122, [122, 124) → 10</td></tr><tr><td>2</td><td>14, [14, 18) → 32</td><td>64, [64, 68) → 90</td><td>124, [124, 0) → 10</td></tr><tr><td>3</td><td>18, [18, 26) → 32</td><td>68, [68, 76) → 90</td><td>0, [0, 8) → 10</td></tr><tr><td>4</td><td>26, [26, 42) → 32</td><td>76, [76, 92) → 90</td><td>8, [8, 24) → 10</td></tr><tr><td>5</td><td>42, [42, 74) → 60</td><td>92, [92, 124) → 105</td><td>24, [24, 56) → 32</td></tr><tr><td>6</td><td>74, [74, 10) → 90</td><td>124, [124, 60) → 10</td><td>56, [56, 120) → 60</td></tr><tr><td>Keys</td><td>(120, 10] = {121, 122, 123, 124, 125, 126, 127, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10}</td><td>(32, 60] = {33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60}</td><td>(105, 120] = {106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120}</td></tr></table></div>
+        <ul>
+          <li>From N10: 80 is in row 6, [74, 10) → N90. Path <b>N10 → N90</b> (1 hop).</li>
+          <li>From N120: 80 is in row 6, [56, 120) → N60. At N60: 80 is in row 4, [76, 92) → N90. Path <b>N120 → N60 → N90</b> (2 hops).</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>Basic lookup is correct but O(N): it needs only the successor pointer. Fingers are shortcuts that make it O(log N). This is also why correctness depends only on successors: wrong fingers make a lookup slow, wrong successors make it fail.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="p-c3">
+    <div class="q-head"><span class="qid">Q26</span><span class="tag exercise">Exercise</span><span class="seen">Exam 18 Nov 2023</span></div>
+    <p class="prompt">Three peers (IDs = 2, 9, 12) participate in a circular DHT with finger tables using the Chord protocol. The DHT uses 4 bits for node IDs and keys. (a) Show the routing tables of the three peers. (b) Peer 2 wants to retrieve the value of an object with key 10. Show the messages.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>i</th><th>Node 2: start, interval → succ</th><th>Node 9: start, interval → succ</th><th>Node 12: start, interval → succ</th></tr><tr><td>0</td><td>3, [3, 4) → 9</td><td>10, [10, 11) → 12</td><td>13, [13, 14) → 2</td></tr><tr><td>1</td><td>4, [4, 6) → 9</td><td>11, [11, 13) → 12</td><td>14, [14, 0) → 2</td></tr><tr><td>2</td><td>6, [6, 10) → 9</td><td>13, [13, 1) → 2</td><td>0, [0, 4) → 2</td></tr><tr><td>3</td><td>10, [10, 2) → 12</td><td>1, [1, 9) → 2</td><td>4, [4, 12) → 9</td></tr><tr><td>Keys</td><td>(12, 2] = {13, 14, 15, 0, 1, 2}</td><td>(2, 9] = {3, 4, 5, 6, 7, 8, 9}</td><td>(9, 12] = {10, 11, 12}</td></tr></table></div>
+        <p><b>(b)</b> Key 10 is stored at node 12. Node 2 does not store 10 (its keys are (12, 2]). 10 is in row 3, [10, 2) → node 12. Node 12 stores 10. Path: <b>2 → 12</b>, then 12 answers 2.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Build the start column first (n + 1, n + 2, n + 4, n + 8, mod 16), then the succ column. Most errors come from the wrap-around: for node 9, start 13 and start 1 both go to node 2, because no node is in 13–15 or in 0–1.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="p-c4">
+    <div class="q-head"><span class="qid">Q27</span><span class="tag exercise">Exercise</span><span class="seen">Exam 17 Jan 2024</span></div>
+    <p class="prompt">Three peers (IDs = 4, 9, 12) participate in a circular Chord DHT. 4 bits for node IDs and keys. (a) Show the routing tables. (b) Peer 4 wants to retrieve the value of the object with key 5. Show the messages.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>i</th><th>Node 4: start, interval → succ</th><th>Node 9: start, interval → succ</th><th>Node 12: start, interval → succ</th></tr><tr><td>0</td><td>5, [5, 6) → 9</td><td>10, [10, 11) → 12</td><td>13, [13, 14) → 4</td></tr><tr><td>1</td><td>6, [6, 8) → 9</td><td>11, [11, 13) → 12</td><td>14, [14, 0) → 4</td></tr><tr><td>2</td><td>8, [8, 12) → 9</td><td>13, [13, 1) → 4</td><td>0, [0, 4) → 4</td></tr><tr><td>3</td><td>12, [12, 4) → 12</td><td>1, [1, 9) → 4</td><td>4, [4, 12) → 4</td></tr><tr><td>Keys</td><td>(12, 4] = {13, 14, 15, 0, 1, 2, 3, 4}</td><td>(4, 9] = {5, 6, 7, 8, 9}</td><td>(9, 12] = {10, 11, 12}</td></tr></table></div>
+        <p><b>(b)</b> Key 5 is stored at node 9. Node 4 stores (12, 4], so not 5. 5 is in row 0, [5, 6) → node 9. Path: <b>4 → 9</b>, then 9 answers 4.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Key 5 is just after node 4, so the first finger (the successor) is the right one. A common trap is to think that node 4 stores key 5 because 5 is "close" to 4: keys belong to the <b>next</b> node, never to the previous one.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="p-c5">
+    <div class="q-head"><span class="qid">Q28</span><span class="tag exercise">Exercise</span><span class="seen">Exam 14 Feb 2024</span></div>
+    <p class="prompt">Four peers (IDs = 2, 3, 4, 6) participate in a circular Chord DHT. 3 bits for node IDs and keys. (a) Show the routing tables of the four peers. (b) Peer 3 wants to retrieve the value of the object with key 5. Show the messages.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>i</th><th>Node 2: start, interval → succ</th><th>Node 3: start, interval → succ</th><th>Node 4: start, interval → succ</th><th>Node 6: start, interval → succ</th></tr><tr><td>0</td><td>3, [3, 4) → 3</td><td>4, [4, 5) → 4</td><td>5, [5, 6) → 6</td><td>7, [7, 0) → 2</td></tr><tr><td>1</td><td>4, [4, 6) → 4</td><td>5, [5, 7) → 6</td><td>6, [6, 0) → 6</td><td>0, [0, 2) → 2</td></tr><tr><td>2</td><td>6, [6, 2) → 6</td><td>7, [7, 3) → 2</td><td>0, [0, 4) → 2</td><td>2, [2, 6) → 2</td></tr><tr><td>Keys</td><td>(6, 2] = {7, 0, 1, 2}</td><td>(2, 3] = {3}</td><td>(3, 4] = {4}</td><td>(4, 6] = {5, 6}</td></tr></table></div>
+        <p><b>(b)</b> Key 5 is stored at node 6 (the first node ≥ 5). Node 3 stores only key 3. 5 is in row 1, [5, 7) → node 6. Path: <b>3 → 6</b>, then 6 answers 3.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Do not forward to node 4 because "4 is the next node". Row 0 of node 3 covers only [4, 5). Key 5 falls in row 1, which jumps directly to node 6. Using intervals avoids one useless hop.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="p-c6">
+    <div class="q-head"><span class="qid">Q29</span><span class="tag exercise">Exercise</span><span class="seen">Exam 18 Jun 2024</span></div>
+    <p class="prompt">Three peers (IDs = 2, 6, 11) participate in a circular Chord DHT. 4 bits for node IDs and keys. (a) Show the routing tables. (b) Peer 2 wants to retrieve the value of the object with key 7. Show the messages and the line in the finger table that each node uses to route the search message.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>i</th><th>Node 2: start, interval → succ</th><th>Node 6: start, interval → succ</th><th>Node 11: start, interval → succ</th></tr><tr><td>0</td><td>3, [3, 4) → 6</td><td>7, [7, 8) → 11</td><td>12, [12, 13) → 2</td></tr><tr><td>1</td><td>4, [4, 6) → 6</td><td>8, [8, 10) → 11</td><td>13, [13, 15) → 2</td></tr><tr><td>2</td><td>6, [6, 10) → 6</td><td>10, [10, 14) → 11</td><td>15, [15, 3) → 2</td></tr><tr><td>3</td><td>10, [10, 2) → 11</td><td>14, [14, 6) → 2</td><td>3, [3, 11) → 6</td></tr><tr><td>Keys</td><td>(11, 2] = {12, 13, 14, 15, 0, 1, 2}</td><td>(2, 6] = {3, 4, 5, 6}</td><td>(6, 11] = {7, 8, 9, 10, 11}</td></tr></table></div>
+        <p><b>(b)</b> Key 7 is stored at node 11.</p>
+        <ol>
+          <li>Node 2 does not store 7. 7 is in <b>row 2</b>, [6, 10) → node 6. Message 2 → 6.</li>
+          <li>Node 6 stores (2, 6], so not 7. 7 is in <b>row 0</b>, [7, 8) → node 11. Message 6 → 11.</li>
+          <li>Node 11 stores (6, 11], so it has key 7 and answers node 2.</li>
+        </ol>
+        <p>Path: <b>2 → 6 → 11</b>.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Node 2 cannot jump directly to 11: no finger of node 2 has a start in (6, 11], because its starts are 3, 4, 6, 10, and start 10 covers [10, 2). The row whose interval contains 7 is row 2, and its succ is node 6. Node 6 then sees that 7 is just after it and uses its successor.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="p-c7">
+    <div class="q-head"><span class="qid">Q30</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">(Margara, exercise 2.) Eight peers (IDs = 0, …, 7) participate in a Chord DHT with 3-bit ids and keys. Peer 2 wants to retrieve the value of the object with key 1. Show the finger tables you need and the messages.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>i</th><th>Node 2: start, interval → succ</th><th>Node 6: start, interval → succ</th><th>Node 0: start, interval → succ</th></tr><tr><td>0</td><td>3, [3, 4) → 3</td><td>7, [7, 0) → 7</td><td>1, [1, 2) → 1</td></tr><tr><td>1</td><td>4, [4, 6) → 4</td><td>0, [0, 2) → 0</td><td>2, [2, 4) → 2</td></tr><tr><td>2</td><td>6, [6, 2) → 6</td><td>2, [2, 6) → 2</td><td>4, [4, 0) → 4</td></tr><tr><td>Keys</td><td>(1, 2] = {2}</td><td>(5, 6] = {6}</td><td>(7, 0] = {0}</td></tr></table></div>
+        <ol>
+          <li>Node 2: 1 is in row 2, [6, 2) → node 6.</li>
+          <li>Node 6: 1 is in row 1, [0, 2) → node 0.</li>
+          <li>Node 0: 1 is in row 0, [1, 2) → node 1.</li>
+          <li>Node 1 stores key 1 and answers node 2.</li>
+        </ol>
+        <p>Path: <b>2 → 6 → 0 → 1</b> (3 hops).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Key 1 is "just behind" node 2: clockwise, it is 7 positions away, the worst case. Each hop halves the remaining distance: 7 → 3 → 1 → 0. That is log<sub>2</sub> 8 = 3 hops, the maximum for a full ring.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="p-c8">
+    <div class="q-head"><span class="qid">Q31</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">(Margara, exercise 3.) Three peers (0, 1, 4), 3 bits. (a) Show the routing tables. (b) Peer 4 looks up key 1. (c) Peer 0 looks up key 6. (d) Peer 0 looks up key 3.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>i</th><th>Node 0: start, interval → succ</th><th>Node 1: start, interval → succ</th><th>Node 4: start, interval → succ</th></tr><tr><td>0</td><td>1, [1, 2) → 1</td><td>2, [2, 3) → 4</td><td>5, [5, 6) → 0</td></tr><tr><td>1</td><td>2, [2, 4) → 4</td><td>3, [3, 5) → 4</td><td>6, [6, 0) → 0</td></tr><tr><td>2</td><td>4, [4, 0) → 4</td><td>5, [5, 1) → 0</td><td>0, [0, 4) → 0</td></tr><tr><td>Keys</td><td>(4, 0] = {5, 6, 7, 0}</td><td>(0, 1] = {1}</td><td>(1, 4] = {2, 3, 4}</td></tr></table></div>
+        <p><b>(b)</b> Key 1 is at node 1. Node 4: 1 is in row 2, [0, 4) → node 0. Node 0: 1 is in row 0, [1, 2) → node 1. Path <b>4 → 0 → 1</b>.</p>
+        <p><b>(c)</b> Key 6 is in (4, 0], so node 0 stores it itself: <b>no message</b>.</p>
+        <p><b>(d)</b> Key 3 is at node 4. Node 0: 3 is in row 1, [2, 4) → node 4. Path <b>0 → 4</b>.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Case (c) is the trap: always check first whether the asking node stores the key. Intervals make wrap-around explicit: [5, 1) at node 1 means 5, 6, 7, 0.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="p-c9">
+    <div class="q-head"><span class="qid">Q32</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Six peers (IDs = 1, 5, 8, 14, 20, 27) form a Chord ring with 5-bit ids. (a) Which node stores keys 0, 13, 21 and 31? (b) Build the finger tables. (c) Trace these lookups and give the row used at each hop: 27 → key 13; 1 → key 26; 8 → key 3; 14 → key 7; 5 → key 30; 20 → key 10.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>(a)</b> Key 0 → node 1 (wrap-around); key 13 → node 14; key 21 → node 27; key 31 → node 1 (wrap-around).</p>
+        <p><b>(b)</b></p>
+        <div class="tbl"><table><tr><th>i</th><th>Node 1: start, interval → succ</th><th>Node 5: start, interval → succ</th><th>Node 8: start, interval → succ</th><th>Node 14: start, interval → succ</th><th>Node 20: start, interval → succ</th><th>Node 27: start, interval → succ</th></tr><tr><td>0</td><td>2, [2, 3) → 5</td><td>6, [6, 7) → 8</td><td>9, [9, 10) → 14</td><td>15, [15, 16) → 20</td><td>21, [21, 22) → 27</td><td>28, [28, 29) → 1</td></tr><tr><td>1</td><td>3, [3, 5) → 5</td><td>7, [7, 9) → 8</td><td>10, [10, 12) → 14</td><td>16, [16, 18) → 20</td><td>22, [22, 24) → 27</td><td>29, [29, 31) → 1</td></tr><tr><td>2</td><td>5, [5, 9) → 5</td><td>9, [9, 13) → 14</td><td>12, [12, 16) → 14</td><td>18, [18, 22) → 20</td><td>24, [24, 28) → 27</td><td>31, [31, 3) → 1</td></tr><tr><td>3</td><td>9, [9, 17) → 14</td><td>13, [13, 21) → 14</td><td>16, [16, 24) → 20</td><td>22, [22, 30) → 27</td><td>28, [28, 4) → 1</td><td>3, [3, 11) → 5</td></tr><tr><td>4</td><td>17, [17, 1) → 20</td><td>21, [21, 5) → 27</td><td>24, [24, 8) → 27</td><td>30, [30, 14) → 1</td><td>4, [4, 20) → 5</td><td>11, [11, 27) → 14</td></tr><tr><td>Keys</td><td>(27, 1] = {28, 29, 30, 31, 0, 1}</td><td>(1, 5] = {2, 3, 4, 5}</td><td>(5, 8] = {6, 7, 8}</td><td>(8, 14] = {9, 10, 11, 12, 13, 14}</td><td>(14, 20] = {15, 16, 17, 18, 19, 20}</td><td>(20, 27] = {21, 22, 23, 24, 25, 26, 27}</td></tr></table></div>
+        <p><b>(c)</b></p>
+        <ul>
+          <li>27 → key 13: row 4, [11, 27) → 14. Node 14 stores 13. Path <b>27 → 14</b>.</li>
+          <li>1 → key 26: row 4, [17, 1) → 20; at 20, row 2, [24, 28) → 27. Path <b>1 → 20 → 27</b>.</li>
+          <li>8 → key 3: row 4, [24, 8) → 27; at 27, row 3, [3, 11) → 5. Path <b>8 → 27 → 5</b>.</li>
+          <li>14 → key 7: row 4, [30, 14) → 1; at 1, row 2, [5, 9) → 5; at 5, row 1, [7, 9) → 8. Path <b>14 → 1 → 5 → 8</b>.</li>
+          <li>5 → key 30: row 4, [21, 5) → 27; at 27, row 1, [29, 31) → 1. Path <b>5 → 27 → 1</b>.</li>
+          <li>20 → key 10: row 4, [4, 20) → 5; at 5, row 2, [9, 13) → 14. Path <b>20 → 5 → 14</b>.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>When the key is far away clockwise, the last row (the "half ring" finger) is used first, often across 0. Then the rows get smaller at each hop. The lookup 14 → key 7 is the longest: key 7 is just behind node 14 (25 positions clockwise), so it needs three halvings.</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>To find the row quickly, compute the clockwise distance d = (k − n) mod 2<sup>m</sup>. The row is the largest i with 2<sup>i</sup> ≤ d. Example: node 14, key 7: d = 25, 16 ≤ 25 &lt; 32, so row 4.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="p-c10">
+    <div class="q-head"><span class="qid">Q33</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Ten peers (IDs = 4, 11, 19, 26, 33, 40, 47, 52, 58, 62) form a Chord ring with 6-bit ids. Build the finger tables of nodes 4, 40 and 52. Trace the lookups 52 → key 18 and 4 → key 50.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>i</th><th>Node 4: start, interval → succ</th><th>Node 40: start, interval → succ</th><th>Node 52: start, interval → succ</th></tr><tr><td>0</td><td>5, [5, 6) → 11</td><td>41, [41, 42) → 47</td><td>53, [53, 54) → 58</td></tr><tr><td>1</td><td>6, [6, 8) → 11</td><td>42, [42, 44) → 47</td><td>54, [54, 56) → 58</td></tr><tr><td>2</td><td>8, [8, 12) → 11</td><td>44, [44, 48) → 47</td><td>56, [56, 60) → 58</td></tr><tr><td>3</td><td>12, [12, 20) → 19</td><td>48, [48, 56) → 52</td><td>60, [60, 4) → 62</td></tr><tr><td>4</td><td>20, [20, 36) → 26</td><td>56, [56, 8) → 58</td><td>4, [4, 20) → 4</td></tr><tr><td>5</td><td>36, [36, 4) → 40</td><td>8, [8, 40) → 11</td><td>20, [20, 52) → 26</td></tr><tr><td>Keys</td><td>(62, 4] = {63, 0, 1, 2, 3, 4}</td><td>(33, 40] = {34, 35, 36, 37, 38, 39, 40}</td><td>(47, 52] = {48, 49, 50, 51, 52}</td></tr></table></div>
+        <ul>
+          <li>52 → key 18 (stored at 19): at 52, row 4, [4, 20) → 4; at 4, row 3, [12, 20) → 19. Path <b>52 → 4 → 19</b>.</li>
+          <li>4 → key 50 (stored at 52): at 4, row 5, [36, 4) → 40; at 40, row 3, [48, 56) → 52. Path <b>4 → 40 → 52</b>.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>With m = 6 there are 6 rows, and the last row covers half of the ring (32 ids). Note that node 4 stores the keys in (62, 4] = {63, 0, 1, 2, 3, 4}: the wrap-around also applies to storage, not only to fingers.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="p-c11">
+    <div class="q-head"><span class="qid">Q34</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Find the errors. Ring with peers 3, 7, 12 and 4-bit ids. A student wrote these finger tables (start → succ). Node 3: 4 → 7, 5 → 7, 6 → 7, 7 → 7. Node 7: 8 → 12, 9 → 12, 11 → 12, 15 → 0. Node 12: 13 → 12, 14 → 3, 0 → 3, 4 → 3. Correct them.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><b>Node 3:</b> wrong starts. The student used n + i + 1 instead of n + 2<sup>i</sup>. Correct starts: 4, 5, 7, 11.</li>
+          <li><b>Node 7:</b> start 15 → 0 is wrong: 0 is not a node. The successor of 15 wraps around to node 3.</li>
+          <li><b>Node 12:</b> start 13 → 12 is wrong: the student took the previous node. The successor of 13 is node 3 (wrap-around). Start 4 → 3 is wrong: the successor of 4 is node 7.</li>
+        </ul>
+        <p>Correct tables:</p>
+        <div class="tbl"><table><tr><th>i</th><th>Node 3: start, interval → succ</th><th>Node 7: start, interval → succ</th><th>Node 12: start, interval → succ</th></tr><tr><td>0</td><td>4, [4, 5) → 7</td><td>8, [8, 9) → 12</td><td>13, [13, 14) → 3</td></tr><tr><td>1</td><td>5, [5, 7) → 7</td><td>9, [9, 11) → 12</td><td>14, [14, 0) → 3</td></tr><tr><td>2</td><td>7, [7, 11) → 7</td><td>11, [11, 15) → 12</td><td>0, [0, 4) → 3</td></tr><tr><td>3</td><td>11, [11, 3) → 12</td><td>15, [15, 7) → 3</td><td>4, [4, 12) → 7</td></tr><tr><td>Keys</td><td>(12, 3] = {13, 14, 15, 0, 1, 2, 3}</td><td>(3, 7] = {4, 5, 6, 7}</td><td>(7, 12] = {8, 9, 10, 11, 12}</td></tr></table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>Three typical mistakes: (1) starts must grow by powers of two; (2) a succ must always be an existing node; (3) succ means "first node at or after start", never "before". A finger never points back to the node itself unless it is the only node on the ring.</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §6 CHORD DYNAMICS, OTHER DHTS, COMPARISONS ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§6</span><h2>Chord under churn, other DHTs, and comparisons</h2></div>
+  <div class="core"><p><b>Core idea.</b> When node n joins, it takes the keys in (predecessor(n), n] from its successor, and some fingers of other nodes must point to n. Join costs O(log² N). Correctness relies only on <b>successor pointers</b>: periodic <b>stabilization</b> repairs fingers, and a <b>successor list</b> of size R survives R − 1 simultaneous failures. Other DHTs (Kademlia, CAN) make other trade-offs. IPFS uses a DHT for content addressing.</p></div>
+
+  <article class="q" data-type="describe" data-id="p-j1">
+    <div class="q-head"><span class="qid">Q35</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">How does a node join Chord? How does Chord handle concurrent joins and failures? Give the costs.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li>Each node also keeps its <b>predecessor</b>, to allow counter-clockwise routing, which helps the join.</li>
+          <li><b>Join of n</b> (n knows some node n′ already in the system): (1) initialize the predecessor and fingers of n through n′: finger i = successor of n + 2<sup>i</sup>; (2) update the fingers and predecessors of existing nodes. Node n becomes the i-th finger of node p if and only if p precedes n by at least 2<sup>i</sup> and the i-th finger of p succeeds n. The first such p is the immediate predecessor of n − 2<sup>i</sup>. Search for it and update it. Do this for each of the log N fingers, with a lookup of cost log N each: <b>O(log² N)</b>. The keys in (pred(n), n] move to n.</li>
+          <li><b>Stabilization:</b> concurrent joins and leaves can break the successor pointers. Each node periodically looks up the successor of n + 2<sup>i</sup> for each finger i.</li>
+          <li><b>Failures:</b> each node keeps a list of its first R successors. If the immediate successor does not respond, the node contacts the next one in the list. It survives R − 1 simultaneous failures.</li>
+        </ul>
+        <p>Table size O(log N); lookup O(log N) hops; join O(log² N).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Correctness depends only on successor pointers: with correct successors a lookup always succeeds, maybe slowly. Fingers are only shortcuts, so they can be repaired lazily by stabilization.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="p-j2">
+    <div class="q-head"><span class="qid">Q36</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Ring with peers 0, 1, 4 and 3-bit ids (the ring of exercise 3). Node 6 joins. (a) Which keys move, and from which node? (b) Give the finger table of node 6. (c) Which fingers of the existing nodes change? Find them with the rule "the first node to update is the immediate predecessor of 6 − 2<sup>i</sup>". (d) Trace 0 → key 5 before and after the join.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>(a)</b> Node 6 is responsible for (4, 6] = {5, 6}. These keys move from node 0 to node 6. Node 0 keeps {7, 0}.</p>
+        <p><b>(b)</b> and the new tables of all nodes:</p>
+        <div class="tbl"><table><tr><th>i</th><th>Node 0: start, interval → succ</th><th>Node 1: start, interval → succ</th><th>Node 4: start, interval → succ</th><th>Node 6: start, interval → succ</th></tr><tr><td>0</td><td>1, [1, 2) → 1</td><td>2, [2, 3) → 4</td><td>5, [5, 6) → 6</td><td>7, [7, 0) → 0</td></tr><tr><td>1</td><td>2, [2, 4) → 4</td><td>3, [3, 5) → 4</td><td>6, [6, 0) → 6</td><td>0, [0, 2) → 0</td></tr><tr><td>2</td><td>4, [4, 0) → 4</td><td>5, [5, 1) → 6</td><td>0, [0, 4) → 0</td><td>2, [2, 6) → 4</td></tr><tr><td>Keys</td><td>(6, 0] = {7, 0}</td><td>(0, 1] = {1}</td><td>(1, 4] = {2, 3, 4}</td><td>(4, 6] = {5, 6}</td></tr></table></div>
+        <p><b>(c)</b> For each i, start at the last node at or before 6 − 2<sup>i</sup>, update it if its finger i succeeds 6, and continue counter-clockwise while the update applies.</p>
+        <div class="tbl"><table><tr><th>i</th><th>6 − 2<sup>i</sup></th><th>First node p</th><th>Update</th></tr>
+          <tr><td>0</td><td>5</td><td>4</td><td>node 4 row 0 (start 5): 0 → 6; then node 1 row 0 is 4, not after 6: stop</td></tr>
+          <tr><td>1</td><td>4</td><td>4</td><td>node 4 row 1 (start 6): 0 → 6; node 1 row 1 is 4: stop</td></tr>
+          <tr><td>2</td><td>2</td><td>1</td><td>node 1 row 2 (start 5): 0 → 6; node 0 row 2 is 4: stop</td></tr></table></div>
+        <p>Three fingers change. Node 0's table does not change.</p>
+        <p><b>(d)</b> Before: node 0 stores key 5 itself (no message). After: at 0, 5 is in row 2, [4, 0) → 4; at 4, row 0, [5, 6) → 6. Path <b>0 → 4 → 6</b>.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Only fingers whose start falls in (pred(6), 6] = (4, 6] can change: those starts used to map to node 0 and now map to node 6. Starts 5 and 6 appear at node 4 (rows 0, 1) and node 1 (row 2). This quick check ("which starts fall in the new node's key range?") gives the same result as the predecessor rule.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="p-j3">
+    <div class="q-head"><span class="qid">Q37</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Ring with peers 1, 5, 8, 14, 20, 27 and 5-bit ids. Node 24 joins. (a) Which keys move? (b) Which fingers of existing nodes change? (c) Give the finger table of node 24. (d) Trace 5 → key 22 before and after.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>(a)</b> Node 24 takes (20, 24] = {21, 22, 23, 24} from node 27. Node 27 keeps {25, 26, 27}.</p>
+        <p><b>(b)</b> The fingers whose start is in (20, 24] change from 27 to 24:</p>
+        <ul>
+          <li>Node 20: rows 0, 1, 2 (starts 21, 22, 24).</li>
+          <li>Node 14: row 3 (start 22).</li>
+          <li>Node 8: row 4 (start 24).</li>
+          <li>Node 5: row 4 (start 21).</li>
+        </ul>
+        <p>Six fingers in total. Nodes 1 and 27 do not change.</p>
+        <p><b>(c)</b></p>
+        <div class="tbl"><table><tr><th>i</th><th>Node 24: start, interval → succ</th></tr><tr><td>0</td><td>25, [25, 26) → 27</td></tr><tr><td>1</td><td>26, [26, 28) → 27</td></tr><tr><td>2</td><td>28, [28, 0) → 1</td></tr><tr><td>3</td><td>0, [0, 8) → 1</td></tr><tr><td>4</td><td>8, [8, 24) → 8</td></tr><tr><td>Keys</td><td>(20, 24] = {21, 22, 23, 24}</td></tr></table></div>
+        <p><b>(d)</b> Before: at 5, row 4, [21, 5) → 27, which stores 22: <b>5 → 27</b>. After: the same row now points to 24, which stores 22: <b>5 → 24</b>.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>With the predecessor rule: for i = 4, 24 − 16 = 8, so the first node is 8 (row 4 → 24); then go counter-clockwise to node 5 (also updated), then node 1 (its row 4 is 20, not after 24: stop). That is why the cost is a lookup per finger plus a few updates: O(log² N).</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="p-j4">
+    <div class="q-head"><span class="qid">Q38</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Same ring (1, 5, 8, 14, 20, 27, 5-bit ids, without node 24). Node 14 leaves. (a) Which node becomes responsible for its keys? (b) Which fingers must change after stabilization? (c) Trace 1 → key 12 before and after.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>(a)</b> Node 14 had (8, 14] = {9, …, 14}. Its successor, node 20, becomes responsible: it now has (8, 20] = {9, …, 20}.</p>
+        <p><b>(b)</b> Every finger that pointed to 14 now points to 20:</p>
+        <ul>
+          <li>Node 1: row 3 (start 9).</li>
+          <li>Node 5: rows 2 and 3 (starts 9, 13).</li>
+          <li>Node 8: rows 0, 1, 2 (starts 9, 10, 12). Row 0 is the successor pointer of node 8.</li>
+          <li>Node 27: row 4 (start 11).</li>
+        </ul>
+        <p><b>(c)</b> Before: at 1, row 3, [9, 17) → 14, which stores 12: <b>1 → 14</b>. After: the same row points to 20: <b>1 → 20</b>.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A leave is the mirror of a join: the keys go to the successor, and fingers that pointed to the leaving node move to its successor. Node 8's successor pointer is the critical one: until it is repaired (stabilization or successor list), lookups that pass through node 8 can fail. If 14 crashes instead of leaving gracefully, its data is lost unless it was also copied elsewhere.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="p-j5">
+    <div class="q-head"><span class="qid">Q39</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Same ring (1, 5, 8, 14, 20, 27). Each node keeps a successor list of size R = 3. (a) Give the successor list of nodes 8 and 20. (b) Nodes 14 and 20 crash at the same time. What does node 8 do? (c) Nodes 14, 20 and 27 crash at the same time. What happens to node 8? (d) How many simultaneous failures does R = 3 tolerate?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>Node 8: [14, 20, 27]. Node 20: [27, 1, 5] (wrap-around).</li>
+          <li>14 does not respond, so node 8 contacts the next entry, 20; it does not respond either; node 8 contacts 27, which answers. Node 27 becomes the successor of node 8, and the ring stays connected. Stabilization then repairs the fingers.</li>
+          <li>All three entries of node 8 are dead. Its fingers (14, 14, 14, 20, 27) are dead too. Node 8 cannot find its successor: the ring breaks at node 8.</li>
+          <li>R − 1 = <b>2</b> simultaneous failures of consecutive successors.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>The successor list is a cheap insurance for the only pointer that matters for correctness. Failures are independent, so R consecutive failures are very unlikely when R is about log N. The same list is a natural place to replicate data: the next R nodes are exactly the nodes that take over the keys.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="p-o1">
+    <div class="q-head"><span class="qid">Q40</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Give the pros and cons of Chord. Which other DHTs exist and where are they used? What is IPFS and how does it use a DHT?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Chord pros:</b> guaranteed lookup; O(log N) per-node state and search scope.</p>
+        <p><b>Chord cons:</b> Chord itself is rarely deployed, but its relatives are; more fragile than unstructured networks; non-exact-match search is hard; it does not consider the physical topology.</p>
+        <p><b>Other DHTs:</b> they make different trade-offs between search scope, information to store, and cost to maintain the structure under joins and leaves.</p>
+        <ul>
+          <li><b>Kademlia:</b> tree-based structure. It powers BitTorrent's Mainline DHT (trackerless search), IPFS, and Ethereum's peer discovery.</li>
+          <li><b>CAN:</b> a d-dimensional space. The number of dimensions can change to adapt the system to the application.</li>
+        </ul>
+        <p><b>IPFS</b> (InterPlanetary File System): the address-based Internet tends to be centralized and vulnerable to single points of failure. IPFS uses a DHT to create a content-based infrastructure: the DHT maps a content id (CID) to the peers that provide that content. Order of magnitude (early 2026): about 4k nodes consistently online, more than 500k clients, lookups of about 0.4 s.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Content addressing is the DHT idea applied to the Web: you ask for "this content" (its hash), not for "this server". Any peer that has the content can serve it, and the hash lets you verify it. The same idea appears in Freenet's content-hash ids and in BitTorrent's magnet links.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="p-s1">
+    <div class="q-head"><span class="qid">Q41</span><span class="tag scenario">Scenario</span><span class="seen">Exam 12 Jul 2024</span></div>
+    <p class="prompt">You implement a document lookup service: each document has a key, and the service finds the host of a document from its key. Scenario 1: tens of thousands of hosts that dynamically join and leave. Scenario 2: fewer than a hundred hosts that never join or leave. In which scenario would you use Chord, and why? How would you implement the service in the other scenario?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Scenario 1: Chord.</b> Each host keeps only O(log N) state (about 15 fingers for 2<sup>15</sup> hosts). A lookup takes O(log N) hops and is guaranteed. Joins cost O(log² N), and stabilization plus successor lists handle churn. No host needs a global view, which is impossible to keep up to date with tens of thousands of dynamic hosts. Store references (key → host), not the documents.</p>
+        <p><b>Scenario 2: no Chord.</b> With fewer than a hundred static hosts, each host can keep the full membership list. Use a deterministic mapping (for example, hash the key and assign key ranges to hosts, or a replicated directory table). A lookup takes <b>one hop</b> (or zero), with no routing and no maintenance. A small replicated central index is also acceptable.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Chord exists to avoid a global view when the global view is too big or changes too often. With 100 static hosts the full table is tiny and never changes, so log N hops and stabilization traffic are pure overhead. Justify the choice with the two variables of the question: size and churn.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="p-x1">
+    <div class="q-head"><span class="qid">Q42</span><span class="tag compare">Compare</span><span class="seen">Exam 1 Feb 2013</span></div>
+    <p class="prompt">Compare centralized search, query flooding, hierarchical query flooding and structured topologies in terms of search expressivity and performance (Margara's question). Then describe the journey from Napster to eMule/BitTorrent: how each product tried to solve the problems of the previous one (centralized vs distributed file lists, query methods).</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th></th><th>Centralized (Napster)</th><th>Flooding (Gnutella)</th><th>Super-nodes (Kazaa)</th><th>DHT (Chord)</th></tr>
+          <tr><td>Join / publish</td><td>Contact the server; send the file list</td><td>Contact a few neighbors (PING/PONG); no publish</td><td>Contact a super-node; send the file list to it</td><td>Bootstrap node; route the publication to the key's node</td></tr>
+          <tr><td>Search</td><td>Ask the server</td><td>Neighbors, recursively, limited by hops-to-live</td><td>Flood among super-nodes only</td><td>Route by key, O(log N) hops</td></tr>
+          <tr><td>Expressivity</td><td>Any query</td><td>Any query (text, fuzzy…)</td><td>Any query</td><td>Exact key only</td></tr>
+          <tr><td>Search scope</td><td>O(1)</td><td>O(N); up to C<sup>D</sup> messages</td><td>Smaller, no guarantee</td><td>O(log N), guaranteed</td></tr>
+          <tr><td>Weak point</td><td>O(N) state at server; single point of failure and of control</td><td>Traffic; may miss items; unstable</td><td>Still no guarantees</td><td>Fragile; no fuzzy search; ignores physical topology</td></tr></table></div>
+        <p><b>The journey.</b> Napster's central file list was a single point of failure and of legal control → Gnutella removed it: file lists stay distributed and queries are flooded, but flooding wastes bandwidth and scales badly → Kazaa (and eDonkey with its servers) used heterogeneity: powerful nodes index file lists and flood only among themselves → free riders remained, and credit systems (eMule, Kazaa) were cheated with unofficial clients → BitTorrent introduced tit-for-tat, and moved search out of band (web, .torrent, magnet links) → DHTs give guaranteed lookups (BitTorrent's trackerless Mainline DHT and eMule's Kad network are Kademlia-based).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The trade-off is expressivity vs guarantees: unstructured systems can answer any query but cannot promise to find anything; structured systems promise to find a key but cannot search by content. Tell the history as "problem → fix → new problem".</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="p-x2">
+    <div class="q-head"><span class="qid">Q43</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">(Margara's question.) Compare structured and unstructured topologies (query flooding and hierarchical query flooding) in terms of network traffic, search scope, and resilience to disconnections.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
         <div class="tbl"><table><tr><th></th><th>Flooding</th><th>Hierarchical flooding</th><th>Structured (DHT)</th></tr>
           <tr><td>Traffic per query</td><td>Very high: up to C<sup>D</sup></td><td>Lower: only super-nodes flood</td><td>Low: O(log N) messages</td></tr>
           <tr><td>Search scope</td><td>Limited by hops-to-live; may miss items</td><td>Larger, no guarantee</td><td>Exact keys, always found</td></tr>
-          <tr><td>Resilience to churn</td><td>High: no structure to repair</td><td>Medium: super-node loss hurts</td><td>Lower: structure must be maintained (stabilization, successor lists)</td></tr>
+          <tr><td>Resilience to disconnections</td><td>High: no structure to repair</td><td>Medium: the loss of a super-node hurts its normal nodes</td><td>Lower: the structure must be maintained (stabilization, successor lists)</td></tr>
           <tr><td>Query types</td><td>Any</td><td>Any</td><td>Exact match only</td></tr></table></div>
       </div>
-      <div class="why"><h4>Why</h4><p>Structure is information that must be kept correct. It saves traffic per query but costs maintenance when nodes come and go.</p></div>
+      <div class="why"><h4>Why</h4><p>Structure is information that must be kept correct. It saves traffic per query but costs maintenance when nodes come and go. An unstructured network has nothing to repair: a disconnection only removes some paths.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="p-x3">
+    <div class="q-head"><span class="qid">Q44</span><span class="tag compare">Compare</span><span class="seen">Exam 3 Dec 2014</span></div>
+    <p class="prompt">Describe the routing mechanisms of Freenet and of Chord (the version with finger tables), and compare them.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Freenet:</b> the goals are anonymity and censorship resistance. A request for a file id goes to the neighbor that is the "best guess" (closest known id): steepest-ascent hill climbing with backtracking, limited by hops-to-live. The file returns along the same chain, and every node caches it (LRU). Inserts follow the same route, so data is placed where requests will look. Similar ids cluster on the same nodes; the network becomes a small world; popular files spread, unpopular ones may disappear. Link and document encryption, content-hash ids.</p>
+        <p><b>Chord:</b> ring of m-bit ids; a key is stored at its successor; each node has m fingers (succ(n + 2<sup>i</sup>)); a node forwards to the finger whose interval contains the key; each hop halves the distance: O(log N) hops, O(log N) state; join costs O(log² N); successor lists and stabilization handle churn.</p>
+        <div class="tbl"><table><tr><th></th><th>Freenet</th><th>Chord</th></tr>
+          <tr><td>Guarantee</td><td>None (may not find)</td><td>Always finds the key</td></tr>
+          <tr><td>Routing state</td><td>Learned from traffic, approximate</td><td>Structured, exact</td></tr>
+          <tr><td>Failure of a path</td><td>Backtracking, hops-to-live</td><td>Successor list, stabilization</td></tr>
+          <tr><td>Caching / replication</td><td>Along request paths, popularity-driven</td><td>Not built in (successor list)</td></tr>
+          <tr><td>Anonymity</td><td>Yes, by design</td><td>No</td></tr></table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>Both route "toward closer ids", but Freenet learns its routing tables from traffic, while Chord builds them from a mathematical structure. Learning gives adaptivity and anonymity; structure gives guarantees.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="p-x4">
+    <div class="q-head"><span class="qid">Q45</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Name the system (Napster, Gnutella, Kazaa, BitTorrent, Freenet, Chord, IPFS) for each property: (a) search scope O(1), server state O(N); (b) PING/PONG through an anchor node; (c) fetch from multiple peers simultaneously, after a search among super-nodes; (d) rarest-first and optimistic unchoke; (e) data migrates toward interested parties along request paths; (f) join costs O(log² N); (g) a DHT maps a content id (CID) to the peers that provide it; (h) search time O(2D).</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>Napster.</li>
+          <li>Gnutella (join).</li>
+          <li>Kazaa.</li>
+          <li>BitTorrent.</li>
+          <li>Freenet (LRU caching along the path).</li>
+          <li>Chord.</li>
+          <li>IPFS.</li>
+          <li>Gnutella (D hops out, D hops back).</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>Each system has one signature mechanism. If you link each mechanism to the problem it solves (server failure, flooding cost, free riders, anonymity, guarantees), you can rebuild any comparison table in the exam.</p></div>
     </div>
   </article>
 </section>
-<footer>Source: lecture slides "10 – Peer-to-peer" and P2P exercises (Margara), and the past exams in your course folder. Your "Got it" and "Review again" marks stay only in this browser.</footer>
+<footer>Source: lecture slides "10 – Peer-to-peer" and P2P exercises (Prof. Margara), Chord exam questions (Prof. Cugola), and the past exams in your course folder. Your "Got it" and "Review again" marks stay only in this browser.</footer>
 </div>
 
 <script>
 (function(){
-  const KEY = "ds-p2p-marks-v1";
+  const KEY = "ds-p2p-marks-v2";
   let marks = {};
   try { marks = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e) { marks = {}; }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(marks)); } catch(e) {} };

@@ -111,7 +111,7 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
   <a class="eyebrow" href="/courses.html?c=distributed-systems" style="text-decoration:none">← Distributed Systems notes</a>
   <div class="eyebrow">Distributed Systems · Prof. Margara · Chapter 08</div>
   <h1>Replication and consistency</h1>
-  <p class="lede">Exam drill for replication protocols, data-centric and client-centric consistency models, and design strategies. The schedule exercise is in every exam: practice it with the checker.</p>
+  <p class="lede">Exam drill for replication protocols, data-centric and client-centric consistency models, design strategies and the case studies. The schedule exercise is in every exam. Practice it here, then check your answers with the checker.</p>
 </header>
 <div class="toolbar" role="toolbar" aria-label="Filter and controls">
   <button class="chip" data-filter="all" aria-pressed="true">All</button>
@@ -129,39 +129,141 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
 
 <div class="exam-map">
   <h2>How the exam asks about this chapter</h2>
-  <p>Question 5 of every recent exam is a <b>schedule of reads and writes</b>. Real examples:</p>
+  <p>Question 5 of every recent exam is about this chapter. Most of the time it is a <b>schedule of reads and writes</b>. The older exams (2013–2015) also had a schedule in every test, plus one open question. Real examples:</p>
   <ul>
-    <li>"Is the schedule consistent with FIFO, causal, sequential? How do your answers change if you remove the last read?" <span class="date">18 Jun 2024</span> <span class="date">12 Jul 2024</span> <span class="date">6 Sep 2024</span> · "what can we infer about the store?" <span class="date">18 Nov 2023</span></li>
-    <li>"Which values of x and y can P2 read at '?' under FIFO, causal, sequential?" <span class="date">17 Jan 2024</span></li>
-    <li>"The application requires FIFO consistency, the store provides eventual consistency. Is it enough? Can you build FIFO on top? How?" <span class="date">14 Feb 2024</span></li>
-    <li>Older: primary-based protocols <span class="date">13 Feb 2015</span>; update propagation <span class="date">13 Jul 2015</span>; synchronization variables <span class="date">25 Feb 2015</span> <span class="date">23 Sep 2015</span></li>
+    <li>"Is the schedule consistent with the FIFO, causal, and sequential consistency models? How do your answers change if you remove the last read?" <span class="date">18 Jun 2024</span> <span class="date">12 Jul 2024</span> <span class="date">6 Sep 2024</span></li>
+    <li>"… By looking at this schedule, what can we infer about the consistency model of the data store?" <span class="date">18 Nov 2023</span></li>
+    <li>"Which values of x and y is P2 allowed to read in the position marked with '?', in the cases of FIFO, causal, and sequential?" <span class="date">17 Jan 2024</span></li>
+    <li>"The application requires FIFO consistency, but the data store provides eventual consistency. Is it enough? If not, can you implement FIFO on top of it? How?" <span class="date">14 Feb 2024</span></li>
+    <li>"Is it FIFO/causal/sequential consistent? If not, can you remove just one operation and make it consistent?" <span class="date">1 Feb 2013</span> <span class="date">19 Feb 2013</span> <span class="date">5 Sep 2013</span> <span class="date">3 Dec 2014</span> <span class="date">13 Feb 2015</span> <span class="date">25 Feb 2015</span> <span class="date">13 Jul 2015</span> <span class="date">9 Sep 2015</span> <span class="date">23 Sep 2015</span></li>
+    <li>"Write two schedules: the first causal but not sequential, the second sequential." <span class="date">19 Sep 2013</span> · "Will this C program terminate on a sequentially consistent machine?" <span class="date">27 Jun 2013</span></li>
+    <li>Open questions: primary-based protocols <span class="date">13 Feb 2015</span> <span class="date">19 Sep 2013</span>; update propagation, push vs pull, anti-entropy <span class="date">13 Jul 2015</span> <span class="date">19 Feb 2013</span>; synchronization variables <span class="date">25 Feb 2015</span> <span class="date">23 Sep 2015</span></li>
   </ul>
 </div>
 <a class="simbox" href="/exercises/distributed-systems/sim-consistency.html" target="_blank" rel="noopener"><b>Open the consistency checker</b><span>All exam schedules and Margara's exercises, with valid orders and "remove one operation".</span></a>
 
+<!-- ===== §1 WHY ===== -->
 <section class="topic">
-  <div class="topic-head"><span class="num">§1</span><h2>Why replicate, and how: protocols</h2></div>
-  <div class="core"><p><b>Core idea.</b> Replication gives fault tolerance, availability and performance (latency does not improve like other metrics; the speed of light is a hard limit). The cost is keeping replicas consistent. Three protocol families: <b>single leader</b>, <b>multi leader</b>, <b>leaderless</b> (quorums).</p></div>
+  <div class="topic-head"><span class="num">§1</span><h2>Why replicate, and what it costs</h2></div>
+  <div class="core"><p><b>Core idea.</b> Replication gives fault tolerance, availability and performance. Latency improves much less than other metrics, and the speed of light is a hard limit, so data must be close to users. The main problem is consistency between replicas. A <b>consistency model</b> is a contract between the processes and the data store: strong guarantees are easy to program but expensive.</p></div>
+
+  <article class="q" data-type="exercise" data-id="r-w1">
+    <div class="q-head"><span class="qid">Q1</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">(a) Give the three reasons to replicate data, with one example each. (b) From 1983 to 2024, network bandwidth improved more than 3000×, but round-trip latency improved less than 30× (2.54 ms → 0.1 ms in a LAN). Why does this matter for replication? (c) A data store has one replica in Milan and one in New York, about 6,500 km apart. Light in optical fiber travels at about 200,000 km/s. What is the minimum time of a write that waits synchronously for the remote replica?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li><b>Fault tolerance:</b> redundancy hides failures (replicated state machines with consensus give the illusion of one machine). <b>Availability:</b> a local replica on a mobile device supports disconnected operation; replicas also absorb load peaks (for example, the release of a new operating system). <b>Performance:</b> share the load to increase throughput (a replicated web server), and put data close to users to cut latency (processor caches, local copies on phones, CDNs, geo-replicated data stores).</li>
+          <li>When other metrics improve much faster, latency becomes the limiting factor. A protocol that waits for remote replicas pays latency on every operation. More bandwidth or faster CPUs do not help. So designers replicate data close to the clients and try to avoid synchronous coordination.</li>
+          <li>One way: 6,500 / 200,000 s = 32.5 ms. A synchronous write needs at least one round trip: <b>about 65 ms</b>, before any processing or queuing. A client that does 100 dependent writes waits at least 6.5 s.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>No technology removes the propagation delay: it is physics. This is the root of the whole chapter. Strong models need synchronous coordination, so they pay this delay. Weak models (causal, FIFO, eventual) answer from the local replica and propagate later.</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>When a question asks you to compare designs "in terms of response time", always say which interactions are synchronous and how far apart the replicas are.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="r-w2">
+    <div class="q-head"><span class="qid">Q2</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Give real examples of replicated systems. What are the main challenges of replication? What is a consistency model, and which kinds of guarantees can it give?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Examples.</b> Collaboration platforms (Google Docs, Microsoft 365, Dropbox): files are replicated on user devices, support disconnected work, and are reconciled at reconnection. They assume that conflicts are infrequent. Distributed file systems, which may support simultaneous changes. CDNs (for example, used by Netflix) replicate content near the users.</p>
+        <p><b>Challenges.</b></p>
+        <ul>
+          <li>Consistency: a change to one replica must reach all the others. Concurrent updates create <b>write-write</b> and <b>read-write conflicts</b>. We must define the behavior in case of conflicts.</li>
+          <li>Cost: replication can degrade performance. Waiting until every replica has a write can be very expensive.</li>
+          <li>Different applications need different guarantees: data-centric vs client-centric.</li>
+          <li>"Read returns the last write" is the ideal, but "last" is not defined without a global clock.</li>
+        </ul>
+        <p><b>Consistency model:</b> a <b>contract</b> between the processes and the data store. Stricter guarantees simplify development but cost more; weaker ones are cheaper but make development harder. Kinds of guarantees: on <b>content</b> (maximum difference between versions at different replicas), on <b>staleness</b> (maximum time before a change reaches all replicas), on the <b>order of updates</b> (which behaviors are allowed with conflicts). Models are data-centric or client-centric. <b>Consistency protocols</b> implement the models.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The "contract" view explains the whole chapter. The store promises a set of allowed results; the programmer writes code that is correct for every allowed result. The fewer results allowed, the easier the code, and the more coordination the store needs.</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §2 PROTOCOLS ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§2</span><h2>Replication protocols: single leader, multi leader, leaderless</h2></div>
+  <div class="core"><p><b>Core idea.</b> The key question is "who decides the order of writes?". <b>Single leader:</b> the leader decides; followers are updated synchronously, asynchronously or semi-synchronously. <b>Multi leader:</b> nobody decides, so write-write conflicts happen; it fits geo-replication. <b>Leaderless:</b> clients contact quorums, with N<sub>R</sub> + N<sub>W</sub> &gt; N and N<sub>W</sub> &gt; N/2. A protocol is <b>highly available</b> if it needs no synchronous (blocking) communication; CAP says that with partitions you choose availability or consistency.</p></div>
 
   <article class="q" data-type="compare" data-id="r-p1">
-    <div class="q-head"><span class="qid">Q1</span><span class="tag compare">Compare</span></div>
+    <div class="q-head"><span class="qid">Q3</span><span class="tag compare">Compare</span><span class="seen">Margara exercises</span></div>
     <p class="prompt">Describe and compare single leader, multi leader and leaderless replication protocols.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
         <div class="tbl"><table><tr><th></th><th>Single leader</th><th>Multi leader</th><th>Leaderless</th></tr>
-          <tr><td>Writes</td><td>Only the leader; it propagates to followers</td><td>Several replicas accept writes concurrently</td><td>Client (or coordinator) writes to many replicas</td></tr>
+          <tr><td>Writes</td><td>Only the leader; it propagates to followers</td><td>Several replicas accept writes concurrently</td><td>Client (or a coordinator) writes to many replicas</td></tr>
+          <tr><td>Reads</td><td>Leader only (Raft-like backup) or any replica</td><td>Any replica</td><td>A read quorum</td></tr>
           <tr><td>Propagation</td><td>Synchronous, asynchronous or semi-synchronous (k replies)</td><td>Asynchronous between leaders</td><td>Quorums + read repair + anti-entropy</td></tr>
-          <tr><td>Conflicts</td><td>No write-write; read-write possible with async followers</td><td>Write-write possible; resolution depends on the model</td><td>Avoided by quorum rules</td></tr>
-          <tr><td>Leader failure</td><td>Failover: needs consensus</td><td>Others continue</td><td>No leader to lose</td></tr>
-          <tr><td>Typical use</td><td>One data center: PostgreSQL, MySQL, MongoDB</td><td>Geo-replication across data centers</td><td>Dynamo, Riak, Cassandra</td></tr></table></div>
+          <tr><td>Conflicts</td><td>No write-write; read-write possible (e.g. a read at an asynchronous follower)</td><td>Write-write possible; resolution depends on the model</td><td>Avoided by quorum rules</td></tr>
+          <tr><td>Leader failure</td><td>Failover: needs consensus</td><td>Other leaders continue</td><td>No leader to lose</td></tr>
+          <tr><td>Typical use</td><td>One data center: PostgreSQL, MySQL, Oracle, SQL Server, MongoDB</td><td>Geo-replication across data centers (native, or tools like Tungsten, GoldenGate)</td><td>Dynamo, Riak, Cassandra</td></tr></table></div>
       </div>
-      <div class="why"><h4>Why</h4><p>The question is always "who decides the order of writes?". One leader: the leader. Many leaders: nobody, so conflicts must be resolved. Leaderless: a quorum vote.</p></div>
+      <div class="why"><h4>Why</h4><p>One leader: the leader orders writes. Many leaders: no one orders them, so the system must resolve conflicts. Leaderless: a quorum vote on the version number replaces the leader. Real systems combine them, for example single leader inside a data center and multi leader across data centers.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="r-p3">
+    <div class="q-head"><span class="qid">Q4</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">A single-leader store has one leader and four followers. The round-trip times from the leader to the followers are 2, 5, 9 and 40 ms. Ignore processing time. (a) What is the write latency with synchronous, asynchronous, and semi-synchronous replication with k = 2? (b) How many copies of a confirmed write exist in each case? (c) The store is asynchronous. The leader confirms W(x)7 and crashes before it sends the update. A follower becomes the new leader. What happens? (d) With asynchronous replication, a client writes x = 7 on the leader and immediately reads x from the 40 ms follower. What can it read?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>Synchronous: wait for all followers → <b>40 ms</b> (the slowest). Asynchronous: complete after the local write → <b>about 0 ms</b>. Semi-synchronous, k = 2: wait for the two fastest replies → <b>5 ms</b>.</li>
+          <li>Synchronous: 5 copies. Asynchronous: 1 copy is sure (the leader). Semi-synchronous: at least 3 copies (leader + 2 followers), so the write survives any 2 crashes.</li>
+          <li>The write is <b>lost</b>: no follower has it, but the client got "ok". Failover can also create other problems: followers that are not up to date, and a partitioned network where two nodes think they are the leader. To make failover safe, you need a consensus protocol.</li>
+          <li>It can read the <b>old value</b>. This is a read-write conflict: the client does not see its own write.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>Semi-synchronous replication is the practical compromise: the latency of the k-th fastest follower, not of the slowest one, and k + 1 durable copies. Synchronous replication is feasible inside one data center because there the round trips are short.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="r-p4">
+    <div class="q-head"><span class="qid">Q5</span><span class="tag compare">Compare</span><span class="seen">Exam 13 Feb 2015 · 19 Sep 2013</span></div>
+    <p class="prompt">What is a "primary-based consistency protocol"? How does it work, which variants exist, and what are their pros and cons?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>A primary-based protocol is a <b>single leader</b> protocol: each data item has one <b>primary</b> (leader). All writes go to the primary, which orders them and propagates them to the backups (followers). So there are no write-write conflicts.</p>
+        <div class="tbl"><table><tr><th>Variant</th><th>How</th><th>Pros</th><th>Cons</th></tr>
+          <tr><td>Synchronous (blocking) remote write</td><td>Primary updates all backups, then confirms</td><td>Sequential consistency; no data loss if the primary crashes</td><td>Latency of the slowest backup; blocks if a backup is unreachable</td></tr>
+          <tr><td>Asynchronous (non-blocking)</td><td>Primary confirms after its local write, then propagates</td><td>Fast writes</td><td>Stale reads at backups; confirmed writes lost if the primary crashes</td></tr>
+          <tr><td>Semi-synchronous</td><td>Confirm after k backups reply</td><td>Bounded latency, k + 1 copies</td><td>Other backups can still be stale</td></tr>
+          <tr><td>Local write (primary migrates)</td><td>The primary role moves to the replica where the writer is</td><td>Many successive writes become local (good for mobile, disconnected work)</td><td>Must find the current primary; moving it costs messages</td></tr></table></div>
+        <p>Reads can go to the primary only (backups are only for fault tolerance, like Raft) or to any replica (better read throughput, weaker guarantees). Leader failure requires failover, done safely with consensus. A common optimization: partition the data and give each partition a different primary, to spread the write load.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>"Primary-based" is the older name (Tanenbaum) of what the current slides call single leader. All variants trade latency for safety: the more replicas the primary waits for, the slower the write and the smaller the risk of stale reads and lost writes.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="r-p5">
+    <div class="q-head"><span class="qid">Q6</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">A social network has data centers in Europe, the US and Asia. Users post and comment. Should you use one leader for the whole world or one leader per data center? Two users comment on the same post at the same moment in Europe and in Asia: what happens, and is it a problem?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Use <b>multi leader</b> (one leader per data center). With one world leader, an Asian user pays an intercontinental round trip on every post: prohibitive latency, and no writes when the link to the leader fails.</p>
+        <p>The two comments are a <b>write-write conflict</b>: each data center accepts its comment and propagates it. Europe can show A then B; Asia can show B then A. In this application it is acceptable:</p>
+        <ul>
+          <li>Writes (posts, comments) are not frequent.</li>
+          <li>The writes of a user or a group of users usually go to the same replica.</li>
+          <li>The order of concurrent comments is not critical.</li>
+        </ul>
+        <p>If you need the same order everywhere, add a deterministic rule (for example, sort by timestamp, last-write-wins). If you need a reply to appear after its post, use causal consistency.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Multi leader is harder in general, but in practice conflicts are rare and easy to solve in many applications. The choice depends on the cost of a conflict, not only on its probability.</p></div>
     </div>
   </article>
 
   <article class="q" data-type="exercise" data-id="r-p2">
-    <div class="q-head"><span class="qid">Q2</span><span class="tag exercise">Exercise</span></div>
+    <div class="q-head"><span class="qid">Q7</span><span class="tag exercise">Exercise</span></div>
     <p class="prompt">A leaderless store has N = 5 replicas. Which (N<sub>R</sub>, N<sub>W</sub>) choices are correct: (2, 4), (3, 3), (1, 5), (3, 2), (4, 2)? What is ROWA?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
@@ -178,81 +280,635 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
       <div class="why"><h4>Why</h4><p>It is the pigeonhole principle: two sets whose sizes add up to more than N must share an element. That shared replica carries the latest version number.</p></div>
     </div>
   </article>
+
+  <article class="q" data-type="exercise" data-id="r-p6">
+    <div class="q-head"><span class="qid">Q8</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">(a) N = 7. List all correct quorum pairs with the smallest N<sub>R</sub> for each N<sub>W</sub>. For (4, 4) and for ROWA, how many crashed replicas can reads and writes tolerate? (b) N = 5, N<sub>W</sub> = 3, N<sub>R</sub> = 3. A write of x with version 7 reached A, B, D. Now the versions are A:7, B:7, C:6, D:7, E:5. A client reads from C, D, E. What does it return, and what does read repair do? (c) What happens with N<sub>W</sub> = 2 if one client writes to {A, B} and another to {D, E} at the same time?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>N<sub>W</sub> &gt; 3.5 → N<sub>W</sub> ≥ 4, and N<sub>R</sub> ≥ 8 − N<sub>W</sub>: (4, 4), (3, 5), (2, 6), (1, 7). An operation with quorum Q still works with f crashes if 7 − f ≥ Q. <b>(4, 4):</b> reads and writes tolerate 3 crashes. <b>ROWA (1, 7):</b> reads tolerate 6 crashes; writes tolerate <b>0</b>.</li>
+          <li>Replies: C:6, D:7, E:5. The client returns the value with the <b>highest version, 7</b>. D is in both quorums ({A, B, D} ∩ {C, D, E} = {D}): this is the guarantee of N<sub>R</sub> + N<sub>W</sub> &gt; N. <b>Read repair:</b> the client (or the coordinator) sends version 7 to the stale replicas C and E. A stays up to date through <b>anti-entropy</b> later, if needed.</li>
+          <li>The two write quorums do not intersect. Both clients can get the same next version number with different values: a write-write conflict. Replicas disagree and no read can decide which value is "the" version. N<sub>W</sub> &gt; N/2 forbids this.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>Quorum sizes move the cost between reads and writes. Big write quorums make writes slow and fragile, small read quorums make reads fast. Pick them by the read/write ratio and by which operation must stay available.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="r-p7">
+    <div class="q-head"><span class="qid">Q9</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">What is a highly available protocol? State the CAP theorem. How do modern distributed databases position themselves with respect to CAP?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>A protocol is <b>highly available</b> if it needs no synchronous (blocking) communication: if a node or a link fails, a client still gets a reply from a correct replica.</p>
+        <p><b>CAP:</b> C = consistency, A = availability, P = network partitions. In the presence of partitions you can have availability or consistency, not both. Partitions can always happen, so the real choice is between:</p>
+        <ul>
+          <li><b>Strong guarantees (C)</b> through blocking communication: higher latency, possibly no service during failures. Example: NewSQL (Spanner, Calvin, VoltDB), sequential or linearizable replication.</li>
+          <li><b>High availability (A)</b> through non-blocking communication: lower latency, weaker guarantees. Example: NoSQL stores with asynchronous or multi-leader replication.</li>
+        </ul>
+        <p>Some weak models (FIFO, causal with sticky clients, eventual) have highly available implementations. Sequential and linearizable do not.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>During a partition, a replica that answers without talking to the other side may return a value that the other side already overwrote. To refuse is to lose availability; to answer is to lose strong consistency.</p></div>
+    </div>
+  </article>
 </section>
 
+<!-- ===== §3 SEQUENTIAL AND LINEARIZABLE ===== -->
 <section class="topic">
-  <div class="topic-head"><span class="num">§2</span><h2>Data-centric consistency models</h2></div>
-  <div class="core"><p><b>Core idea.</b> From strongest to weakest: <b>linearizable</b> (one copy, real time) ⇒ <b>sequential</b> (one interleaving, no time) ⇒ <b>causal</b> (causally related writes in the same order) ⇒ <b>FIFO</b> (writes of one process in order). Eventual consistency only promises convergence.</p></div>
+  <div class="topic-head"><span class="num">§3</span><h2>Sequential consistency and linearizability</h2></div>
+  <div class="core"><p><b>Core idea.</b> <b>Sequential:</b> all processes see the same interleaving, and each process's operations keep program order; there is no notion of time. <b>Linearizable:</b> in addition, each operation takes effect at one instant between its start and its end: a recency guarantee, the illusion of a single copy. Neither has a highly available implementation.</p></div>
+
+
+  <article class="q" data-type="exercise" data-id="r-s1">
+    <div class="q-head"><span class="qid">Q10</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">State the definition of sequential consistency. Then consider (all variables start at 0): P1: <code>x = 1; print(y, z);</code> P2: <code>y = 1; print(x, z);</code> P3: <code>z = 1; print(x, y);</code>. The output is the six digits printed in time order, as in the slides. Which outputs are possible under sequential consistency: 001011, 000000, 011011, 001001, 111111?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Definition (Lamport):</b> "The result is the same as if the operations by all processes were executed in some sequential order, and the operations by each process appear in this sequence in the order specified by its program." Operations of one process are not reordered, all processes see the same interleaving, and time plays no role.</p>
+        <p>Two facts follow from program order, because each print comes after the write of its own process:</p>
+        <ul>
+          <li>The <b>second</b> print reads the variable of the process that printed first, and that process already wrote it. So the second pair contains at least one 1.</li>
+          <li>The <b>third</b> print happens after all three writes. So the last pair is always <b>11</b>.</li>
+        </ul>
+        <div class="tbl"><table><tr><th>Output</th><th>Possible?</th><th>Interleaving or reason</th></tr>
+          <tr><td>001011</td><td>Yes</td><td>x=1; P1 prints 00; y=1; P2 prints 10; z=1; P3 prints 11</td></tr>
+          <tr><td>000000</td><td>No</td><td>The last pair must be 11</td></tr>
+          <tr><td>011011</td><td>Yes</td><td>x=1; z=1; P1 prints (y,z)=01; P3 prints (x,y)=10; y=1; P2 prints (x,z)=11</td></tr>
+          <tr><td>001001</td><td>No</td><td>The last pair must be 11</td></tr>
+          <tr><td>111111</td><td>Yes</td><td>All three writes first, then the three prints</td></tr></table></div>
+        <p>A brute-force count gives 90 valid interleavings but only 10 different outputs in time order.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Under sequential consistency you do not search for "which values can appear"; you search for one global order that respects program order. To prove that an output is impossible, find a property that every valid order has (here: the last print sees all the writes).</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="r-s2">
+    <div class="q-head"><span class="qid">Q11</span><span class="tag exercise">Exercise</span><span class="seen">Exam 27 Jun 2013</span></div>
+    <p class="prompt">Two threads share <code>volatile int x, y, tmp1, tmp2</code>. Thread t0 runs <code>x = 1; tmp1 = y;</code> and thread t1 runs <code>y = 1; tmp2 = x;</code>. The main thread repeats: set all variables to 0, start t0 and t1, join both, and <code>if (tmp1==0 &amp;&amp; tmp2==0) break;</code>. ("volatile" only stops compiler optimizations.) On a machine with a sequentially consistent memory model, does the program terminate? Then, related slide question: in Java, thread 1 runs <code>x = 1; y = 1;</code> and thread 2 reads y = 1 and then reads x. Which values of x are allowed?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>(The exam text file lost the thread bodies; this is the standard version of this exam question.)</p>
+        <p><b>It never terminates.</b> Suppose tmp1 = 0. Then t0 read y before t1 wrote y. By program order, x = 1 happened before that read, and t1's read of x happens after t1's write of y. So t1 reads x after x = 1, and tmp2 = 1. The same argument works if tmp2 = 0. So no sequentially consistent interleaving gives tmp1 = tmp2 = 0, and the loop never breaks. (On a real multi-core CPU with store buffers, both reads can return 0, and the program can terminate: real hardware is not sequentially consistent.)</p>
+        <p><b>Java:</b> x = 0 <b>and</b> x = 1 are both allowed. A thread can read from its local cache, and any old value is allowed. Exceptions: if the variables are <code>volatile</code>, or the accesses are inside <code>synchronized</code> blocks, the accesses are sequentially consistent, and only x = 1 is allowed. In practice, programs synchronize with synchronized blocks, so such races should never occur.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Sequential consistency was born as a memory model for multiprocessors (Lamport, 1979). The C, C++ and Java memory models are <b>not</b> sequentially consistent for plain variables, because caches and reordering make programs faster. You get sequential behavior only where you ask for it.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="r-s3">
+    <div class="q-head"><span class="qid">Q12</span><span class="tag scenario">Scenario</span><span class="seen">Margara exercises</span></div>
+    <p class="prompt">Describe a single-leader protocol that guarantees sequential consistency (assume no faulty links or processes) and state its assumptions. Show what goes wrong if (a) links are not FIFO; (b) clients are not sticky. How do you get sequential consistency with a leaderless protocol? Why does sequential consistency limit availability?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Protocol.</b> All writes go to the leader. The leader orders them, applies them, and sends them to all followers <b>synchronously</b>; the write completes when all followers reply. Reads go to any replica. Example from the slides: C reads x = 0 at follower 2, A writes x = 1, B reads 1 at follower 1. The sequence R(x)0 by C → W(x)1 by A → R(x)1 by B explains everything. (MySQL, PostgreSQL, MongoDB use this; failover is sometimes manual.)</p>
+        <p><b>Assumptions:</b> links are <b>FIFO</b> (updates arrive in the order the leader sent them); clients are <b>sticky</b> (each client always uses the same replica).</p>
+        <ol type="a">
+          <li>Without FIFO links: the leader sends W(x)1 then W(x)2. Follower 1 receives them in order, follower 2 receives W(x)2 then W(x)1. Follower 2 ends with x = 1, follower 1 with x = 2. Clients see two different orders of the same writes: not sequential (and replicas diverge).</li>
+          <li>Without sticky clients: client B reads x = 1 at follower 1 (updated), then moves to follower 2 (not updated yet) and reads x = 0. B's own history R(x)1 R(x)0 with one write W(x)1 has no valid sequential order.</li>
+        </ol>
+        <p><b>Leaderless:</b> quorums with N<sub>R</sub> + N<sub>W</sub> &gt; N and N<sub>W</sub> &gt; N/2. A write needs a quorum to agree on its version number; a read needs a quorum to find the latest version.</p>
+        <p><b>Availability:</b> no highly available implementation exists. Single leader: the client must reach the leader, and the leader must update replicas synchronously. Leaderless: the client must reach a quorum. Two problems follow: high latency from synchronous interactions, and blocked clients during network partitions.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The leader creates a single order; FIFO links make every replica apply that order; sticky clients stop a client from "jumping back" to a replica that is behind. Remove any one of the three and two observers can see different orders.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="r-d3">
+    <div class="q-head"><span class="qid">Q13</span><span class="tag compare">Compare</span><span class="seen">Margara exercises</span></div>
+    <p class="prompt">Define sequential consistency and linearizability. Write (or describe) a schedule that is sequentially consistent but not linearizable. Does the single-leader sequential protocol also guarantee linearizability? If not, how can you modify it?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Sequential:</b> "the result is the same as if all operations were executed in some sequential order, and the operations of each process appear in the order of its program". No time. <b>Linearizable:</b> "each operation should appear to take effect instantaneously at some moment between its start and its completion". It is a recency guarantee: the illusion of one copy. Also called strong, external or atomic consistency.</p>
+        <p><b>Example.</b> A writes x = 1 on the leader. The leader updates follower 1, then follower 2. In real time: B reads x = 1 from follower 1; <i>after that</i>, C reads x = 0 from follower 2. The sequential order R<sub>C</sub>(x)0 → W(x)1 → R<sub>B</sub>(x)1 exists, so it is sequential. It is not linearizable: C's read starts after B's read ended and still returns the old value. There is no single instant at which x changes from 0 to 1.</p>
+        <p><b>Fix:</b> the leader orders writes by timestamp and updates replicas synchronously <b>and atomically</b>. For example, the leader locks the followers, sends the write, and unlocks them when all have it. A locked follower does not answer reads. After the unlock, no read can return 0. With failures, you need consensus (Raft) to agree on the leader and on the partition state.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>If B and C talk on another channel (a phone call), C learns that it read a stale value: the single-copy illusion breaks. Linearizability forbids it; sequential consistency does not care about real time.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="r-s4">
+    <div class="q-head"><span class="qid">Q14</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">x starts at 0. Client A runs W(x)1 from t = 0 to t = 10 ms. Client B runs R(x) from t = 2 to t = 4 and gets 1. For each case, is the history linearizable? Is it sequentially consistent? (a) Client C runs R(x) from t = 5 to t = 7 and gets 0. (b) C runs R(x) from t = 3 to t = 6 and gets 0. (c) C runs R(x) from t = 12 to t = 13 and gets 0.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>B returns 1, so the write takes effect at some point p ≤ 4 (before B's read ends) and p ≥ 0.</p>
+        <ol type="a">
+          <li>C's read starts at 5 &gt; 4 ≥ p. It must see 1. <b>Not linearizable.</b> Sequential: yes (order R<sub>C</sub>(x)0, W(x)1, R<sub>B</sub>(x)1).</li>
+          <li>C's read overlaps B's read and the write. Points: C at 3.0 (reads 0), write at 3.5, B at 3.8 (reads 1). Each point is inside its interval. <b>Linearizable</b>, and so sequential.</li>
+          <li>The write ended at 10; C starts at 12. It must see 1. <b>Not linearizable.</b> Sequential: yes, with the same order as in (a).</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>Method: give each operation a point inside its interval and check that the points form a legal sequential history. Overlapping operations can be put in any order; non-overlapping operations must keep their real-time order. Sequential consistency drops the real-time rule, so case (c), which looks absurd, is still sequential.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="r-s5">
+    <div class="q-head"><span class="qid">Q15</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Why is sequential consistency "not enough"? What does it mean that linearizability is composable? What is strict serializability? Why is linearizability hard to guarantee with failures?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><b>Not enough:</b> sequential consistency has no notion of time. A write can be "done" for the writer and still invisible to others for an unbounded time. When clients also communicate outside the store, they can notice it.</li>
+          <li><b>Composable:</b> if the operations on each single variable are linearizable, the whole schedule is linearizable. You can check (or implement) each object separately. Sequential consistency is not composable: two per-variable sequential histories can be impossible to merge.</li>
+          <li><b>Strict serializability:</b> linearizability extended to transactions (groups of operations): transactions are serializable, and the serial order respects real time.</li>
+          <li><b>Failures:</b> to decide if and how the network is partitioned and who is the leader is an agreement problem. You need a consensus protocol such as Raft (or Paxos).</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>Composability is why linearizability is practical: a system made of independent linearizable registers (or partitions) is linearizable as a whole, with no global coordination between them.</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §4 CAUSAL FIFO SYNC ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§4</span><h2>Causal, FIFO, synchronization variables</h2></div>
+  <div class="core"><p><b>Core idea.</b> <b>Causal:</b> writes that are potentially causally related are seen by all in the same order; concurrent writes in any order. Implementation: vector clocks, highly available with sticky clients. <b>FIFO (PRAM):</b> the writes of each single process are seen in issue order; implementation: sequence numbers. <b>Synchronization variables</b> make writes visible only when the program asks. Strength: linearizable ⇒ sequential ⇒ causal ⇒ FIFO.</p></div>
+
+  <article class="q" data-type="exercise" data-id="r-k1">
+    <div class="q-head"><span class="qid">Q16</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">(a) Use the group chat example to explain causal consistency and give the definition of causal order. (b) Replicas R1, R2, R3 implement causal consistency with vector clocks (one entry per replica, counting the writes it applied from each replica). R3 has V = [1, 0, 0]. It receives, in this order: m1 from R2 with timestamp [2, 1, 0]; m2 from R1 with [2, 0, 0]; m3 from R2 with [2, 2, 0]. When does R3 apply each update? What does a client at R3 read while m1 waits?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>(a)</b> A writes "Distributed systems are the best!", B replies "No way! They are too complex…". If C sees B's message first, she cannot understand it: everybody must see A's message before B's. Two unrelated messages ("Apple released a new MacBook", "I'm having fun learning replication") can be seen in any order. Definition: "Writes that are potentially causally related must be seen by all processes in the same order. Concurrent writes may be seen in any order at different machines." <b>Causal order:</b> a write by P is after every previous operation of P (also on other variables); a read of x is after the write it reads (a process reads its own writes too); the order is transitive. It is not total: unordered operations are concurrent. It is Lamport's happened-before, applied to reads and writes.</p>
+        <p><b>(b)</b> Rule: apply an update from R<sub>j</sub> with timestamp T when T[j] = V[j] + 1 and T[k] ≤ V[k] for every k ≠ j (all its potential causes are applied).</p>
+        <div class="tbl"><table><tr><th>Event</th><th>Check</th><th>Action</th><th>V after</th></tr>
+          <tr><td>m1 [2,1,0] from R2</td><td>T[2]=1=0+1 ✓, T[1]=2 &gt; 1 ✗</td><td>buffer</td><td>[1,0,0]</td></tr>
+          <tr><td>m2 [2,0,0] from R1</td><td>T[1]=2=1+1 ✓, others ✓</td><td>apply m2</td><td>[2,0,0]</td></tr>
+          <tr><td>retry m1</td><td>T[2]=1 ✓, T[1]=2 ≤ 2 ✓</td><td>apply m1</td><td>[2,1,0]</td></tr>
+          <tr><td>m3 [2,2,0] from R2</td><td>T[2]=2=1+1 ✓</td><td>apply m3</td><td>[2,2,0]</td></tr></table></div>
+        <p>Order of application: m2, m1, m3. While m1 waits, a read at R3 returns the <b>previous value</b>: it can be old, but never causally inconsistent.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The vector clock of a write says "what the writer knew" when it wrote: its potential causes. m1 was written by someone who had already seen R1's second write, so R3 must apply that write first. This is the same rule as causal multicast.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="r-k2">
+    <div class="q-head"><span class="qid">Q17</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">(a) Define FIFO (PRAM) consistency and explain the name. (b) A replica uses sequence numbers to implement FIFO consistency. It has applied P1's writes up to number 1 and P2's up to 0. It receives: (P1, 3), (P2, 1), (P1, 2), (P1, 5), (P2, 2), (P1, 4). Give the order in which it applies the updates. (c) Why is FIFO consistency "very easy to implement", even with multiple leaders?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>(a)</b> "Writes done by a single process are seen by all others in the order in which they were issued; writes from different processes may be seen in any order at different machines." Causality across processes is dropped. PRAM = Pipelined RAM: a process can fill a pipeline with writes without waiting for the earlier ones to complete.</p>
+        <p><b>(b)</b> Rule: apply update S from P only after all of P's updates with smaller numbers.</p>
+        <ol>
+          <li>(P1, 3): expected 2 → buffer.</li>
+          <li>(P2, 1): expected 1 → apply.</li>
+          <li>(P1, 2): apply; then (P1, 3) from the buffer.</li>
+          <li>(P1, 5): expected 4 → buffer.</li>
+          <li>(P2, 2): apply.</li>
+          <li>(P1, 4): apply; then (P1, 5).</li>
+        </ol>
+        <p>Applied order: P2:1, P1:2, P1:3, P2:2, P1:4, P1:5.</p>
+        <p><b>(c)</b> Each replica needs only one counter per writer and a hold-back buffer. No replica waits for another one to agree; concurrent writes from different processes need no coordination.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>FIFO consistency is FIFO multicast applied to a data store. Compare it with causal consistency: a vector clock says "wait for every write I depended on", a sequence number only says "wait for my own earlier writes".</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="r-d4">
+    <div class="q-head"><span class="qid">Q18</span><span class="tag describe">Describe</span><span class="seen">Margara exercises</span></div>
+    <p class="prompt">Does FIFO consistency allow a process to read and write on its local replica even if it is disconnected from the other replicas? If yes, under which assumptions, and why? What about causal consistency, sequential consistency and linearizability?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>Model</th><th>Highly available?</th><th>Why</th></tr>
+          <tr><td>FIFO</td><td>Yes, with sticky clients</td><td>Read the local replica; write locally and propagate later with sequence numbers. Nothing requires knowledge of other replicas.</td></tr>
+          <tr><td>Causal</td><td>Yes, only with sticky clients</td><td>The local replica returns old values but never violates causality. Local writes are allowed: the rest of the world is not informed, and its writes become concurrent with them.</td></tr>
+          <tr><td>Sequential</td><td>No</td><td>All replicas must agree on one order: you need the leader or a quorum, synchronously.</td></tr>
+          <tr><td>Linearizable</td><td>No</td><td>Stronger than sequential; also needs recency.</td></tr></table></div>
+        <p>If clients can migrate between replicas, no highly available causal implementation exists: a client could write at replica 1, move to replica 2, and need its own write before it can continue.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Causal and FIFO constrain only the order of things a replica already knows. Sequential and linearizable need agreement with replicas you cannot reach during a partition (CAP). The sticky assumption keeps "what the client knows" equal to "what its replica knows".</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="r-d7">
+    <div class="q-head"><span class="qid">Q19</span><span class="tag compare">Compare</span><span class="seen">Exam 25 Feb 2015 · 23 Sep 2015</span></div>
+    <p class="prompt">Why were consistency models with synchronization variables introduced? How do they work? Then place them in the summary of data-centric models (linearizable, sequential, causal, FIFO).</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>FIFO consistency still makes every write visible to every process, even processes that do not care. Moreover, not all writes need to be seen by all processes, for example the writes inside a transaction or critical section. Models with <b>synchronization variables</b> make writes visible only when a process asks for it through the variable (constructs such as <code>synchronize</code>, acquire/release). The programmer forces consistency only where needed: at the end of a critical section (to distribute writes) and at the beginning of a "reading session" (to see others' writes).</p>
+        <p>Classic variants (Tanenbaum): <b>weak</b> consistency (one <code>synchronize</code> operation, accesses to sync variables are sequentially consistent); <b>release</b> consistency (acquire brings the local copy up to date, release propagates the writes); <b>entry</b> consistency (one lock per data item, so only the data protected by that lock is synchronized).</p>
+        <div class="tbl"><table><tr><th>Model</th><th>Description</th></tr>
+          <tr><td>Linearizable</td><td>All processes see all shared accesses in the same order; operations behave as if they took place at some point in wall-clock time</td></tr>
+          <tr><td>Sequential</td><td>All processes see all shared accesses in the same order; accesses are not ordered in time</td></tr>
+          <tr><td>Causal</td><td>All processes see causally related shared accesses in the same order</td></tr>
+          <tr><td>FIFO</td><td>All processes see the writes of each process in the order they were issued; writes of different processes may be seen in different orders</td></tr>
+          <tr><td>With sync variables</td><td>Consistency is enforced only at synchronization points chosen by the programmer</td></tr></table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>Most programs already synchronize with locks. Tying propagation to synchronization points removes the useless traffic between them. The cost: the programmer is responsible for consistency.</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §5 SCHEDULE DRILL ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§5</span><h2>Schedule drill: FIFO, causal, sequential</h2></div>
+  <div class="core"><p><b>Core idea.</b> Use one method for every schedule. (1) <b>FIFO pairs:</b> the writes of each process, in program order. (2) <b>Causal pairs:</b> add "write w → write w′" when a process reads w and later writes w′ (plus transitivity). (3) For each process, list the order in which it observes values. (4) <b>FIFO/causal:</b> each process needs its own view that respects the pairs. <b>Sequential:</b> one order for everyone; look for two processes that observe two writes in opposite orders. Values start at 0.</p></div>
+  <a class="simbox" href="/exercises/distributed-systems/sim-consistency.html" target="_blank" rel="noopener"><b>Check your answers in the consistency checker</b><span>Paste any schedule below: it shows a valid view per process, or the conflict, and which single removal fixes it.</span></a>
+
+  <article class="q" data-type="exercise" data-id="r-e1">
+    <div class="q-head"><span class="qid">Q20</span><span class="tag exercise">Exercise</span><span class="seen">Exam 18 Nov 2023</span></div>
+    <p class="prompt">Is the schedule consistent with the FIFO, causal and sequential models? By looking at this schedule, what can we infer about the consistency model of the data store?</p>
+    <pre><code>P0: W(x)2 W(x)5 R(x)4 W(y)3
+P1: W(y)1 W(x)4 R(y)1 R(y)3 R(x)4
+P2: R(y)1 R(x)4 R(x)5 R(y)3</code></pre>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Pairs.</b> FIFO: W(x)2 → W(x)5 → W(y)3 (P0); W(y)1 → W(x)4 (P1). Causal adds: P0 reads 4 before it writes y = 3, so W(x)4 → W(y)3 (and W(y)1 → W(y)3 by transitivity). W(x)4 and W(x)5 are <b>concurrent</b>.</p>
+        <ul>
+          <li><b>FIFO: yes.</b> P2 sees y: 1 → 3 and x: 4 → 5. View: W(x)2, W(y)1, R(y)1, W(x)4, R(x)4, W(x)5, R(x)5, W(y)3, R(y)3.</li>
+          <li><b>Causal: yes.</b> P2 has 4 and 5 before y = 3, as causality requires. 4 before 5 is allowed because they are concurrent.</li>
+          <li><b>Sequential: no.</b> P0 reads 4 after its own write 5, so globally W(x)5 → W(x)4. P2 reads 4 and then 5, so W(x)4 → W(x)5. Contradiction. Removing P2's R(x)4 or P2's R(x)5 makes it sequential. Removing P0's R(x)4 is not enough: P1 also needs 5 before 4 (it reads y = 3, which follows W(x)5, and then reads 4).</li>
+        </ul>
+        <p><b>Inference.</b> The store is surely <b>not</b> sequential (nor linearizable). It may be causal or FIFO, but one schedule cannot prove it: another schedule might violate those models too.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A schedule is evidence of what the store <i>did</i>, not of what it <i>promises</i>. A violation proves that a model is not guaranteed; a consistent schedule proves nothing.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="r-e2">
+    <div class="q-head"><span class="qid">Q21</span><span class="tag exercise">Exercise</span><span class="seen">Exam 17 Jan 2024</span></div>
+    <p class="prompt">Which values of x and y is P2 allowed to read in the position marked "?", if the store is FIFO, causal, sequential?</p>
+    <pre><code>P0: W(x)2 W(x)5 R(x)4 W(y)3
+P1: W(y)1 W(x)4 R(y)1 R(y)3 R(x)4
+P2: R(y)3 R(x)4 ?</code></pre>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>Read at "?"</th><th>FIFO</th><th>Causal</th><th>Sequential</th></tr>
+          <tr><td>R(x)?</td><td>{4}</td><td>{4}</td><td>{4}</td></tr>
+          <tr><td>R(y)?</td><td>{1, 3}</td><td>{3}</td><td>{3}</td></tr></table></div>
+        <p><b>x.</b> P2 reads y = 3. By P0's FIFO order, W(x)2 and W(x)5 are already applied. Then P2 reads 4, so W(x)4 is applied after them. No other write on x exists, so x stays 4 in every model.</p>
+        <p><b>y, FIFO.</b> W(y)1 (P1) must come before W(x)4 (P1's order), but it has no order with W(y)3. So P2 can apply W(y)3, then W(y)1, then W(x)4: it reads y = 3, x = 4, and then <b>y = 1</b>. Or W(y)1 first, then y stays 3.</p>
+        <p><b>y, causal.</b> W(y)1 → W(x)4 → (P0 reads 4) → W(y)3. So W(y)1 is before W(y)3 everywhere: only <b>3</b>. Sequential is stronger, so also {3}.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>For a "?" question, test each candidate value (including the initial 0) separately: "if P2 reads v here, can I still build a valid view?". Under FIFO a value can "come back" when its write has no order with the newer write.</p></div>
+    </div>
+  </article>
 
   <article class="q" data-type="exercise" data-id="r-d1">
-    <div class="q-head"><span class="qid">Q3</span><span class="tag exercise">Exercise</span><span class="seen">Exam 18 Jun 2024</span></div>
-    <p class="prompt">P0: W(x)2 W(x)5 R(x)4 W(y)3 · P1: W(y)1 W(x)4 R(y)1 R(y)3 · P2: R(y)1 R(x)2 R(y)3 R(x)5 R(x)4. Is it FIFO, causal, sequential? How do the answers change without the last R(x)4 of P2?</p>
+    <div class="q-head"><span class="qid">Q22</span><span class="tag exercise">Exercise</span><span class="seen">Exam 18 Jun 2024</span></div>
+    <p class="prompt">Is it FIFO, causal, sequential? How do the answers change without the last R(x)4 of P2?</p>
+    <pre><code>P0: W(x)2 W(x)5 R(x)4 W(y)3
+P1: W(y)1 W(x)4 R(y)1 R(y)3
+P2: R(y)1 R(x)2 R(y)3 R(x)5 R(x)4</code></pre>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
         <p><b>Constraints.</b> FIFO: W(x)2 → W(x)5 → W(y)3 (P0); W(y)1 → W(x)4 (P1). Causal adds: P0 reads x = 4 before writing y = 3, so W(x)4 → W(y)3, and also W(y)1 → W(y)3.</p>
         <p><b>Full schedule.</b></p>
         <ul>
-          <li><b>FIFO: yes.</b> P2 sees y: 1 → 3, x: 2 → 5 → 4. P0's writes in order (2, 5, then y3), P1's in order (y1, then x4). A valid view for P2: W(y)1, W(x)2, R(y)1, R(x)2, W(x)5, W(y)3, R(y)3, R(x)5, W(x)4, R(x)4.</li>
+          <li><b>FIFO: yes.</b> P2 sees y: 1 → 3, x: 2 → 5 → 4. A valid view for P2: W(y)1, W(x)2, R(y)1, R(x)2, W(x)5, W(y)3, R(y)3, R(x)5, W(x)4, R(x)4.</li>
           <li><b>Causal: no.</b> W(x)5 and W(x)4 both causally precede W(y)3 (W(x)5 by P0's program order; W(x)4 because P0 read 4 before writing y). So when P2 reads y = 3, both x writes are already in its view, and no other x write exists. All later reads of x must return the same value, but P2 reads 5 and then 4. Contradiction.</li>
           <li><b>Sequential: no</b> (not causal).</li>
         </ul>
-        <p><b>Without the last R(x)4:</b> P2 sees y: 1 → 3 and x: 2 → 5. View: W(x)2, W(y)1, W(x)4, W(x)5, W(y)3 respects causality (4 before y3, 5 before y3) → <b>causal: yes</b>, FIFO: yes. <b>Sequential: no.</b> P0 reads 4 after writing 5, so the global order needs W(x)5 → W(x)4 → W(y)3. P2 reads y = 3 and then x = 5: but after W(y)3 the latest x is 4. No global order works. Remove P2's R(y)3 or R(x)5 (or P0's R(x)4) and it becomes sequential.</p>
+        <p><b>Without the last R(x)4:</b> P2 sees y: 1 → 3 and x: 2 → 5. The view W(x)2, W(y)1, W(x)4, W(x)5, W(y)3 respects causality (4 before y3, 5 before y3) → <b>causal: yes</b>, FIFO: yes. <b>Sequential: no.</b> P0 reads 4 after writing 5, so the global order needs W(x)5 → W(x)4 → W(y)3. P2 reads y = 3 and then x = 5: but after W(y)3 the latest x is 4. No global order works. Removing P2's R(y)3 or R(x)5 (or P0's R(x)4) makes it sequential.</p>
       </div>
-      <div class="why"><h4>Why</h4><p>Method: (1) write FIFO pairs; (2) add causal pairs created by reads followed by writes; (3) for each process, write the order in which it observes values; (4) look for an observation that contradicts a required order (causal) or two processes that observe two writes in opposite orders (sequential). Check every answer with the checker.</p></div>
+      <div class="why"><h4>Why</h4><p>Method: (1) write FIFO pairs; (2) add causal pairs created by reads followed by writes; (3) for each process, write the order in which it observes values; (4) look for an observation that contradicts a required order (causal) or two processes that observe two writes in opposite orders (sequential).</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="r-e3">
+    <div class="q-head"><span class="qid">Q23</span><span class="tag exercise">Exercise</span><span class="seen">Exam 12 Jul 2024</span></div>
+    <p class="prompt">Is it FIFO, causal, sequential? How do the answers change if you remove the last read (R(x)5) of P2?</p>
+    <pre><code>P0: W(x)2 W(x)5 R(x)4 W(y)3
+P1: W(y)1 W(x)4 R(y)1 R(y)3
+P2: R(y)1 R(x)2 R(y)3 R(x)4 R(x)5</code></pre>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Full schedule: not FIFO</b>, so not causal and not sequential. P0 writes x = 5 before y = 3. When P2 reads y = 3, W(x)5 is already applied at P2. Then P2 reads 4, so W(x)4 was applied after W(x)5. Then P2 reads 5 again: W(x)5 would have to be applied twice. Impossible.</p>
+        <p><b>Without R(x)5: FIFO yes, causal yes, sequential yes.</b> One global order:</p>
+        <pre><code>W(x)2 W(y)1 R2(y)1 R2(x)2 W(x)5 W(x)4 R0(x)4 R1(y)1
+W(y)3 R1(y)3 R2(y)3 R2(x)4</code></pre>
+        <p>(R<sub>i</sub> = read of P<sub>i</sub>.) Sequential implies causal and FIFO.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>This is the June 2024 schedule with the last two reads swapped. Order matters: "5 then 4" after y = 3 breaks causality only; "4 then 5" after y = 3 breaks even FIFO, because a value from P0 that was already overwritten comes back.</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>Once you prove "not FIFO", stop: causal and sequential fail too. Once you prove "sequential", stop: causal and FIFO hold too. Show one global order as the proof.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="r-e4">
+    <div class="q-head"><span class="qid">Q24</span><span class="tag exercise">Exercise</span><span class="seen">Exam 6 Sep 2024</span></div>
+    <p class="prompt">Is it FIFO, causal, sequential? How do the answers change if you remove the last read (R(x)2) of P2?</p>
+    <pre><code>P0: W(y)1 W(x)2 R(y)3 W(x)6 R(y)5
+P1: R(y)1 W(y)3 R(x)2 R(x)4 R(y)5
+P2: R(x)6 W(y)5 R(x)6 W(x)4 R(x)2</code></pre>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Full schedule: not FIFO</b> (so not causal, not sequential). P0 writes x = 2 before x = 6. P2 reads 6, so at P2 W(x)2 is already applied and overwritten. Then P2 writes 4 itself and reads 2: the old value 2 cannot come back.</p>
+        <p><b>Without R(x)2: all three models hold.</b> One global order:</p>
+        <pre><code>W(y)1 W(x)2 R1(y)1 W(y)3 R0(y)3 R1(x)2 W(x)6 R2(x)6
+W(y)5 R0(y)5 R2(x)6 W(x)4 R1(x)4 R1(y)5</code></pre>
+      </div>
+      <div class="why"><h4>Why</h4><p>The fastest check is "does any process see a value of P after a later value of P?". Here P2 sees P0's 6 and then P0's 2: a FIFO violation, visible in one look.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="r-m1">
+    <div class="q-head"><span class="qid">Q25</span><span class="tag exercise">Exercise</span><span class="seen">Margara, exercises 1–2</span></div>
+    <p class="prompt">(a) FIFO? Causal? Sequential? If not sequential, can it become sequential by removing one operation? (b) Same questions after adding P4: R(x)1 R(x)3 R(x)2.</p>
+    <pre><code>P0: W(x)1 R(x)2 W(x)3
+P1: W(x)2 W(x)4
+P2: R(x)1 R(x)2 R(x)4 R(x)3
+P3: R(x)1 R(x)2 R(x)3 R(x)4</code></pre>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Pairs.</b> FIFO: 1 → 3 (P0), 2 → 4 (P1). Causal adds 2 → 3 (P0 reads 2, then writes 3).</p>
+        <p><b>(a)</b> FIFO: <b>yes</b>. Causal: <b>yes</b> (P2 and P3 both see 1, 2 before 3, and 2 before 4). Sequential: <b>no</b>. A global order needs 1 → 2 → 3 and 2 → 4. P2 sees 4 before 3; P3 sees 3 before 4. Removing any one of P2's R(x)4, P2's R(x)3, P3's R(x)3, P3's R(x)4 makes it sequential.</p>
+        <p><b>(b)</b> FIFO: <b>yes</b> (P4 sees 1 before 3; 2 is from another process). Causal: <b>no</b>: P4 sees 3 before 2, but 2 → 3. Sequential: <b>no</b>, and one removal is not enough: there are two conflicts, 3/4 (P2 vs P3) and 2/3 (P4 vs the others). One removal can fix only one of them.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>"Remove one operation" means: find every conflict, and check if one operation is part of all of them. Two independent conflicts need two removals.</p></div>
     </div>
   </article>
 
   <article class="q" data-type="exercise" data-id="r-d2">
-    <div class="q-head"><span class="qid">Q4</span><span class="tag exercise">Exercise</span><span class="seen">Margara, exercise 3</span></div>
-    <p class="prompt">P0: W(x)1 R(x)2 W(x)3 · P1: R(x)1 W(x)2 R(x)3 · P2: R(x)K R(x)?. For K = 1, 2, 3, which values can the last read return under FIFO and under sequential consistency?</p>
+    <div class="q-head"><span class="qid">Q26</span><span class="tag exercise">Exercise</span><span class="seen">Margara, exercise 3</span></div>
+    <p class="prompt">P0: W(x)1 R(x)2 W(x)3 · P1: R(x)1 W(x)2 R(x)3 · P2: R(x)K R(x)?. For K = 1, 2, 3, which values can the last read return under FIFO and under sequential consistency (and causal)?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p>The schedule itself forces W(x)1 → W(x)2 → W(x)3 globally (P1 reads 1 before writing 2; P0 reads 2 before writing 3).</p>
-        <div class="tbl"><table><tr><th>K</th><th>FIFO</th><th>Sequential</th></tr>
-          <tr><td>1</td><td>{1, 2, 3}</td><td>{1, 2, 3}</td></tr>
-          <tr><td>2</td><td>{1, 2, 3}</td><td>{2, 3}</td></tr>
-          <tr><td>3</td><td>{2, 3}</td><td>{3}</td></tr></table></div>
-        <p>FIFO only keeps P0's order (1 before 3). So after seeing 2, P2 can still see 1 later (1 and 2 come from different processes). After seeing 3, it cannot see 1 (P0's order), but it can see 2. Sequential uses the global order 1 → 2 → 3, so values never go back.</p>
+        <p>The schedule forces 1 → 2 → 3 causally (P1 reads 1 before writing 2; P0 reads 2 before writing 3).</p>
+        <div class="tbl"><table><tr><th>K</th><th>FIFO</th><th>Causal</th><th>Sequential</th></tr>
+          <tr><td>1</td><td>{1, 2, 3}</td><td>{1, 2, 3}</td><td>{1, 2, 3}</td></tr>
+          <tr><td>2</td><td>{1, 2, 3}</td><td>{2, 3}</td><td>{2, 3}</td></tr>
+          <tr><td>3</td><td>{2, 3}</td><td>{3}</td><td>{3}</td></tr></table></div>
+        <p>FIFO only keeps P0's order (1 before 3). So after seeing 2, P2 can still see 1 later (1 and 2 come from different processes). After seeing 3, it cannot see 1 (P0's order), but it can see 2. Causal and sequential use the order 1 → 2 → 3, so values never go back. (Margara's slides ask only FIFO and sequential.)</p>
       </div>
       <div class="why"><h4>Why</h4><p>Under weak models, "going back" to an older value is allowed when the two writes have no required order. Ask for each candidate: does seeing it now break a required order?</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="compare" data-id="r-d3">
-    <div class="q-head"><span class="qid">Q5</span><span class="tag compare">Compare</span></div>
-    <p class="prompt">Define sequential consistency and linearizability. Write (or describe) a schedule that is sequentially consistent but not linearizable. How can a single-leader protocol give each of them?</p>
+  <article class="q" data-type="exercise" data-id="r-m4">
+    <div class="q-head"><span class="qid">Q27</span><span class="tag exercise">Exercise</span><span class="seen">Margara, exercise 4</span></div>
+    <p class="prompt">Which values can P3 read at "?" under FIFO, causal and sequential consistency, for K = 2, 4, 5?</p>
+    <pre><code>P0: R(x)2 W(y)3 W(x)4
+P1: W(x)1 W(x)2 W(x)5 R(y)3
+P2: R(x)2 R(x)5 R(y)3 R(x)4
+P3: R(x)K R(y)3 R(x)?</code></pre>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p><b>Sequential:</b> "the result is the same as if all operations were executed in some sequential order, and the operations of each process appear in the order of its program". No time. <b>Linearizable:</b> each operation appears to take effect instantaneously at some moment between its start and its completion: a recency guarantee, the illusion of one copy. It is composable (per variable ⇒ global).</p>
-        <p><b>Example.</b> A writes x = 1 on the leader. The leader updates follower 1, then follower 2. In real time: B reads x = 1 from follower 1; <i>after that</i>, C reads x = 0 from follower 2. Sequential order R<sub>C</sub>(x)0 → W(x)1 → R<sub>B</sub>(x)1 exists, so it is sequential. It is not linearizable: C's read starts after B's read ended and still returns the old value.</p>
-        <p><b>Single leader, sequential:</b> writes go to the leader, FIFO links, sticky clients, synchronous propagation. <b>Linearizable:</b> in addition, make the update atomic across replicas, e.g. lock the followers while a write is in progress so no one reads the old value after anyone read the new one. With failures, you need consensus (Raft).</p>
+        <p><b>Pairs.</b> FIFO: y3 → x4 (P0); x1 → x2 → x5 (P1). Causal adds x2 → y3 → x4 (P0 reads 2 first). x5 is concurrent with y3 and x4. Sequential also uses P2's observations: x5 → y3 → x4 in the single global order.</p>
+        <div class="tbl"><table><tr><th>K</th><th>FIFO</th><th>Causal</th><th>Sequential</th></tr>
+          <tr><td>2</td><td>{2, 4, 5}</td><td>{2, 4, 5}</td><td>{2, 4, 5}</td></tr>
+          <tr><td>4</td><td>{1, 2, 4, 5}</td><td>{4, 5}</td><td>{4}</td></tr>
+          <tr><td>5</td><td>{4, 5}</td><td>{4, 5}</td><td>{4, 5}</td></tr></table></div>
+        <ul>
+          <li><b>K = 2:</b> x4 and x5 may or may not have arrived after y3; 2 may still be the current value.</li>
+          <li><b>K = 4, FIFO:</b> P1's writes have no order with P0's, so 1, 2, 5 can still arrive after 4. <b>Causal:</b> 1 and 2 precede 4 causally, so only 4 or a concurrent later 5. <b>Sequential:</b> globally 5 → y3 → 4, so after reading 4 nothing newer exists: only 4.</li>
+          <li><b>K = 5:</b> 1 and 2 are before 5 (P1's order). 4 may arrive after y3 or not: {4, 5} in every model.</li>
+        </ul>
       </div>
-      <div class="why"><h4>Why</h4><p>If B and C talk on another channel, C can learn that it read a stale value: that breaks the single-copy illusion. Linearizability forbids it; sequential consistency does not care about real time.</p></div>
+      <div class="why"><h4>Why</h4><p>The three models differ only in which orders are fixed. Write down the fixed orders for each model, then ask which writes can still be "in flight" when the read happens.</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="describe" data-id="r-d4">
-    <div class="q-head"><span class="qid">Q6</span><span class="tag describe">Describe</span></div>
-    <p class="prompt">Define causal and FIFO consistency, and describe a protocol for each. Which models allow a highly available implementation (a client can read and write while disconnected from other replicas)?</p>
+  <article class="q" data-type="exercise" data-id="r-m5">
+    <div class="q-head"><span class="qid">Q28</span><span class="tag exercise">Exercise</span><span class="seen">Margara, exercise 5</span></div>
+    <p class="prompt">Which values are P2 and P3 allowed to read at "?" under FIFO, causal and sequential consistency?</p>
+    <pre><code>P0: W(x)1 W(x)3 W(y)2 W(y)4
+P1: R(y)4 W(x)5
+P2: R(y)2 R(x)?
+P3: R(x)5 R(y)?</code></pre>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p><b>Causal:</b> potentially causally related writes are seen by all in the same order; concurrent writes in any order. Causal order: a write is after every earlier operation of the same process; a read is after the write it reads; transitive. <b>Protocol:</b> multi-leader; writes carry vector clocks; a replica applies an update only after all its potential causes. <b>FIFO</b> (PRAM): writes of one process are seen by all in issue order. <b>Protocol:</b> per-process sequence numbers; apply update S from P only after all of P's updates with smaller numbers.</p>
-        <div class="tbl"><table><tr><th>Model</th><th>Highly available?</th></tr>
-          <tr><td>FIFO</td><td>Yes (sticky clients): read the local replica, write locally, propagate later</td></tr>
-          <tr><td>Causal</td><td>Yes, only if clients are sticky; reads may return old values, never causally inconsistent ones</td></tr>
-          <tr><td>Sequential</td><td>No: needs synchronous coordination with the leader or a quorum</td></tr>
-          <tr><td>Linearizable</td><td>No</td></tr></table></div>
+        <div class="tbl"><table><tr><th>Read</th><th>FIFO</th><th>Causal</th><th>Sequential</th></tr>
+          <tr><td>P2 R(x)?</td><td>{3, 5}</td><td>{3, 5}</td><td>{3, 5}</td></tr>
+          <tr><td>P3 R(y)?</td><td>{0, 2, 4} (slides: 2, 4)</td><td>{4}</td><td>{4}</td></tr></table></div>
+        <p><b>P2:</b> W(x)1 → W(x)3 → W(y)2 in P0's order. After reading y = 2, x = 3 is already applied; x = 5 may arrive later. So 3 or 5 in all models.</p>
+        <p><b>P3, causal and sequential:</b> W(y)2 → W(y)4 → (P1 reads 4) → W(x)5. P3 reads 5, so y = 4 is applied: only 4.</p>
+        <p><b>P3, FIFO:</b> there is no constraint between P1's x = 5 and P0's writes. Margara's slides list 2 and 4. The checker also allows the <b>initial value 0</b>: P0's writes may not have reached P3 at all yet. Under FIFO nothing forces them to arrive before P1's write. Write {0, 2, 4} and explain why 0 is there.</p>
       </div>
-      <div class="why"><h4>Why</h4><p>Causal and FIFO constrain only the order of things a replica already knows. Sequential and linearizable need agreement with replicas you cannot reach during a partition (CAP).</p></div>
+      <div class="why"><h4>Why</h4><p>Always consider the initial value 0 as a candidate. It is allowed whenever no required order forces a write on that variable to be applied before the read.</p></div>
     </div>
   </article>
+
+  <article class="q" data-type="exercise" data-id="r-m6">
+    <div class="q-head"><span class="qid">Q29</span><span class="tag exercise">Exercise</span><span class="seen">Margara, exercise 6</span></div>
+    <p class="prompt">Is the schedule FIFO, causal, sequential? What can we infer about the consistency model implemented by the store?</p>
+    <pre><code>P0: W(x)1 W(y)4 R(x)1 R(x)3
+P1: W(y)2 R(y)4 W(x)3 R(y)4
+P2: R(x)1 R(x)3 R(y)2 R(y)4</code></pre>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><b>FIFO: yes.</b> Pairs x1 → y4 (P0) and y2 → x3 (P1). P2 sees x: 1, 3 and y: 2, 4; a view such as W(x)1, R(x)1, W(y)2, W(x)3, R(x)3, R(y)2, W(y)4, R(y)4 respects both pairs.</li>
+          <li><b>Causal: no.</b> Causal pairs: x1 → y4 → (P1 reads 4) → x3, and y2 → x3. When P2 reads x = 3, both y2 and y4 are already applied. So afterwards it can read y = 2 or y = 4, not 2 and then 4.</li>
+          <li><b>Sequential: no</b> (not causal).</li>
+        </ul>
+        <p><b>Inference:</b> the store is surely not causal (and not sequential). It might be FIFO, but we cannot be sure: other schedules might violate FIFO.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A read followed by a write creates a causal link across processes. Here P1's read of y = 4 ties P0's y4 to P1's x3; that hidden link is the whole exercise.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="r-o1">
+    <div class="q-head"><span class="qid">Q30</span><span class="tag exercise">Exercise</span><span class="seen">Exam 1 Feb 2013 · 19 Feb 2013 · 5 Sep 2013</span></div>
+    <p class="prompt">For each schedule (variables start at 0): is it FIFO, causal, sequential? If not, can you remove one operation to make it consistent?</p>
+    <pre><code>(A) 1 Feb 2013
+P0: W(x)2 R(y)2 W(x)3 R(x)3
+P1: W(x)1 R(x)1 W(y)2 W(y)3
+P2: R(x)0 W(y)1 R(y)1 R(x)2
+P3: R(x)2 R(y)2 R(x)2 R(y)3
+
+(B) 19 Feb 2013
+P0: W(x)2 W(y)1 R(x)2 R(y)3
+P1: R(y)0 W(y)2 R(x)2 R(y)2
+P2: R(x)1 R(x)2 R(x)3 W(y)3
+P3: W(x)1 R(y)2 W(x)3 R(y)3
+P4: R(x)0 R(y)3 R(x)2 R(x)3
+
+(C) 5 Sep 2013
+P0: R(x)0 W(y)1 R(x)1 W(x)3
+P1: R(y)1 W(y)2 R(x)1 W(x)2
+P2: R(y)0 W(x)1 R(y)1 W(y)3
+P3: R(x)1 R(y)1 W(y)2 R(y)2</code></pre>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>(A) Sequential, so causal and FIFO.</b> Global order:</p>
+        <pre><code>R2(x)0 W(x)1 R1(x)1 W(x)2 W(y)2 R0(y)2 R3(x)2 R3(y)2 W(y)3
+R3(x)2 R3(y)3 W(y)1 R2(y)1 R2(x)2 W(x)3 R0(x)3</code></pre>
+        <p><b>(B) FIFO yes, causal no, sequential no.</b> P2 reads x = 3 and then writes y = 3, so W(x)3 → W(y)3. P4 reads y = 3, so x = 3 is already applied at P4; then P4 reads 2 and then 3 again: W(x)3 would be applied twice. One removal fixes causal: P2's R(x)3 (it breaks the link), or P4's R(y)3, R(x)2 or R(x)3. For <b>sequential</b> (and so all three), remove P2's R(x)3, P4's R(y)3 or P4's R(x)2. Removing P4's R(x)3 gives causal but not sequential: P2 sees 2 before 3, so globally x2 → x3 → y3, and P4 still reads 2 after y3.</p>
+        <p><b>(C)</b> Note: the value 2 is written on y twice (by P1 and by P3), so P3's R(y)2 is ambiguous. Under both readings the schedule is <b>sequential</b>, so causal and FIFO. Global order (P3 reads its own 2):</p>
+        <pre><code>R0(x)0 R2(y)0 W(y)1 R1(y)1 W(x)1 R0(x)1 R2(y)1 R3(x)1 R3(y)1
+W1(y)2 R1(x)1 W(x)3 W(x)2 W(y)3 W3(y)2 R3(y)2</code></pre>
+      </div>
+      <div class="why"><h4>Why</h4><p>Old exams often have schedules that are fully sequential. Do not hunt for a violation that does not exist: try to build one global order first. If you succeed, you have answered all three models at once.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="r-o2">
+    <div class="q-head"><span class="qid">Q31</span><span class="tag exercise">Exercise</span><span class="seen">Exam 3 Dec 2014 · 13 Feb 2015 · 25 Feb 2015</span></div>
+    <p class="prompt">For each schedule (variables start at 0): is it FIFO, causal, sequential? For (A), how do things change if you add P4: R(x)1 R(x)4 R(y)2 R(y)1?</p>
+    <pre><code>(A) 3 Dec 2014
+P0: R(x)0 W(y)1 W(x)4 R(x)3
+P1: R(y)0 R(y)1 W(x)3 R(x)3
+P2: W(x)1 R(x)3 R(y)1 W(y)2
+P3: R(x)3 R(y)2 R(x)3 R(x)4
+
+(B) 13 Feb 2015
+P0: W(x)1 R(x)2 R(y)1 W(x)3
+P1: R(y)0 W(y)1 R(x)1 R(y)3
+P2: R(x)1 W(x)2 R(y)2 R(x)3
+P3: R(x)0 R(x)1 W(y)2 W(y)3
+
+(C) 25 Feb 2015
+P0: W(x)1 R(y)2 W(x)2 W(y)3
+P1: R(y)0 R(y)2 R(y)1 R(x)1
+P2: W(y)2 R(x)2 W(x)3 R(y)3
+P3: W(y)1 R(x)3 R(y)2 R(y)3</code></pre>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>(A) FIFO yes, causal yes, sequential no.</b> P0 writes 4 and then reads 3, so globally x4 → x3. P3 reads 3 and then 4, so x3 → x4. Causally, x3 and x4 are concurrent (both follow W(y)1, neither follows the other), so different views are fine. Removing P0's R(x)3 or P3's R(x)4 makes it sequential.</p>
+        <p><b>With P4: not FIFO</b>, not causal, not sequential. P0 writes y = 1 before x = 4. P4 reads x = 4, so y = 1 is already applied; then it reads y = 2 and then y = 1 again: impossible. Moreover, W(y)1 → W(y)2 causally (P2 reads 1 before writing 2), so "2 then 1" also breaks causality by itself. One removal: P4's R(x)4 fixes FIFO only; P4's R(y)2 or R(y)1 fixes FIFO and causal; <b>no</b> single removal makes it sequential (the x3/x4 conflict of P0 and P3 remains).</p>
+        <p><b>(B) Sequential</b>, so causal and FIFO. Global order:</p>
+        <pre><code>R1(y)0 W(y)1 R3(x)0 W(x)1 R1(x)1 R2(x)1 R3(x)1 W(x)2 R0(x)2
+R0(y)1 W(x)3 W(y)2 R2(y)2 R2(x)3 W(y)3 R1(y)3</code></pre>
+        <p><b>(C) FIFO yes, causal yes, sequential no.</b> P3 writes y = 1 and then reads 2, so globally y1 → y2. P1 reads 2 and then 1, so y2 → y1. The two writes are concurrent (first operations of P2 and P3), so causal allows different views. Remove P1's R(y)2, P1's R(y)1 or P3's R(y)2 to make it sequential.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>"Causal yes, sequential no" almost always means: two concurrent writes on the same variable, seen in opposite orders by two processes. Find the pair, then check that no read-then-write chain links them.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="r-o3">
+    <div class="q-head"><span class="qid">Q32</span><span class="tag exercise">Exercise</span><span class="seen">Exam 13 Jul 2015 · 9 Sep 2015 · 23 Sep 2015</span></div>
+    <p class="prompt">For each schedule (variables start at 0): is it FIFO, causal, sequential?</p>
+    <pre><code>(A) 13 Jul 2015
+P0: W(x)1 R(y)2 R(x)2 W(y)3
+P1: R(y)0 W(y)1 R(y)2 R(y)3
+P2: W(x)2 R(x)2 R(x)3 R(y)2
+P3: R(y)1 W(y)2 W(x)3 R(y)3
+
+(B) 9 Sep 2015
+P0: W(x)1 R(y)2 W(y)3 W(x)2
+P1: R(y)0 R(x)1 W(y)1 R(y)3
+P2: R(x)1 W(y)2 R(x)2 R(y)2
+P3: R(x)0 R(y)2 R(x)1 R(y)3
+
+(C) 23 Sep 2015
+P0: R(x)1 R(y)2 W(x)2 R(y)3
+P1: W(y)1 R(x)1 R(x)2 W(y)3
+P2: R(x)0 W(x)1 W(y)2 R(y)3
+P3: R(x)2 R(y)3 W(x)3 R(x)3</code></pre>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>(A) Sequential</b>, so causal and FIFO:</p>
+        <pre><code>W(x)1 R1(y)0 W(y)1 W(x)2 R2(x)2 R3(y)1 W(y)2 R0(y)2 R0(x)2
+R1(y)2 W(x)3 R2(x)3 R2(y)2 W(y)3 R1(y)3 R3(y)3</code></pre>
+        <p><b>(B) FIFO yes, causal no, sequential no.</b> Causal pairs: P0 reads y = 2 and then writes y = 3 and x = 2, so W(y)2 → W(y)3 → W(x)2. P2 reads x = 2, so y = 2 and y = 3 are already applied at P2, with 3 after 2. Then P2 reads y = 2: impossible. FIFO holds: P0's own order (y3 → x2) is respected, and y2 comes from another process. One removal: P2's R(x)2 or P2's R(y)2 makes it fully sequential; P0's R(y)2 (it breaks the causal link) makes it causal only.</p>
+        <p><b>(C) Sequential</b>, so causal and FIFO:</p>
+        <pre><code>W(y)1 R2(x)0 W(x)1 R0(x)1 R1(x)1 W(y)2 R0(y)2 W(x)2 R1(x)2
+W(y)3 R0(y)3 R2(y)3 R3(x)2 R3(y)3 W(x)3 R3(x)3</code></pre>
+      </div>
+      <div class="why"><h4>Why</h4><p>In (B) the trap is that P2 reads its <i>own</i> value 2 after the newer 3. A process's own write gives no protection: once a causally later write has arrived, the old value is gone.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="r-o4">
+    <div class="q-head"><span class="qid">Q33</span><span class="tag exercise">Exercise</span><span class="seen">Exam 19 Sep 2013</span></div>
+    <p class="prompt">Write two schedules: the first causally consistent but not sequentially consistent, the second sequentially consistent. Each must have at least 3 processes, each with at least three operations, on two variables x and y.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Causal, not sequential:</b></p>
+        <pre><code>P0: W(x)1 R(y)0 R(x)1
+P1: W(y)1 R(x)0 R(y)1
+P2: R(x)1 R(y)1 R(x)1</code></pre>
+        <p>Not sequential: in any global order one of the two writes comes first, say W(x)1. Then W(y)1 comes after it, and P1's R(x)0 comes after W(y)1, so it cannot return 0. The symmetric case fails for P0. Causal: the two writes are concurrent (no read before them), so each process can see its own write first.</p>
+        <p><b>Sequential:</b></p>
+        <pre><code>P0: W(x)1 R(y)1 W(y)2
+P1: W(y)1 R(x)1 R(y)2
+P2: R(x)0 R(x)1 R(y)2</code></pre>
+        <p>Global order: W(y)1, R2(x)0, W(x)1, R0(y)1, W(y)2, R1(x)1, R1(y)2, R2(x)1, R2(y)2.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The smallest "causal but not sequential" pattern is two processes that each write one variable and then read the other one as 0. Every process "thinks" its write was first. Causality allows it; one global order does not.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="r-n1">
+    <div class="q-head"><span class="qid">Q34</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Classify each schedule as FIFO, causal, sequential (all that apply). For (d), which single removal fixes it?</p>
+    <pre><code>(a) P0: W(x)1
+    P1: R(x)1 W(x)2
+    P2: R(x)2 R(x)1
+
+(b) P0: W(x)1
+    P1: W(x)2
+    P2: R(x)1 R(x)2
+    P3: R(x)2 R(x)1
+
+(c) P0: W(x)1 W(y)1
+    P1: R(y)1 R(x)0
+
+(d) P0: W(x)1 R(y)2 W(x)3
+    P1: W(y)2 R(x)3 W(y)4
+    P2: R(x)1 R(y)4 R(x)1</code></pre>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li><b>FIFO only.</b> P1 reads 1 before writing 2: W(x)1 → W(x)2 causally. P2 sees 2 then 1: not causal. FIFO holds, because the two writes come from different processes.</li>
+          <li><b>FIFO and causal, not sequential.</b> The writes are concurrent, so P2 and P3 can see them in opposite orders; one global order cannot.</li>
+          <li><b>None.</b> P0 writes x before y. P1 sees y = 1 and then x = 0: P0's order is broken. This is the smallest FIFO violation.</li>
+          <li><b>FIFO only.</b> P1 reads 3 before writing 4: W(x)3 → W(y)4 (and W(x)1 → W(x)3). P2 reads y = 4, so x = 3 is applied; then it reads x = 1: not causal. Removal of P1's R(x)3, P2's R(y)4 or P2's R(x)1 makes it sequential (and so causal).</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>These four patterns are the building blocks of every exam schedule: (a) a broken causal chain through one variable, (b) concurrent writes seen in opposite orders, (c) a broken FIFO order, (d) a broken causal chain across two variables.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="r-n2">
+    <div class="q-head"><span class="qid">Q35</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Which values can the read at "?" return under FIFO, causal, sequential?</p>
+    <pre><code>(a) P0: W(x)1 W(y)2
+    P1: R(y)2 W(x)3
+    P2: R(x)3 R(y)?
+
+(b) P0: W(x)1 W(x)2
+    P1: R(x)2 W(y)1
+    P2: R(y)1 R(x)?</code></pre>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th></th><th>FIFO</th><th>Causal</th><th>Sequential</th></tr>
+          <tr><td>(a) R(y)?</td><td>{0, 2}</td><td>{2}</td><td>{2}</td></tr>
+          <tr><td>(b) R(x)?</td><td>{0, 1, 2}</td><td>{2}</td><td>{2}</td></tr></table></div>
+        <p><b>(a)</b> Causal: W(y)2 → (P1 reads it) → W(x)3. P2 read 3, so y = 2 is applied. FIFO: P1's x = 3 has no order with P0's writes; P0's writes may not have arrived yet, so 0 is allowed; 2 too.</p>
+        <p><b>(b)</b> Causal: W(x)1 → W(x)2 → (P1 reads 2) → W(y)1. P2 read y = 1, so x = 2 is applied, and it is the last x write. FIFO: only P0's internal order (1 before 2) holds, and P1's write gives no information about x. So 0, 1 or 2.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>This is the typical gap between FIFO and causal: causal "carries" the reader's knowledge into its later writes; FIFO does not. Under FIFO, a read of P1's value says nothing about the writes of P0.</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §6 EVENTUAL AND CLIENT-CENTRIC ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§6</span><h2>Eventual consistency and client-centric models</h2></div>
+  <div class="core"><p><b>Core idea.</b> With few concurrent updates and mostly reads (web caches, DNS, social media), <b>eventual consistency</b> is often enough: updates reach all replicas eventually. CRDTs make concurrent updates converge. When a client moves between replicas, <b>client-centric</b> models protect that one client: monotonic reads, monotonic writes, read your writes, writes follow reads. Implementation: a read-set and a write-set per client.</p></div>
 
   <article class="q" data-type="scenario" data-id="r-d5">
-    <div class="q-head"><span class="qid">Q7</span><span class="tag scenario">Scenario</span><span class="seen">Exam 14 Feb 2024</span></div>
+    <div class="q-head"><span class="qid">Q36</span><span class="tag scenario">Scenario</span><span class="seen">Exam 14 Feb 2024</span></div>
     <p class="prompt">Your application requires FIFO consistency, but the data store provides only eventual consistency. Assuming no failures, does the store satisfy the requirement? If not, can you implement FIFO on top of the eventually consistent store? How?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
@@ -260,110 +916,191 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
         <p><b>No.</b> Eventual consistency guarantees only that replicas converge when updates stop. A process can see P's second write before its first, or see a value and then an older one. Eventual does not imply FIFO (nor causal, nor sequential).</p>
         <p><b>Yes, you can build it</b> in a layer on top of the store:</p>
         <ul>
-          <li>Each process tags its writes with (process id, sequence number), e.g. store the value together with the tag, or keep per-process version counters.</li>
-          <li>The reading layer keeps, for each writer, the last sequence number applied. When it reads a value with tag (P, s), it accepts it only if all of P's writes with number &lt; s were already seen; otherwise it returns the previously accepted value (or waits/retries).</li>
-          <li>Since the store eventually delivers every write, the missing ones arrive, so the layer progresses.</li>
+          <li>Each process tags its writes with (process id, sequence number). For example, store the value together with the tag.</li>
+          <li>The reading layer keeps, for each writer, the last sequence number accepted. When it reads a value with tag (P, s), it accepts it only if all of P's writes with number &lt; s were already seen. Otherwise it returns the previously accepted value (or waits and retries).</li>
+          <li>The store eventually delivers every write, so the missing ones arrive, and the layer makes progress.</li>
         </ul>
-        <p>Alternative: append-only per-process logs in the store, read in sequence-number order.</p>
+        <p>Alternative: each process appends to its own append-only log in the store; readers apply each log in sequence-number order.</p>
       </div>
       <div class="why"><h4>Why</h4><p>FIFO is the same mechanism as FIFO multicast: sequence numbers per sender and a hold-back buffer. Eventual consistency gives "everything arrives eventually"; the sequence numbers add "in order".</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>Be careful with overwrites: if P writes x twice quickly, a reader may never see the first value. That is allowed under FIFO (the reader saw the writes "in order", and the first was simply overwritten). What is forbidden is seeing the second and then the first.</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="describe" data-id="r-d6">
-    <div class="q-head"><span class="qid">Q8</span><span class="tag describe">Describe</span></div>
-    <p class="prompt">Does eventual consistency imply sequential, causal or FIFO consistency? What are CRDTs, why are they useful, and what are their limits?</p>
+  <article class="q" data-type="exercise" data-id="r-d6">
+    <div class="q-head"><span class="qid">Q37</span><span class="tag exercise">Exercise</span><span class="seen">Margara exercises</span></div>
+    <p class="prompt">(a) Does eventual consistency imply sequential, causal or FIFO consistency? When is it enough, and why is it so popular? (b) Describe CRDTs: why are they useful, and what are their limits? (c) A counter starts at 10 on replicas A, B, C. A does +5, B does −3, C does +2. Each replica receives the others' updates in a different order. Show the final value if replicas store the operations, and what can go wrong if each replica only sends its last value. (d) Comments on a post: (Ann, ts 5), (Bob, ts 3), (Cy, ts 8) arrive in different orders at two replicas. With last-write-wins on the timestamp, what is the final order?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p>No to all three: eventual consistency says nothing about the order of intermediate values, only that replicas converge.</p>
-        <p><b>CRDTs</b> (conflict-free replicated data types) converge even when updates arrive in different orders, because operations <b>commute</b>. Example: a counter stores the set of increments/decrements, not the last value. An append-only list with last-write-wins on timestamps converges to the same order.</p>
-        <p><b>Useful:</b> no coordination, high availability, automatic convergence. <b>Limits:</b> only for data types with commutative semantics; temporary "wrong" values; cannot express invariants that need coordination (e.g. a balance that must stay ≥ 0).</p>
+        <p><b>(a)</b> No to all three: eventual consistency says nothing about the order of intermediate values, only that replicas converge. It is enough when there are no (or easily resolved) simultaneous updates and mostly reads: web caches, DNS, social media. Popular because it is very easy to implement, conflicts are rare in practice (a user often accesses and updates the same replica; networks propagate updates fast), and CRDTs exist. It is often used in geo-replicated stores. It can be hard to reason about: with concurrent updates a replica can temporarily hold a "wrong" result.</p>
+        <p><b>(b)</b> <b>CRDTs</b> (conflict-free replicated data types) guarantee convergence even if updates arrive in different orders, because their operations have <b>commutative</b> semantics. Useful: no coordination, high availability, automatic convergence. Limits: only for types whose operations commute; temporary inconsistent values; they cannot enforce invariants that need coordination (for example, "the balance stays ≥ 0").</p>
+        <p><b>(c)</b> Store the set of operations: every replica applies +5, −3, +2 in some order. Addition commutes: 10 + 5 − 3 + 2 = <b>14</b> everywhere. With "send the last value": A sends 15, B sends 7, C sends 12. A replica that keeps the last value it received ends with 15, 7 or 12, depending on the arrival order: replicas diverge or lose updates.</p>
+        <p><b>(d)</b> Each append carries an identifier (timestamp); in case of conflict the larger identifier is considered the last one. Both replicas sort by timestamp: <b>Bob (3), Ann (5), Cy (8)</b>, independently of the arrival order. All replicas converge to the same list.</p>
       </div>
-      <div class="why"><h4>Why</h4><p>Eventual consistency is popular because conflicts are rare in practice (users mostly write to one replica) and networks are fast. CRDTs make the rare conflicts harmless.</p></div>
+      <div class="why"><h4>Why</h4><p>Convergence needs a result that does not depend on the delivery order. A counter gets it from commutative addition; a list gets it from a deterministic tie-break (the timestamp). Without one of the two, the order of arrival decides the result.</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="compare" data-id="r-d7">
-    <div class="q-head"><span class="qid">Q9</span><span class="tag compare">Compare</span><span class="seen">Exam 25 Feb 2015 · 23 Sep 2015</span></div>
-    <p class="prompt">Why were consistency models with synchronization variables introduced? How do they work?</p>
+  <article class="q" data-type="describe" data-id="r-c1">
+    <div class="q-head"><span class="qid">Q38</span><span class="tag describe">Describe</span><span class="seen">Margara exercises</span></div>
+    <p class="prompt">In which context are client-centric consistency models relevant? Describe the four client-centric properties and how a consistency protocol can enforce them.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p>FIFO consistency still makes every write visible to every process, even processes that do not care, and even writes inside a critical section that nobody should see yet. Models with <b>synchronization variables</b> make writes visible only when a process asks for it through the variable (e.g. <code>synchronize</code>, acquire/release). The programmer forces consistency only where needed: at the end of a critical section (to distribute writes) and at the beginning of a reading session (to see others' writes).</p>
-        <p>(Classic variants in the literature: weak consistency with one synchronize operation; release consistency with acquire/release; entry consistency with one lock per data item.)</p>
+        <p>Context: mostly-read data, few concurrent updates, eventual consistency, and clients that connect to <b>different replicas</b> over time (mobile users). The models give guarantees from the point of view of a single client.</p>
+        <ul>
+          <li><b>Monotonic reads:</b> if a process reads x, later reads of x return the same or a more recent value.</li>
+          <li><b>Monotonic writes:</b> a write on x completes before any later write on x by the same process (FIFO for one process; x can be a large part of the store, such as a code library).</li>
+          <li><b>Read your writes:</b> a read sees the effect of the process's earlier writes (an updated web page, a changed password).</li>
+          <li><b>Writes follow reads:</b> a write after a read of x takes place on the same or a newer value than the one read (a reply is shown only after the original post).</li>
+        </ul>
+        <p><b>Protocol.</b> Each write has a unique id (replica id + sequence number). Each client keeps a <b>read-set</b> (ids of writes relevant to its reads) and a <b>write-set</b> (ids of its writes), encodable as vector clocks (latest id from each replica).</p>
+        <ul>
+          <li>Monotonic reads: before reading at L2, the client checks that L2 has applied all writes in the read-set.</li>
+          <li>Monotonic writes: the same, with the write-set.</li>
+          <li>Read your writes: the same as monotonic writes (check the write-set before reading).</li>
+          <li>Writes follow reads: first bring the server up to date with the read-set, then perform the write and add it to the write-set.</li>
+        </ul>
       </div>
-      <div class="why"><h4>Why</h4><p>Most programs already synchronize with locks. Tying propagation to synchronization points removes useless traffic between them, at the cost of putting the responsibility on the programmer.</p></div>
+      <div class="why"><h4>Why</h4><p>The client carries its own history from replica to replica. A replica that is behind must catch up before it serves the client.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="r-c4">
+    <div class="q-head"><span class="qid">Q39</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">One client uses two local copies L1 and L2 of the store. For each case, which client-centric property is violated, if any? (a) The client reads x at L1, which has applied W1(x). It moves to L2, which has applied W1(x) and then W2(x), and reads x2. (b) Same as (a), but L2 has applied only W2(x), not W1(x). (c) The client writes W1(x) at L1, moves to L2, and writes W2(x) before W1(x) reaches L2. (d) The client changes its password at L1, moves to L2, and logs in with the new password before the change reaches L2. (e) The client reads post p (written by W1) at L1, then replies at L2, where W1 has not arrived yet.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li><b>None</b>: monotonic reads holds. The set of writes at L2 contains the write the client already saw.</li>
+          <li><b>Monotonic reads</b> violated. The value x2 may look "newer", but L2's state does not include W1, which the client has already seen. In the slides, the read at L2 must reflect WS(x1; x2), not WS(x2) alone.</li>
+          <li><b>Monotonic writes</b> violated: W2 is performed at L2 before W1 completed there. If W1 arrives later, L2 may end with the older value.</li>
+          <li><b>Read your writes</b> violated: the login fails with the new password.</li>
+          <li><b>Writes follow reads</b> violated: at L2 the reply exists without the original post, so other users at L2 see a reply to nothing.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>All four models ask the same question at the new replica: "does it already contain the writes this client depends on?". They differ only in which writes count: the ones the client read (MR, WFR) or the ones it wrote (MW, RYW).</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="r-c5">
+    <div class="q-head"><span class="qid">Q40</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Replicas L1, L2, L3. Write ids are (replica, sequence number), and sets are encoded as vectors [L1, L2, L3]. A client has read-set RS = [3, 1, 0] and write-set WS = [0, 2, 0]. (a) It connects to L2, which has applied [2, 4, 5], and reads x with monotonic reads and read-your-writes. Can L2 answer at once? (b) It then connects to L3, which has applied [3, 1, 6], and writes x with monotonic writes and writes-follow-reads. What must happen first? The new write gets id (L3, 7): what is the new WS?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Rule: a replica can serve the request if the relevant set is ≤ its applied vector, entry by entry.</p>
+        <ol type="a">
+          <li>Monotonic reads: RS = [3, 1, 0] vs [2, 4, 5]: the L1 entry is 3 &gt; 2. L2 misses write (L1, 3). <b>L2 must first get it</b> from L1 (or the client waits, or uses another replica). Read your writes: WS = [0, 2, 0] ≤ [2, 4, 5]: OK.</li>
+          <li>Writes follow reads: RS = [3, 1, 0] ≤ [3, 1, 6]: OK. Monotonic writes: WS = [0, 2, 0] vs [3, 1, 6]: the L2 entry is 2 &gt; 1. L3 must first apply (L2, 2), the client's own earlier write. Then L3 performs the write (L3, 7). New WS = <b>[0, 2, 7]</b>.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>A vector compresses "all the writes I depend on" into one number per replica. This works because each replica numbers its own writes in order, so "up to 3 from L1" means writes 1, 2 and 3 from L1.</p></div>
     </div>
   </article>
 </section>
 
+<!-- ===== §7 DESIGN AND CASE STUDIES ===== -->
 <section class="topic">
-  <div class="topic-head"><span class="num">§3</span><h2>Client-centric models and design strategies</h2></div>
-  <div class="core"><p><b>Core idea.</b> When a client moves between replicas, client-centric models give guarantees for that client only: monotonic reads, monotonic writes, read your writes, writes follow reads. Design choices: where to place replicas, what to propagate, push or pull.</p></div>
+  <div class="topic-head"><span class="num">§7</span><h2>Design strategies and case studies</h2></div>
+  <div class="core"><p><b>Core idea.</b> To design a replicated store, decide where to place replicas (permanent, server-initiated, client-initiated), what to propagate (notification, data, operation), and how (push, pull, leases; synchronous or asynchronous; read repair and anti-entropy). NoSQL systems chose availability; NewSQL systems (Spanner, Calvin, VoltDB) give strong guarantees with new techniques to limit the cost.</p></div>
 
-  <article class="q" data-type="describe" data-id="r-c1">
-    <div class="q-head"><span class="qid">Q10</span><span class="tag describe">Describe</span></div>
-    <p class="prompt">In which context are client-centric models relevant? Describe the four properties and how a protocol can enforce them.</p>
+  <article class="q" data-type="compare" data-id="r-c2">
+    <div class="q-head"><span class="qid">Q41</span><span class="tag compare">Compare</span><span class="seen">Exam 13 Jul 2015 · 19 Feb 2013</span></div>
+    <p class="prompt">Describe the strategies for propagating updates among replicas: what to propagate, push vs pull, and the propagation strategies in leader-based and leaderless protocols (anti-entropy, gossiping, epidemic algorithms). Why are they used?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p>Context: mostly-read data, few concurrent updates, eventual consistency, and clients that connect to <b>different replicas</b> over time (mobile users).</p>
-        <ul>
-          <li><b>Monotonic reads:</b> after reading x, later reads return the same or a newer value.</li>
-          <li><b>Monotonic writes:</b> a write on x completes before any later write on x by the same process (FIFO for one process).</li>
-          <li><b>Read your writes:</b> a read sees the effect of the process's earlier writes (e.g. a changed password, an updated web page).</li>
-          <li><b>Writes follow reads:</b> a write after a read of x happens on the same or a newer value (a reply is shown only after the original post).</li>
-        </ul>
-        <p><b>Protocol.</b> Each write has an id (replica id + sequence number). Each client keeps a <b>read-set</b> (writes relevant to its reads) and a <b>write-set</b> (its writes), encodable as vector clocks. Monotonic reads: before reading at L2, L2 must have applied the read-set. Monotonic writes and read your writes: same with the write-set. Writes follow reads: bring the server up to date with the read-set, then add the write to the write-set.</p>
+        <p><b>What:</b> (1) a <b>notification</b> only, used with invalidation: small overhead, avoids propagating writes that will be overwritten; best when reads ≪ writes. (2) The <b>modified data</b>: best when reads ≫ writes. (3) The <b>operation</b> (active replication): very small messages, but each replica recomputes (costly for complex operations), and you must consider side effects.</p>
+        <div class="tbl"><table><tr><th>Issue (one server, many client caches)</th><th>Push</th><th>Pull</th></tr>
+          <tr><td>State at server</td><td>List of client replicas and caches</td><td>None</td></tr>
+          <tr><td>Messages sent</td><td>Update (and possibly fetch update later)</td><td>Poll and update</td></tr>
+          <tr><td>Response time at client</td><td>Immediate (or fetch-update time)</td><td>Fetch-update time</td></tr>
+          <tr><td>Typical use</td><td>High degree of consistency</td><td>Client caches; reads ≪ writes</td></tr></table></div>
+        <p><b>Leases</b> control the frequency of polling: during the lease the server pushes updates; after it expires the client must pull.</p>
+        <p><b>Leader-based:</b> synchronous, asynchronous, semi-synchronous propagation. <b>Leaderless:</b> <b>read repair</b> (a client that reads several replicas detects stale ones and updates them) and <b>anti-entropy</b> (a background process that constantly compares replicas and copies missing data; push, pull or push-pull). <b>Gossiping / epidemic</b> algorithms are anti-entropy strategies: each replica periodically contacts a random peer and exchanges updates, so an update spreads like an infection, reaching all replicas in O(log N) rounds with no central coordinator.</p>
       </div>
-      <div class="why"><h4>Why</h4><p>The client carries its own history from replica to replica. A replica that is behind must catch up before serving the client.</p></div>
+      <div class="why"><h4>Why</h4><p>Every choice depends on the read/write ratio: send data where it will be read, and do not push data that will be overwritten before anyone reads it. Epidemic protocols are used because they scale and tolerate failures: no replica is special.</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="compare" data-id="r-c2">
-    <div class="q-head"><span class="qid">Q11</span><span class="tag compare">Compare</span><span class="seen">Exam 13 Jul 2015 · 19 Feb 2013</span></div>
-    <p class="prompt">Describe the strategies for propagating updates among replicas: what to propagate, push vs pull, and propagation in leader-based and leaderless protocols.</p>
+  <article class="q" data-type="scenario" data-id="r-c6">
+    <div class="q-head"><span class="qid">Q42</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">Choose replica placement, what to propagate, and push or pull. (a) A stock price is updated 50 times per second; client caches read it about once per minute. (b) A product catalog changes once a day and is read thousands of times per second at many replicas. (c) An update is "apply a 10% discount to all 2 million products". (d) A news site gets a sudden traffic peak from a new country. (e) Static DNS data and the content of a video service.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p><b>What:</b> a notification only (invalidation; good when reads ≪ writes); the modified data (good when reads ≫ writes); the operation (active replication: tiny messages, but every replica recomputes; beware side effects).</p>
-        <div class="tbl"><table><tr><th></th><th>Push</th><th>Pull</th></tr>
-          <tr><td>Server state</td><td>List of client replicas and caches</td><td>None</td></tr>
-          <tr><td>Messages</td><td>Update (and maybe fetch later)</td><td>Poll and update</td></tr>
-          <tr><td>Response time at client</td><td>Immediate</td><td>Fetch time</td></tr>
-          <tr><td>Use</td><td>High consistency</td><td>Client caches; reads ≪ writes</td></tr></table></div>
-        <p><b>Leases</b> combine them: push during the lease, then pull.</p>
-        <p><b>Leader-based:</b> synchronous, asynchronous, semi-synchronous. <b>Leaderless:</b> read repair (a client that sees stale replicas updates them) and anti-entropy (background exchange; push, pull or both; gossip/epidemic strategies).</p>
-        <p><b>Replica placement:</b> permanent (DNS, CDN), server-initiated (to follow load), client-initiated (caches).</p>
+        <ol type="a">
+          <li>Reads ≪ writes: propagate only a <b>notification</b> (invalidation), or let clients <b>pull</b> on demand. Pushing every new price wastes traffic: most values are overwritten before anyone reads them. Leases can bound how often clients poll.</li>
+          <li>Reads ≫ writes: <b>push the modified data</b> to all replicas. Each update is read many times, so the transfer pays off, and replicas answer immediately.</li>
+          <li>Propagate the <b>operation</b> (active replication): one short message instead of 2 million new values. Each replica recomputes. The operation must be deterministic and free of side effects (no "now()", random numbers, or e-mails sent by each replica).</li>
+          <li><b>Server-initiated replicas</b>: create replicas dynamically near the new clients to cope with the load; this needs knowledge of the network topology.</li>
+          <li><b>Permanent replicas</b>: statically configured, as in DNS and CDNs. Browsers and proxies add <b>client-initiated</b> replicas (caches, possibly shared among clients).</li>
+        </ol>
       </div>
-      <div class="why"><h4>Why</h4><p>Every choice depends on the read/write ratio: send data where it will be read, and do not push data that will be overwritten before anyone reads it.</p></div>
+      <div class="why"><h4>Why</h4><p>Ask two questions every time: "how often is each update read before it is overwritten?" and "who knows when the data is needed: the server or the client?". Push when the server knows and data is read often; pull when only the client knows.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="r-c7">
+    <div class="q-head"><span class="qid">Q43</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">Choose a consistency model and a protocol for each case, and justify. (a) Bank accounts whose balance must never go below zero, in one data center. (b) A shopping cart in a geo-replicated store that must accept items even during a partition. (c) A group chat across continents where replies must never appear before the message they answer. (d) A lock service that elects one master for a cluster. (e) A mobile e-mail client that connects to different servers during the day.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li><b>Sequential or linearizable</b> (serializable transactions): single leader with synchronous (or semi-synchronous) replication, consensus for failover. Low latency inside the data center makes it affordable. The invariant needs coordination: a CRDT cannot enforce it.</li>
+          <li><b>Eventual consistency with a CRDT</b> (for example, a set of "add item" operations), multi leader. It stays available during partitions; concurrent adds merge without conflicts.</li>
+          <li><b>Causal consistency</b>, multi leader with vector clocks. It is highly available with sticky clients, and much cheaper than sequential across continents. Unrelated messages can appear in different orders.</li>
+          <li><b>Linearizability</b>: everybody must agree, in real time, on who holds the lock. Use a consensus-based replicated log (Raft or Paxos). It is not available during a partition on the minority side; that is the price.</li>
+          <li><b>Client-centric models</b> over an eventually consistent store: monotonic reads (a mail never "disappears"), read your writes (a sent mail appears in "Sent"), with read-sets and write-sets carried by the client.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>Start from the cost of an anomaly. If an anomaly breaks an invariant (money, locks), pay for strong consistency. If it only looks strange (comment order), choose the weakest model that hides it, because weaker models give latency and availability.</p></div>
     </div>
   </article>
 
   <article class="q" data-type="describe" data-id="r-c3">
-    <div class="q-head"><span class="qid">Q12</span><span class="tag describe">Describe</span></div>
-    <p class="prompt">NoSQL vs NewSQL: how do Spanner, Calvin and VoltDB provide strong guarantees at reasonable cost?</p>
+    <div class="q-head"><span class="qid">Q44</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">NoSQL vs NewSQL: what are the two families, and how do Spanner, Calvin and VoltDB provide strong guarantees at reasonable cost?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p><b>NoSQL</b> (2000s): single-item operations, no multi-item transactions, asynchronous or multi-leader replication → high availability. <b>NewSQL</b> (2010s): relational, serializable transactions, atomic commit, sequential/linearizable replication, with new techniques to cut cost:</p>
+        <p><b>NoSQL</b> (2000s): key-value stores, wide-column, document stores. Operations on single items, so no isolation and no atomic commit needed (no multi-item transactions). Asynchronous and/or multi-leader replication → <b>high availability</b>. <b>NewSQL</b> (2010s): relational, serializable isolation (locking, timestamps), blocking atomic commit, sequential or linearizable replication → <b>strong guarantees</b>, with new techniques to limit costs:</p>
         <ul>
-          <li><b>Spanner:</b> Paxos per partition, 2PC across partitions, timestamps. <b>TrueTime</b> (atomic clocks + GPS) returns an uncertainty interval; a transaction commits only after the interval has surely passed, so timestamp order = real-time order → linearizable. Read-only transactions read at a timestamp without locks.</li>
-          <li><b>Calvin:</b> a replicated sequencing layer (Paxos log) orders all transactions <i>before</i> execution; transactions are deterministic and run in that order everywhere. No 2PC; less lock contention; a failed participant recovers by replaying the log.</li>
-          <li><b>VoltDB:</b> developers partition tables and transactions (e.g. by city); single-partition transactions run sequentially without coordination.</li>
+          <li><b>Spanner:</b> very large databases, many partitions, each replicated. Standard parts: single leader with Paxos per partition, 2PC across partitions, timestamp concurrency control. Novelty: <b>TrueTime</b> (atomic clocks + GPS) returns an uncertainty interval that surely contains the real time. A read-write transaction commits only after its timestamp is surely past on every node, so timestamp order = real-time order → linearizable. Read-only transactions read the latest value at a TrueTime timestamp without locks.</li>
+          <li><b>Calvin:</b> a <b>sequencing layer</b> (a replicated log based on Paxos) orders all transactions <i>before</i> execution. Transactions are deterministic and run everywhere in the log order → linearizable. Agreement happens before locks are taken (less contention), and no 2PC is needed: a failed participant does not cause an abort, because any replica of it can vote, and it recovers by replaying the log.</li>
+          <li><b>VoltDB:</b> developers specify how to partition tables and transactions (for example, hotels and flights both by city). Single-partition transactions run sequentially on that partition with no coordination; other transactions use standard protocols.</li>
         </ul>
       </div>
-      <div class="why"><h4>Why</h4><p>Each system removes one expensive piece: Spanner replaces clock uncertainty with waiting, Calvin removes 2PC with determinism, VoltDB avoids coordination with smart partitioning.</p></div>
+      <div class="why"><h4>Why</h4><p>Each system removes one expensive piece: Spanner turns clock uncertainty into a short wait, Calvin removes 2PC through determinism, VoltDB avoids coordination through smart partitioning.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="r-c8">
+    <div class="q-head"><span class="qid">Q45</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">(a) Spanner: TrueTime has uncertainty ε = 4 ms, so TT.now() returns [t − 4, t + 4] around the real time t. A coordinator calls TT.now() and gets [1000, 1008] ms. It picks the commit timestamp s = 1008. Until when must it wait before it commits and releases its locks, and why? (b) VoltDB: hotels and flights are both partitioned by city. Classify: (1) book a hotel and a flight from Milan's airport, both in the Milan partition; (2) book a Milan hotel and a Rome hotel in one transaction. (c) Calvin: a participant crashes in the middle of a transaction. Why is there no abort?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>It waits until TT.now() reports an earliest value &gt; 1008, that is until the real time is surely past s. With ε = 4, this happens when t − 4 &gt; 1008, so t &gt; 1012. At the call, t was in [1000, 1008] (about 1004), so the <b>commit wait is about 8 ms = 2ε</b>. After that, every node's clock is past 1008, so any transaction that starts later gets a larger timestamp: timestamp order matches real-time order (linearizable).</li>
+          <li>(1) <b>Single-partition</b>: it runs sequentially on the Milan partition with no coordination. (2) <b>Multi-partition</b>: it needs the standard (coordinated) protocols, so it is slower. A good partitioning makes case (1) the common case.</li>
+          <li>The order of transactions was fixed in the replicated log before execution, and transactions are deterministic. Any replica of the failed participant can vote for it, and the crashed node returns to the right state by replaying the log. So there is no 2PC and no abort due to the failure.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>Spanner pays the uncertainty interval as latency on every read-write commit. This is why precise clocks matter: with ε = 4 ms the wait is about 8 ms; with NTP-like uncertainty (tens of ms) it would be too slow.</p></div>
     </div>
   </article>
 </section>
-<footer>Source: lecture slides "08 – Replication and consistency" and the replication exercises (Margara), and the past exams in your course folder. Your "Got it" and "Review again" marks stay only in this browser.</footer>
+<footer>Source: lecture slides "08 – Replication and consistency" and the replication exercises (Prof. Margara), and the past exams in your course folder. Your "Got it" and "Review again" marks stay only in this browser.</footer>
 </div>
 
 <script>
 (function(){
-  const KEY = "ds-replication-marks-v1";
+  const KEY = "ds-replication-marks-v2";
   let marks = {};
   try { marks = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e) { marks = {}; }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(marks)); } catch(e) {} };

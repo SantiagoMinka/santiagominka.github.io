@@ -111,7 +111,7 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
   <a class="eyebrow" href="/courses.html?c=distributed-systems" style="text-decoration:none">← Distributed Systems notes</a>
   <div class="eyebrow">Distributed Systems · Prof. Cugola · Chapter 11</div>
   <h1>Simulating distributed systems</h1>
-  <p class="lede">Exam drill for emulation vs simulation, discrete event simulation, and OMNeT++ (modules, NED, messages, results, the token ring example).</p>
+  <p class="lede">Exam drill for emulation vs simulation, discrete event simulation, OMNeT++ (modules, NED, messages, results, random numbers, TicToc) and the token ring lab. Answer on paper first, then open the model answer.</p>
 </header>
 <div class="toolbar" role="toolbar" aria-label="Filter and controls">
   <button class="chip" data-filter="all" aria-pressed="true">All</button>
@@ -129,113 +129,1018 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
 
 <div class="exam-map">
   <h2>How the exam asks about this chapter</h2>
-  <p>None of the past exams in your folder has a question on this chapter: it is new in the course. Expect a "describe" question (discrete event simulation, OMNeT++ structure) or a design question on the token-ring lab. The questions below follow the slides and the lab files in <code>token_ring_sim.zip</code>.</p>
+  <p>No past exam in your folder has a question on this chapter. The 2013–2015 and 2023–2024 tests do not ask about simulation. So there is no real exam question to quote here. All the questions below are review questions built from the slides and from the lab files in <code>token_ring_sim.zip</code>.</p>
+  <p>If the chapter comes up, expect one of these kinds of question:</p>
+  <ul>
+    <li>A "describe" question: the ways to study a system, emulation vs simulation, or the elements and the main loop of discrete event simulation.</li>
+    <li>A "describe" question on OMNeT++: component model, simple and compound modules, NED, ini files, results, random numbers.</li>
+    <li>A short code question: read a NED file or a <code>handleMessage()</code> body (TicToc or TRNode) and explain it, or find an error.</li>
+    <li>A design question on the token ring lab: lossy channels, token regeneration with a timeout, and which performance indicators to measure.</li>
+    <li>A small exercise: a hand trace of an event list, or a calculation with the lab parameters (round time, timeout, messages per hour).</li>
+  </ul>
 </div>
 
+<!-- ===== §1 ===== -->
 <section class="topic">
-  <div class="topic-head"><span class="num">§1</span><h2>Why and how to simulate</h2></div>
-  <div class="core"><p><b>Core idea.</b> To study a system you can experiment with the real system or with a model. Emulation sits in between: the real software on an imitated network. Simulation runs a model and analyzes the history it produces. <b>Discrete event simulation</b> jumps from event to event.</p></div>
+  <div class="topic-head"><span class="num">§1</span><h2>Why simulate: ways to study a system, emulation, models</h2></div>
+  <div class="core"><p><b>Core idea.</b> You can study a system by experiments on the actual system or on a model. A model is physical or mathematical; a mathematical model is solved analytically or by simulation. <b>Network emulation</b> sits in between: the real software runs on an imitated network. It is often important to <b>analyze before building</b>, and analysis needs a model.</p></div>
+
+  <article class="q" data-type="describe" data-id="m-ways">
+    <div class="q-head"><span class="qid">Q1</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Describe the ways to study a system (Law and Kelton, Figure 1.1). Where does simulation sit in this classification?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <svg viewBox="0 0 520 200" width="100%" height="200" role="img" aria-label="Ways to study a system tree">
+          <rect x="200" y="5" width="120" height="28" fill="none" stroke="#1d4e89"/>
+          <text x="260" y="24" text-anchor="middle" font-size="12" fill="#16202e">System</text>
+          <line x1="260" y1="33" x2="110" y2="60" stroke="#94a0b4"/>
+          <line x1="260" y1="33" x2="380" y2="60" stroke="#94a0b4"/>
+          <rect x="30" y="60" width="160" height="28" fill="none" stroke="#1d4e89"/>
+          <text x="110" y="79" text-anchor="middle" font-size="12" fill="#16202e">Experiment with actual system</text>
+          <rect x="300" y="60" width="160" height="28" fill="none" stroke="#1d4e89"/>
+          <text x="380" y="79" text-anchor="middle" font-size="12" fill="#16202e">Experiment with a model</text>
+          <line x1="380" y1="88" x2="300" y2="115" stroke="#94a0b4"/>
+          <line x1="380" y1="88" x2="450" y2="115" stroke="#94a0b4"/>
+          <rect x="240" y="115" width="120" height="28" fill="none" stroke="#1d4e89"/>
+          <text x="300" y="134" text-anchor="middle" font-size="12" fill="#16202e">Physical model</text>
+          <rect x="390" y="115" width="125" height="28" fill="none" stroke="#1d4e89"/>
+          <text x="452" y="134" text-anchor="middle" font-size="12" fill="#16202e">Mathematical model</text>
+          <line x1="452" y1="143" x2="390" y2="165" stroke="#94a0b4"/>
+          <line x1="452" y1="143" x2="480" y2="165" stroke="#94a0b4"/>
+          <rect x="320" y="165" width="120" height="28" fill="none" stroke="#1d4e89"/>
+          <text x="380" y="184" text-anchor="middle" font-size="12" fill="#16202e">Analytical solution</text>
+          <rect x="445" y="165" width="72" height="28" fill="none" stroke="#d85a30"/>
+          <text x="481" y="184" text-anchor="middle" font-size="12" fill="#d85a30">Simulation</text>
+        </svg>
+        <ul>
+          <li><b>Experiment with the actual system:</b> you change the real system and measure it. This is the most realistic option, but often it is too expensive, too risky, or the system does not exist yet.</li>
+          <li><b>Experiment with a model:</b> you build a representation of the system.
+            <ul>
+              <li><b>Physical model:</b> a real object at a smaller scale (a testbed, a scale model).</li>
+              <li><b>Mathematical model:</b> logical and quantitative relations. If the model is simple, you get an <b>analytical solution</b> (a formula). If it is too complex, you use <b>simulation</b>: you execute the model and observe it.</li>
+            </ul>
+          </li>
+        </ul>
+        <p>Simulation is a mathematical model that you solve numerically by running it. Network emulation is between "actual system" and "model": the real software runs, but the network is imitated.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Each step down the tree trades realism for cost and control. The common trap is to call emulation a kind of simulation. In emulation the system under test is the real code; only the environment is fake.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="m-ways2">
+    <div class="q-head"><span class="qid">Q2</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Put each study in the Law and Kelton tree: (a) you deploy a new replication protocol on 3 production servers for one week; (b) you build a 10-node Raspberry Pi cluster to study the protocol; (c) you use an M/M/1 queueing formula to compute the mean response time of a server; (d) you run the protocol model in OMNeT++ with 10,000 nodes; (e) you run the real protocol binaries in Mininet with an imitated WAN.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table>
+          <tr><th>Case</th><th>Place in the tree</th></tr>
+          <tr><td>(a) production servers</td><td>Experiment with the actual system</td></tr>
+          <tr><td>(b) Raspberry Pi cluster</td><td>Model → physical model (a small-scale real copy)</td></tr>
+          <tr><td>(c) M/M/1 formula</td><td>Model → mathematical → analytical solution</td></tr>
+          <tr><td>(d) OMNeT++ with 10,000 nodes</td><td>Model → mathematical → simulation</td></tr>
+          <tr><td>(e) Mininet</td><td>Emulation: in between. The real system (binaries) runs on an imitated network.</td></tr>
+        </table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>Ask two questions. First: does the real code run? If yes, it is the actual system or emulation. Second: is the model a formula you can solve, or a program you must execute? Formula means analytical; execution means simulation.</p></div>
+    </div>
+  </article>
 
   <article class="q" data-type="compare" data-id="m-1">
-    <div class="q-head"><span class="qid">Q1</span><span class="tag compare">Compare</span></div>
+    <div class="q-head"><span class="qid">Q3</span><span class="tag compare">Compare</span></div>
     <p class="prompt">Compare network emulation and simulation. Give examples of emulation tools and say what they can alter.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p><b>Emulation:</b> the real system runs on an emulated network. The emulator looks like a real network to the OS, and changes the packet flow to imitate a WAN or a wireless network: delay, loss, duplication, reordering. Often combined with node emulation (virtual machines). Tools: Mininet, Dummynet (Emulab), Linux NetEm, marionnet, netkit.</p>
-        <p><b>Simulation:</b> a model of the whole system (nodes and network) runs in a simulator; no real code or network is needed. You can test huge scales and "analyze before building".</p>
-        <p>Emulation gives realism for the software under test; simulation gives scale, control and reproducibility at the cost of model accuracy.</p>
+        <p><b>Emulation:</b> the real system runs on an emulated network. The network emulator <b>appears to be a network to the OS</b>. A component or device alters the packet flow to imitate the target environment, for example a WAN or a wireless network. It can introduce packet <b>delay, loss, duplication and reordering</b>. It is often coupled with node emulation (virtual machines such as UML, VMware, VirtualBox). Tools: <b>Mininet</b>, FreeBSD <b>Dummynet</b> (used in <b>Emulab</b>), Linux <b>NetEm</b>, and more user-friendly tools such as <b>marionnet</b> and <b>netkit</b>.</p>
+        <p><b>Simulation:</b> a model of the whole system (nodes and network) runs inside a simulator. No real code and no real network run. Simulated time is not wall-clock time.</p>
+        <div class="tbl"><table>
+          <tr><th></th><th>Emulation</th><th>Simulation</th></tr>
+          <tr><td>What runs</td><td>Real software, real OS stack</td><td>A model of software and network</td></tr>
+          <tr><td>Time</td><td>Real time</td><td>Simulated time (the clock jumps)</td></tr>
+          <tr><td>Scale</td><td>Limited by the real machines</td><td>Very large (thousands of nodes)</td></tr>
+          <tr><td>Realism of the software</td><td>High: it is the real code</td><td>Only as good as the model</td></tr>
+          <tr><td>Reproducibility</td><td>Partial (real scheduling, real timing)</td><td>Full, with the same seeds</td></tr>
+          <tr><td>When</td><td>Code exists; test it in a hard environment</td><td>Analyze before building</td></tr>
+        </table></div>
       </div>
-      <div class="why"><h4>Why</h4><p>Testing distributed systems in large or complex deployments is hard and expensive. Emulation keeps the real code; simulation keeps only the behavior you model.</p></div>
+      <div class="why"><h4>Why</h4><p>Testing distributed systems in large or complex deployments is hard. Emulation keeps the real code and fakes the environment. Simulation fakes everything but gives scale and control. The key phrase from the slides is "appears to be a network to the OS".</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="describe" data-id="m-2">
-    <div class="q-head"><span class="qid">Q2</span><span class="tag describe">Describe</span></div>
-    <p class="prompt">Classify models (analytical vs operational, discrete vs continuous, deterministic vs stochastic). Describe the elements and the main loop of a discrete event simulation.</p>
+  <article class="q" data-type="scenario" data-id="m-choose">
+    <div class="q-head"><span class="qid">Q4</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">Pick emulation or simulation for each case and justify: (a) you want to check that your Java chat server handles 200 ms delay and 5% packet loss between 4 machines; (b) you want to compare two gossip protocols on 100,000 peers before you write any code; (c) you want to check that your real Kafka client handles packet reordering; (d) you want to repeat exactly the same run to debug a rare race; (e) you want to estimate the mean waiting time of a token ring mutual exclusion protocol for 6, 50 and 500 nodes.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p>Models: analytical (equations) vs operational (step by step behavior); discrete vs continuous state changes; deterministic vs stochastic (random inputs). Simulation obtains a history of execution and analyzes it.</p>
-        <p><b>Elements:</b> a list of events (timestamped objects, ordered by time); a simulation clock; state variables and performance indicators; an event processing function that updates state and indicators and creates new events.</p>
-<pre><code>forever:
-  e = remove the first event from the list
-  clock = e.timestamp
-  process(e)   // update state, record statistics, schedule new events</code></pre>
+        <ol type="a">
+          <li><b>Emulation</b> (for example NetEm or Mininet). The code exists and the scale is small. NetEm can add the delay and the loss.</li>
+          <li><b>Simulation</b>. The code does not exist (analyze before building) and 100,000 real nodes are too many to emulate.</li>
+          <li><b>Emulation</b>. You test the real client. The emulator can reorder packets.</li>
+          <li><b>Simulation</b>. A discrete event simulation with fixed seeds gives exactly the same history at every run. Emulation runs in real time with real scheduling, so a rare race may not repeat.</li>
+          <li><b>Simulation</b>. You need many configurations and large sizes. You change only the ini file.</li>
+        </ol>
       </div>
-      <div class="why"><h4>Why</h4><p>Nothing happens between events, so the clock can jump. A simulation of one hour of network activity can run in seconds, and it is fully reproducible with the same random seeds.</p></div>
+      <div class="why"><h4>Why</h4><p>Choose emulation when the question is "does my real code work in this network?". Choose simulation when the question is "how does this design perform?", or when the scale or the need for reproducibility is high. The trap: emulation is not reproducible in general, because the real OS and the real clock are involved.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="m-models">
+    <div class="q-head"><span class="qid">Q5</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Why is it often important to "analyze before building"? Define the three pairs of model classes (analytical vs operational, discrete vs continuous, deterministic vs stochastic). Then classify: (a) the formula "round time = n · d" for a token ring; (b) an OMNeT++ token ring with <code>uniform(300s,500s)</code> request periods; (c) a set of differential equations for the temperature of a server room.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Analyze before building:</b> design errors found after the system is built cost much more. Analysis needs a model of the system. Simulation is a special form of analysis: you obtain a <b>history of system execution</b> and you analyze it.</p>
+        <ul>
+          <li><b>Analytical</b>: the model is a set of equations; you compute the result. <b>Operational</b>: the model describes the behavior step by step; you execute it.</li>
+          <li><b>Discrete</b>: the state changes at separate instants (a message arrives). <b>Continuous</b>: the state changes continuously in time (a temperature, a fluid level).</li>
+          <li><b>Deterministic</b>: the same inputs always give the same output. <b>Stochastic</b>: some inputs are random variables.</li>
+        </ul>
+        <div class="tbl"><table>
+          <tr><th>Model</th><th>Classification</th></tr>
+          <tr><td>(a) n · d</td><td>Analytical, discrete, deterministic</td></tr>
+          <tr><td>(b) OMNeT++ token ring</td><td>Operational, discrete, stochastic (random inputs)</td></tr>
+          <tr><td>(c) differential equations</td><td>Analytical, continuous, deterministic</td></tr>
+        </table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>The slides say discrete event simulation uses a "discrete, deterministic, operational model". This looks strange when the model uses random numbers. The pseudo-random generator is deterministic: with the same seed you get the same history. Randomness is an input; the execution of the model stays deterministic.</p></div>
     </div>
   </article>
 </section>
 
+<!-- ===== §2 ===== -->
 <section class="topic">
-  <div class="topic-head"><span class="num">§2</span><h2>OMNeT++</h2></div>
-  <div class="core"><p><b>Core idea.</b> OMNeT++ gives a component model (simple and compound <b>modules</b> with <b>gates</b>), a C++ library (simulation kernel, random numbers, statistics), the <b>NED</b> language for structure, <b>ini</b> files for configuration, runtime environments, and an IDE. Frameworks such as INET add ready-made models.</p></div>
+  <div class="topic-head"><span class="num">§2</span><h2>Discrete event simulation</h2></div>
+  <div class="core"><p><b>Core idea.</b> A discrete event simulation has a <b>list of events</b> (timestamped objects), a <b>simulation clock</b>, <b>state variables and performance indicators</b>, and an <b>event processing function</b>. The main loop removes the first event, advances the clock to its timestamp and passes the event to the function. The function updates state and indicators and creates new events. A <b>discrete event simulator</b> implements this loop for you.</p></div>
 
-  <article class="q" data-type="describe" data-id="m-3">
-    <div class="q-head"><span class="qid">Q3</span><span class="tag describe">Describe</span></div>
-    <p class="prompt">Describe the OMNeT++ component model: simple and compound modules, gates, NED, C++ classes, ini files, messages.</p>
+  <article class="q" data-type="describe" data-id="m-2">
+    <div class="q-head"><span class="qid">Q6</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Describe the elements and the main loop of a discrete event simulation.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
         <ul>
-          <li><b>Modules</b> communicate by sending messages through <b>gates</b>. <b>Simple</b> modules hold the behavior; <b>compound</b> modules contain submodules and connections. The whole simulation is an instance of the top-level module (the network).</li>
-          <li><b>NED</b> defines interfaces (parameters, gates) and wiring (submodules, connections with channel properties such as delay, datarate, ber/per).</li>
-          <li>Each simple module is a <b>C++ class</b> extending <code>cSimpleModule</code>, registered with <code>Define_Module</code>. Main methods: <code>initialize()</code>, <code>handleMessage(cMessage*)</code>, <code>finish()</code>. Read parameters with <code>par("name")</code>; send with <code>send(msg, "gate")</code>; timers are self-messages with <code>scheduleAt</code> and <code>cancelEvent</code>.</li>
-          <li>Parameter values go in <b>omnetpp.ini</b>, with several named configurations and wildcards (<code>**.limit = 5</code>). Volatile parameters can be random variates (<code>exponential(0.2)</code>): each read gives a new value.</li>
-          <li><b>Messages</b> are subclasses of <code>cMessage</code>, defined in a small message language (fields).</li>
+          <li><b>List of events:</b> timestamped objects, kept ordered by timestamp (a priority queue).</li>
+          <li><b>Simulation clock:</b> the current simulated time.</li>
+          <li><b>State variables:</b> describe the system now (queue length, "server busy", "who has the token").</li>
+          <li><b>Performance indicators:</b> the values you want to measure (total waiting time, number of messages).</li>
+          <li><b>Event processing function:</b> takes one event, updates the state variables and the indicators, and creates new events with timestamps ≥ the clock.</li>
+        </ul>
+<pre><code>forever:
+  e = take the first event from the list and remove it
+  clock = e.timestamp          // advance the clock
+  process(e)                   // update state and indicators, create new events</code></pre>
+        <p>The loop stops when the list is empty or when a time limit is reached (in OMNeT++: <code>sim-time-limit</code>).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Nothing happens between two events, so the clock jumps directly to the next event. One hour of network activity can run in seconds. A trap: an event must never get a timestamp smaller than the clock. That would change the past and break causality.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="m-hand1">
+    <div class="q-head"><span class="qid">Q7</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Hand-simulate a single server with a FIFO queue. Jobs arrive at t = 0, 1, 2, 11 with service times 3, 2, 4, 1. Events: ARR (arrival) and DEP (end of service). Rules: on ARR, if the server is idle, start service and schedule DEP at t + service; else put the job in the queue. On DEP, if the queue is not empty, take the first job, add its waiting time, and schedule its DEP; else the server becomes idle. Give the clock and the state after each event. Then give: total waiting time, mean waiting time, server utilization, maximum queue length, time-average queue length.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table>
+          <tr><th>Clock</th><th>Event</th><th>Action</th><th>Busy</th><th>Queue</th><th>Total wait</th></tr>
+          <tr><td>0</td><td>ARR J1</td><td>start J1, DEP J1 at 3</td><td>yes</td><td>0</td><td>0</td></tr>
+          <tr><td>1</td><td>ARR J2</td><td>queue J2</td><td>yes</td><td>1</td><td>0</td></tr>
+          <tr><td>2</td><td>ARR J3</td><td>queue J3</td><td>yes</td><td>2</td><td>0</td></tr>
+          <tr><td>3</td><td>DEP J1</td><td>start J2 (wait 3−1 = 2), DEP J2 at 5</td><td>yes</td><td>1</td><td>2</td></tr>
+          <tr><td>5</td><td>DEP J2</td><td>start J3 (wait 5−2 = 3), DEP J3 at 9</td><td>yes</td><td>0</td><td>5</td></tr>
+          <tr><td>9</td><td>DEP J3</td><td>queue empty → idle</td><td>no</td><td>0</td><td>5</td></tr>
+          <tr><td>11</td><td>ARR J4</td><td>start J4 (wait 0), DEP J4 at 12</td><td>yes</td><td>0</td><td>5</td></tr>
+          <tr><td>12</td><td>DEP J4</td><td>idle; list empty → stop</td><td>no</td><td>0</td><td>5</td></tr>
+        </table></div>
+        <ul>
+          <li>Total waiting time = 0 + 2 + 3 + 0 = <b>5</b>; mean waiting time = 5 / 4 = <b>1.25</b>.</li>
+          <li>Busy time = [0, 9] + [11, 12] = 10; utilization = 10 / 12 ≈ <b>0.83</b>.</li>
+          <li>Maximum queue length = <b>2</b> (in [2, 3)).</li>
+          <li>Area under the queue-length curve = 1·1 + 2·1 + 1·2 = 5; time-average queue = 5 / 12 ≈ <b>0.42</b>.</li>
         </ul>
       </div>
-      <div class="why"><h4>Why</h4><p>Separating structure (NED), behavior (C++) and experiments (ini) lets you reuse modules and run many configurations without recompiling.</p></div>
+      <div class="why"><h4>Why</h4><p>The clock takes only the values 0, 1, 2, 3, 5, 9, 11, 12. It never visits 4, 6, 7, 8 or 10, because nothing happens there. To compute time-based indicators (utilization, mean queue), you accumulate "value × time since the last event" at each event. Note that the area under the queue curve equals the total waiting time (Little's law in a simple form).</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="m-hand2">
+    <div class="q-head"><span class="qid">Q8</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Hand-simulate TicToc8. Link delay is 100 ms in each direction. Tic sends a message at t = 0 and sets a timeout of 1 s. Toc replies to every message, except the 2nd message it receives, which it "loses". On a reply, tic cancels the timeout, sends a new message and sets a new timeout. On a timeout, tic sends a new message and restarts the timeout. Write the event list processing until tic receives the 3rd reply. How many messages did tic send?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table>
+          <tr><th>Clock (s)</th><th>Event</th><th>Action</th><th>Pending events after</th></tr>
+          <tr><td>0.0</td><td>initialize (tic)</td><td>send m1; schedule timeout at 1.0</td><td>toc gets m1 @0.1; timeout @1.0</td></tr>
+          <tr><td>0.1</td><td>toc receives m1</td><td>reply 1</td><td>tic gets reply @0.2; timeout @1.0</td></tr>
+          <tr><td>0.2</td><td>tic receives reply 1</td><td>cancelEvent(timeout); send m2; timeout at 1.2</td><td>toc gets m2 @0.3; timeout @1.2</td></tr>
+          <tr><td>0.3</td><td>toc receives m2</td><td>"loses" it (delete)</td><td>timeout @1.2</td></tr>
+          <tr><td>1.2</td><td>tic timeout</td><td>send m3; timeout at 2.2</td><td>toc gets m3 @1.3; timeout @2.2</td></tr>
+          <tr><td>1.3</td><td>toc receives m3</td><td>reply 2</td><td>tic gets reply @1.4; timeout @2.2</td></tr>
+          <tr><td>1.4</td><td>tic receives reply 2</td><td>cancel; send m4; timeout at 2.4</td><td>toc gets m4 @1.5; timeout @2.4</td></tr>
+          <tr><td>1.5</td><td>toc receives m4</td><td>reply 3</td><td>tic gets reply @1.6; timeout @2.4</td></tr>
+          <tr><td>1.6</td><td>tic receives reply 3</td><td>stop here</td><td></td></tr>
+        </table></div>
+        <p>Tic sent <b>4</b> messages (m1–m4) for 3 replies. The loss cost 1.2 − 0.3 = 0.9 s of idle time, plus the 0.1 s of the lost trip.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The timeout is itself an event in the list (a self-message). <code>cancelEvent</code> removes it from the list. Without the cancel, the old timeout at 1.0 would fire later and tic would send an extra message. Between 0.3 and 1.2 the list has one event only, so the clock jumps 0.9 s at once.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="m-simulators">
+    <div class="q-head"><span class="qid">Q9</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">What is a discrete event simulator? What does it provide besides the main loop? Name some examples used for networks and distributed systems.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>A discrete event simulator is software that implements the event loop and simplifies the job of writing discrete event simulations. You write only the state and the event processing.</p>
+        <ul>
+          <li>A library of basic, general-purpose elements: random number generators, containers, statistics.</li>
+          <li>A library of existing models: hosts, routers, switches, protocols.</li>
+        </ul>
+        <p>Examples: OpNet, QualNet, JiST/SWANS, Parsec/GloMoSim, J-Sim, ns-2, <b>OMNeT++</b>.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The loop itself is ten lines. The value of a simulator is in the libraries: correct random number streams, statistics, and validated models of real network elements that you do not have to write again.</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §3 ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§3</span><h2>OMNeT++: component model and NED</h2></div>
+  <div class="core"><p><b>Core idea.</b> OMNeT++ gives a component model, a C++ class library (simulation kernel and utilities), an infrastructure to assemble and configure simulations (<b>NED</b> and <b>ini</b> files), runtime environments (<b>Tkenv</b>, <b>Cmdenv</b>) and an Eclipse-based IDE. <b>Simple</b> modules hold behavior in C++; <b>compound</b> modules contain submodules and connections. Modules exchange messages through <b>gates</b>. The whole simulation is an instance of the highest-level module (the network).</p></div>
+
+  <article class="q" data-type="describe" data-id="m-3">
+    <div class="q-head"><span class="qid">Q10</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">What does OMNeT++ provide? Describe each part in one or two sentences, and name some simulation frameworks built on it.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><b>Component model:</b> structures complex simulations as reusable modules connected through gates.</li>
+          <li><b>C++ class library:</b> the simulation kernel (event list, clock, loop) and utility classes for random number generation, statistics collection, topology discovery.</li>
+          <li><b>Assembly and configuration:</b> the <b>NED</b> language describes modules and wiring; <b>omnetpp.ini</b> gives the parameter values for each run.</li>
+          <li><b>Runtime environments:</b> <b>Tkenv</b> is graphical (animation, inspection, step by step; Qtenv in recent versions). <b>Cmdenv</b> is command-line, for fast batch runs.</li>
+          <li><b>IDE:</b> Eclipse-based, to design, run and evaluate simulations (NED editor, result analysis).</li>
+        </ul>
+        <p>Frameworks developed separately: <b>INET</b> (Internet protocols), Mobility Framework, MiXiM, Castalia (wireless sensor networks).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The split is the main idea: structure (NED), behavior (C++) and experiments (ini) are separate. You can change the experiment without recompiling, and reuse a module in many networks. Use Tkenv to understand and debug; use Cmdenv to collect results fast.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="m-modules">
+    <div class="q-head"><span class="qid">Q11</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">Compare simple modules and compound modules. What are gates and connections? How is the module hierarchy built?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table>
+          <tr><th></th><th>Simple module</th><th>Compound module</th></tr>
+          <tr><td>NED keyword</td><td><code>simple</code></td><td><code>module</code> (the top level is a <code>network</code>)</td></tr>
+          <tr><td>NED content</td><td>Interface only: parameters and gates</td><td>Parameters, gates, <code>submodules</code>, <code>connections</code></td></tr>
+          <tr><td>Behavior</td><td>A C++ class extending <code>cSimpleModule</code></td><td>No C++ code; behavior comes from its submodules</td></tr>
+          <tr><td>Position in hierarchy</td><td>Leaves</td><td>Inner nodes</td></tr>
+        </table></div>
+        <p><b>Gates</b> are the input and output ports of a module. A module sends messages only through its output gates. <b>Connections</b> link an output gate to an input gate. A connection can carry channel properties: delay, datarate, ber, per. In a compound module, a connection can link a submodule gate to a gate of the parent (for example <code>mac.phyOut --&gt; out</code>).</p>
+        <p>Compound modules contain simple or compound modules, so modules form a tree. The root is the network; the simulation is an instance of it.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A compound module is only packaging: at run time, messages travel between simple modules. The gates of a compound module are pass-through points. This lets you build a "host" once and use it many times.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="code" data-id="m-ether">
+    <div class="q-head"><span class="qid">Q12</span><span class="tag code">Code</span></div>
+    <p class="prompt">Read the <code>EtherStation</code> compound module from the slides. (a) Which submodules does it have, and which are simple modules? (b) List the gates that a message from <code>app</code> passes on its way to the station's <code>out</code> gate. (c) The slide has the line <code>llc.macOout --&gt; mac.llcIn;</code>. What happens at build time, and how do you fix it?</p>
+<pre><code>module EtherStation {
+  gates:
+    input in;  output out;
+  submodules:
+    app: EtherTrafficGen;  llc: EtherLLC;  mac: EtherMAC;
+  connections:
+    app.out --&gt; llc.hlIn;
+    app.in &lt;-- llc.hlOut;
+    llc.macIn &lt;-- mac.llcOut;
+    llc.macOout --&gt; mac.llcIn;
+    mac.phyIn &lt;-- in;
+    mac.phyOut --&gt; out;
+}</code></pre>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>Three submodules: <code>app</code> (EtherTrafficGen), <code>llc</code> (EtherLLC), <code>mac</code> (EtherMAC). EtherMAC is a simple module (its NED is <code>simple EtherMAC</code> with gates phyIn, phyOut, llcIn, llcOut). The other two are also leaves with C++ code.</li>
+          <li><code>app.out</code> → <code>llc.hlIn</code>; LLC processes it and sends on <code>llc.macOut</code> → <code>mac.llcIn</code>; MAC sends on <code>mac.phyOut</code> → <code>EtherStation.out</code>.</li>
+          <li>The gate <code>macOout</code> does not exist in EtherLLC. NED checks gate names when the network is set up, so the simulation stops with an error such as "no such gate". Fix: <code>llc.macOut --&gt; mac.llcIn;</code>.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>The arrow shows the direction of the messages. <code>a --&gt; b</code> and <code>b &lt;-- a</code> mean the same thing. The left side of <code>--&gt;</code> must be an output gate and the right side an input gate. The parent gates <code>in</code> and <code>out</code> only forward messages to and from the inner modules.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="code" data-id="m-ned1">
+    <div class="q-head"><span class="qid">Q13</span><span class="tag code">Code</span></div>
+    <p class="prompt">Write NED for this topology. A simple module <code>Relay</code> has a parameter <code>double procTime @unit(s)</code> with default 10 ms, and two input and two output gates (<code>inL</code>, <code>outL</code>, <code>inR</code>, <code>outR</code>). The network <code>Line3</code> has three relays <code>a</code>, <code>b</code>, <code>c</code> in a line, a–b–c. Each link is bidirectional with delay 50 ms. Relay <code>b</code> has procTime 20 ms.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+<pre><code>simple Relay {
+  parameters:
+    double procTime @unit(s) = default(10ms);
+  gates:
+    input inL;  output outL;
+    input inR;  output outR;
+}
+
+network Line3 {
+  submodules:
+    a: Relay;
+    b: Relay { parameters: procTime = 20ms; }
+    c: Relay;
+  connections:
+    a.outR --&gt; { delay = 50ms; } --&gt; b.inL;
+    a.inR  &lt;-- { delay = 50ms; } &lt;-- b.outL;
+    b.outR --&gt; { delay = 50ms; } --&gt; c.inL;
+    b.inR  &lt;-- { delay = 50ms; } &lt;-- c.outL;
+}</code></pre>
+        <p>The gates <code>a.inL</code>, <code>a.outL</code>, <code>c.inR</code>, <code>c.outR</code> stay unconnected. OMNeT++ reports an error for unconnected gates, unless you mark them, for example <code>@loose</code> on the gate or <code>allowunconnected</code> on the connections section.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>One link in each direction needs two connections, because a gate is either input or output. This is the same pattern as Tictoc1: <code>tic.out --&gt; {delay=100ms;} --&gt; toc.in;</code> and <code>tic.in &lt;-- {delay=100ms;} &lt;-- toc.out;</code>. A value set in the submodule block (b's procTime) overrides the <code>default()</code> and cannot be changed from the ini file.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="code" data-id="m-ned2">
+    <div class="q-head"><span class="qid">Q14</span><span class="tag code">Code</span></div>
+    <p class="prompt">Write the NED network of the token ring lab. The simple module <code>TRNode</code> has the parameters <code>sendMsgOnInit</code> (bool, default false), <code>reqPeriod</code> and <code>usePeriod</code> (volatile, in seconds, defaults <code>uniform(300s,500s)</code> and <code>uniform(1s,2s)</code>), and the gates <code>in</code>, <code>out</code>. Define a channel <code>MyChannel</code> with delay uniform 90–110 ms and datarate normal(1024 kbps, 1 kbps). The network <code>TokenRing</code> has <code>n</code> nodes (default 5) in a ring.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+<pre><code>simple TRNode {
+  parameters:
+    bool sendMsgOnInit = default(false);
+    volatile double reqPeriod @unit(s) = default(uniform(300s,500s));
+    volatile double usePeriod @unit(s) = default(uniform(1s,2s));
+  gates:
+    input in;
+    output out;
+}
+
+channel MyChannel extends ned.DatarateChannel {
+  delay = uniform(90ms,110ms);
+  datarate = normal(1024kbps,1kbps);
+}
+
+network TokenRing {
+  parameters:
+    int n = default(5);
+  submodules:
+    node[n]: TRNode;
+  connections:
+    for i=0..n-1 {
+      node[i].out --&gt; MyChannel --&gt; node[(i+1)%n].in;
+    }
+}</code></pre>
+      </div>
+      <div class="why"><h4>Why</h4><p><code>node[n]</code> is a submodule vector, and the <code>for</code> loop builds the connections. <code>(i+1)%n</code> closes the ring: node[n−1] sends to node[0]. Each node has exactly one in and one out gate, so the token moves in one direction only. Defining <code>MyChannel</code> once avoids repeating the delay and datarate on each link.</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §4 ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§4</span><h2>Simple modules, messages, results, random numbers, ini files</h2></div>
+  <div class="core"><p><b>Core idea.</b> A simple module is a C++ class that extends <code>cSimpleModule</code>, is registered with <code>Define_Module</code>, and redefines <code>initialize()</code>, <code>handleMessage()</code> and <code>finish()</code>. Messages are subclasses of <code>cMessage</code>, written in a small message language. Results go to <b>output vectors</b> (.vec) and <b>output scalars</b> (.sca). OMNeT++ gives several <b>RNG streams</b> that you map to modules in omnetpp.ini.</p></div>
+
+  <article class="q" data-type="describe" data-id="m-simple">
+    <div class="q-head"><span class="qid">Q15</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">How do you implement a simple module? Describe the role of <code>initialize()</code>, <code>handleMessage()</code>, <code>finish()</code>, <code>Define_Module</code>, <code>par()</code> and <code>send()</code>. What happens if you forget <code>Define_Module</code>?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li>Write a C++ class with the same name as the NED simple module. It extends <code>cSimpleModule</code>.</li>
+          <li><code>initialize()</code>: called once after the network is built and before the first event. Read parameters, create self-messages, send the first messages.</li>
+          <li><code>handleMessage(cMessage *msg)</code>: called for every event addressed to the module (a message from another module or a self-message). This is the event processing function.</li>
+          <li><code>finish()</code>: called at the normal end of the simulation. Record scalars, free resources.</li>
+          <li><code>Define_Module(Name)</code>: registers the class, so the kernel can create it from the NED name.</li>
+          <li><code>par("name")</code>: reads a NED parameter (its value comes from NED or from omnetpp.ini).</li>
+          <li><code>send(msg, "gateName")</code>: sends a message through an output gate to the connected module.</li>
+        </ul>
+        <p>Without <code>Define_Module</code>, the program compiles, but at network setup the kernel cannot find the class. The run stops with an error like "class not found".</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>NED and C++ are linked only by name, through a registry. The kernel reads NED, finds "Txc1", and asks the registry for the class "Txc1". The trap: the error appears at run time, not at compile time.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="code" data-id="m-source">
+    <div class="q-head"><span class="qid">Q16</span><span class="tag code">Code</span></div>
+    <p class="prompt">Write the C++ of two simple modules. <code>Source</code> sends a message "job" on gate <code>out</code> after each interval read from the volatile parameter <code>interArrival</code>. <code>Sink</code> counts the jobs it receives, records the delay of each job (now minus creation time) in an output vector, and records the count as a scalar at the end.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+<pre><code>class Source : public cSimpleModule {
+  private:
+    cMessage *sendEvt = nullptr;
+  protected:
+    virtual void initialize() override {
+      sendEvt = new cMessage("sendEvt");
+      scheduleAt(simTime() + par("interArrival").doubleValue(), sendEvt);
+    }
+    virtual void handleMessage(cMessage *msg) override {
+      // only the self-message arrives here
+      send(new cMessage("job"), "out");
+      scheduleAt(simTime() + par("interArrival").doubleValue(), sendEvt);
+    }
+  public:
+    virtual ~Source() { cancelAndDelete(sendEvt); }
+};
+Define_Module(Source);
+
+class Sink : public cSimpleModule {
+  private:
+    long count;
+    cOutVector delayVec;
+  protected:
+    virtual void initialize() override {
+      count = 0;
+      delayVec.setName("JobDelay");
+    }
+    virtual void handleMessage(cMessage *msg) override {
+      count++;
+      delayVec.record(simTime() - msg-&gt;getCreationTime());
+      delete msg;                       // the sink owns it now
+    }
+    virtual void finish() override {
+      recordScalar("#received", count);
+    }
+};
+Define_Module(Sink);</code></pre>
+      </div>
+      <div class="why"><h4>Why</h4><p>A timer is a <b>self-message</b>: <code>scheduleAt</code> puts it in the event list, and it comes back to the same module. The source reuses one self-message object. Each read of a volatile parameter gives a new random value, so the intervals differ. The sink must delete each message it receives; otherwise memory grows and OMNeT++ reports undisposed objects.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="code" data-id="m-msg">
+    <div class="q-head"><span class="qid">Q17</span><span class="tag code">Code</span></div>
+    <p class="prompt">Message classes. Define a message <code>NetworkPacket</code> with fields <code>srcAddr</code>, <code>destAddr</code> and <code>hopCount</code>. What does OMNeT++ generate from it? Write the lines that create a packet from 3 to 7 and, in the receiver, increment its hop count.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+<pre><code>// NetworkPacket.msg (slide syntax)
+message NetworkPacket {
+  fields:
+    int srcAddr;
+    int destAddr;
+    int hopCount = 0;
+}</code></pre>
+        <p>The message compiler (<code>opp_msgc</code>, called by the makefile) generates <code>NetworkPacket_m.h</code> and <code>NetworkPacket_m.cc</code>. They contain a C++ class <code>NetworkPacket</code> that extends <code>cMessage</code>, with a getter and a setter for each field.</p>
+<pre><code>// sender
+NetworkPacket *p = new NetworkPacket("data");
+p-&gt;setSrcAddr(3);
+p-&gt;setDestAddr(7);
+send(p, "out");
+
+// receiver, inside handleMessage(cMessage *msg)
+NetworkPacket *p = check_and_cast&lt;NetworkPacket *&gt;(msg);
+p-&gt;setHopCount(p-&gt;getHopCount() + 1);</code></pre>
+      </div>
+      <div class="why"><h4>Why</h4><p><code>handleMessage</code> always receives a <code>cMessage*</code>. You must cast it to read the fields. <code>check_and_cast</code> stops the simulation with a clear error if the type is wrong. Use the keyword <code>packet</code> instead of <code>message</code> to get a <code>cPacket</code> subclass: only packets have a bit length and a bit error flag.</p></div>
     </div>
   </article>
 
   <article class="q" data-type="describe" data-id="m-4">
-    <div class="q-head"><span class="qid">Q4</span><span class="tag describe">Describe</span></div>
-    <p class="prompt">How are results collected in OMNeT++? How are random numbers managed?</p>
+    <div class="q-head"><span class="qid">Q18</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">How are results collected in OMNeT++? Compare output vectors and output scalars, and say what statistics classes and signals add.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p><b>Output vectors</b> (.vec): named series of (timestamp, value) pairs that capture behavior over time (e.g. <code>cOutVector waitingTime</code>, <code>record()</code>). Recording can be enabled, disabled or limited in time from the ini file. <b>Output scalars</b> (.sca): summary statistics, e.g. <code>recordScalar("#sent", numSent)</code> in <code>finish()</code>. Statistics classes (e.g. histograms) and <b>signals</b> decouple the model from statistics collection.</p>
-        <p><b>Random numbers:</b> a configurable number of RNG streams, mapped to modules in the ini file (e.g. traffic generators on stream 0, MACs on stream 1). Seeds are automatic or manual. Many distributions are available from NED and C++.</p>
+        <ul>
+          <li>Simple modules record results in C++. They go to an output vector file (.vec) and an output scalar file (.sca).</li>
+          <li><b>Output vectors</b> capture behavior over time. Each vector is a named series of (timestamp, value) pairs, for example <code>cOutVector waitingTime</code> with <code>waitingTime.record(x)</code>. In omnetpp.ini you can enable or disable each vector, or limit recording to a simulation time interval.</li>
+          <li><b>Output scalars</b> contain summary statistics: one value per run, for example the number of packets sent or the average hop-to-hop delay. Typical call: <code>recordScalar("#sent", numSent)</code> in <code>finish()</code>.</li>
+          <li><b>Statistics classes</b> collect and organize values, for example <code>cLongHistogram</code> (min, max, mean, standard deviation, distribution). See tictoc15.</li>
+          <li><b>Signals</b> decouple the model from statistics collection. The module only emits a value (<code>emit(signal, value)</code>). The NED <code>@statistic</code> property, or the ini file, decides what to record: vector, histogram, mean, count. See tictoc16.</li>
+        </ul>
       </div>
-      <div class="why"><h4>Why</h4><p>Separate RNG streams make experiments comparable: changing one module's randomness does not change the random sequence of the others.</p></div>
+      <div class="why"><h4>Why</h4><p>Vectors are large (one entry per event) and show trends and transients. Scalars are small and easy to compare across many runs. With signals, you change what you measure without touching the C++ code. This is the same "separate model from experiment" idea as NED vs ini.</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="exercise" data-id="m-5">
-    <div class="q-head"><span class="qid">Q5</span><span class="tag exercise">Exercise</span></div>
-    <p class="prompt">In TicToc with a lossy toc (10% loss), tic uses a timeout to resend. Why does the second version send a <i>copy</i> of the message (<code>dup()</code>) and keep the original? What does <code>cancelEvent</code> do?</p>
+  <article class="q" data-type="exercise" data-id="m-ini-rec">
+    <div class="q-head"><span class="qid">Q19</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">The slide shows these Tictoc16 lines. Explain each one. Then write lines that (a) disable all output vectors except <code>WaitingTime</code> in the token ring, and (b) record vectors only between 600 s and 3600 s.</p>
+<pre><code>**.tic[1].hopCount.result-recording-modes = +histogram
+**.tic[0..2].hopCount.result-recording-modes = -vector</code></pre>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p>A sent message belongs to the receiver (it may delete it, e.g. when it is "lost"). If tic resent the same object, it would use a deleted message. So tic keeps the original and sends <code>msg-&gt;dup()</code> each time, including retransmissions after a timeout. Messages carry a sequence number (tic-1, tic-2…) to tell them apart.</p>
-        <p>The timeout is a self-message scheduled with <code>scheduleAt(simTime()+timeout, timeoutEvent)</code>. When the reply arrives in time, <code>cancelEvent(timeoutEvent)</code> removes it from the event list, then tic sends the next message and schedules a new timeout.</p>
+        <ul>
+          <li>Line 1: for module <code>tic[1]</code>, the statistic <code>hopCount</code> also records a histogram (<code>+</code> adds a mode to the default modes).</li>
+          <li>Line 2: for <code>tic[0]</code>, <code>tic[1]</code>, <code>tic[2]</code> (the range <code>0..2</code>), the statistic does not record the vector (<code>-</code> removes a mode). The other modes stay.</li>
+        </ul>
+<pre><code># (a) the first matching line wins, so the specific line goes first
+**.WaitingTime.vector-recording = true
+**.vector-recording = false
+
+# (b) keep only the steady part of the run
+**.vector-recording-intervals = 600s..3600s</code></pre>
       </div>
-      <div class="why"><h4>Why</h4><p>This is stop-and-wait with retransmission: the same "time redundancy" technique of the fault tolerance chapter, modeled as events.</p></div>
+      <div class="why"><h4>Why</h4><p>OMNeT++ reads ini keys top-down and uses the first key that matches. A general line placed before a specific one hides it. Cutting the first part of the run removes the <b>warm-up</b> transient (for example, the period when no node needs the resource yet) and keeps the vector files small.</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="scenario" data-id="m-6">
-    <div class="q-head"><span class="qid">Q6</span><span class="tag scenario">Scenario</span></div>
-    <p class="prompt">Lab: the token ring simulation (TRNode) controls access to a shared resource. Extend it for lossy channels: how do you rebuild a lost token? Which performance indicators would you measure and how?</p>
+  <article class="q" data-type="describe" data-id="m-rng">
+    <div class="q-head"><span class="qid">Q20</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">How does OMNeT++ manage random numbers? Explain RNG streams and their mapping, seeding, distributions, and what happens when a parameter is assigned a random variate such as <code>exponential(0.2)</code>.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p><b>Lossy channels.</b> Set <code>ber</code> or <code>per</code> on the channel; on arrival, a packet with <code>hasBitError()</code> is dropped. A single <b>leader</b> node (e.g. node[0]) keeps a timeout, reset every time the token passes. The timeout must be longer than the worst token round: n × (link delay + transmission) + n × max usage time. On expiry, the leader creates a new token.</p>
-        <p>Risk: a too-short timeout creates a second token (two nodes in the critical section). Mitigation: a token sequence/epoch number; a node discards tokens with an old epoch.</p>
-        <p><b>Indicators</b> (the lab already records some): waiting time before access (<code>cOutVector waitingTime</code>, from the "need" event to the token arrival); number of token transmissions (<code>#sent</code> scalar); resource utilization; number of regenerated tokens. Compare configurations from the ini file: small ring (6 nodes), small ring with frequent requests, large ring (50 nodes).</p>
+        <ul>
+          <li>OMNeT++ provides a configurable number of RNG instances (<b>streams</b>). In omnetpp.ini you map them freely to individual simple modules. Example from the slides: all traffic generators use global stream 0, all MACs use stream 1 for backoff, the physical layer uses streams 2 and 3 for the radio channel.</li>
+          <li><b>Seeding</b> is automatic or manual. Manual seeds also come from the ini file.</li>
+          <li>Many <b>distributions</b> (uniform, exponential, normal, truncnormal, …) are available from both NED and C++.</li>
+          <li>A non-const (volatile) parameter can be a random variate like <code>exponential(0.2)</code>. The C++ code gets a <b>different number each time it reads</b> the parameter.</li>
+        </ul>
+<pre><code>num-rngs = 2
+**.gen[*].rng-0 = 0      # local stream 0 of generators -&gt; global stream 0
+**.mac.rng-0 = 1         # local stream 0 of MACs -&gt; global stream 1
+seed-0-mt = 1234         # manual seed of global stream 0</code></pre>
       </div>
-      <div class="why"><h4>Why</h4><p>Token ring mutual exclusion (chapter 05) has two problems: lost token and crashed process. The simulation makes the trade-off visible: a short timeout recovers fast but risks duplicate tokens; a long one is safe but wastes time.</p></div>
+      <div class="why"><h4>Why</h4><p>With one shared stream, a change in the MAC (one more random draw) shifts all the numbers seen by the traffic generators. Two runs then differ in traffic too, and you cannot compare them fairly. Separate streams keep the traffic identical while you change the MAC. Fixed seeds make a run reproducible.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="m-volatile">
+    <div class="q-head"><span class="qid">Q21</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">In the lab, <code>reqPeriod</code> is declared <code>volatile double reqPeriod @unit(s) = default(uniform(300s,500s))</code>. The channel has <code>delay = uniform(90ms,110ms)</code>. (a) A node calls <code>par("reqPeriod")</code> three times. Does it get the same value? (b) What changes if you remove <code>volatile</code>? (c) With n = 6, how many values of the link delay are drawn during a run, and is the token round time constant?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>No. A volatile parameter evaluates its expression at every read. Each call draws a new value in [300 s, 500 s].</li>
+          <li>Without <code>volatile</code>, the expression is evaluated once, at network setup. Each node gets one random value and uses it for the whole run. Node 2 could request every 312 s and node 4 every 487 s, always.</li>
+          <li>Channel parameters are not volatile: each of the 6 channels draws its delay once. So there are <b>6 draws</b>. The links have different delays, but each link keeps its delay. The idle round time is the sum of the 6 delays: constant during the run, between 0.54 s and 0.66 s, about 0.6 s on average.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>The trap is to think that <code>uniform()</code> always means "random at every use". It depends on <code>volatile</code>. For a request period you want a new value each time (volatile). For a link property, a fixed value per link is more realistic: a cable does not change its length.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="m-ini-wild">
+    <div class="q-head"><span class="qid">Q22</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Given this ini file, run with <code>-c Mixed</code>. What is <code>n</code>, and what is <code>usePeriod</code> for node[0], node[3] and node[7]? What changes if you move the <code>**.usePeriod</code> line to the top of the section? Does <code>*.usePeriod = 5s</code> match <code>TokenRing.node[3].usePeriod</code>?</p>
+<pre><code>[General]
+network = TokenRing
+sim-time-limit = 3600s
+
+[Config Mixed]
+TokenRing.n = 8
+TokenRing.node[0].sendMsgOnInit = true
+TokenRing.node[0].usePeriod = 5s
+TokenRing.node[0..3].usePeriod = uniform(10s,20s)
+**.usePeriod = uniform(30s,40s)</code></pre>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><code>n</code> = 8. The network and the time limit come from <code>[General]</code>, which every config inherits.</li>
+          <li>node[0]: <b>5 s</b> (the first matching line).</li>
+          <li>node[3]: <b>uniform(10 s, 20 s)</b> (the range 0..3 matches).</li>
+          <li>node[7]: <b>uniform(30 s, 40 s)</b> (only <code>**</code> matches).</li>
+          <li>If <code>**.usePeriod</code> is first, it matches every node first, so all 8 nodes get uniform(30 s, 40 s). The two specific lines are never used.</li>
+          <li><code>*.usePeriod</code> does <b>not</b> match. <code>*</code> matches any characters except the dot, so it matches one path level only. <code>**</code> matches any sequence, dots included.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>Order ini lines from specific to general. The lab files use exactly <code>**.usePeriod = uniform(30s,40s)</code> to set all nodes in one line. The common trap is to use <code>*</code> where <code>**</code> is needed: the line then matches nothing, and the NED default (uniform(1s,2s)) silently stays.</p></div>
     </div>
   </article>
 </section>
-<footer>Source: lecture slides "11 – Simulation" (Cugola) and the token ring lab files in your course folder. Your "Got it" and "Review again" marks stay only in this browser.</footer>
+
+<!-- ===== §5 ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§5</span><h2>The TicToc example, compiling and running</h2></div>
+  <div class="core"><p><b>Core idea.</b> TicToc has two nodes that pass a message back and forth. The steps add one concept each: tictoc1 the basic module, tictoc4 parameters and a counter, tictoc5 NED inheritance, tictoc8 timeouts with self-messages and message loss, tictoc9 copies of messages with sequence numbers. You build with <code>opp_makemake</code> and <code>make</code>, then run the executable.</p></div>
+
+  <article class="q" data-type="code" data-id="m-tt1">
+    <div class="q-head"><span class="qid">Q23</span><span class="tag code">Code</span></div>
+    <p class="prompt">Explain tictoc1. In <code>Txc1</code>, why does only tic send a message in <code>initialize()</code>? Why does <code>handleMessage</code> not delete the message? When does the simulation end?</p>
+<pre><code>void Txc1::initialize() {
+  if (strcmp("tic", getName()) == 0) {
+    cMessage *msg = new cMessage("tictocMsg");
+    send(msg, "out");
+  }
+}
+void Txc1::handleMessage(cMessage *msg) {
+  send(msg, "out");
+}</code></pre>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li>tic and toc are two instances of the same class. <code>getName()</code> returns the submodule name. Only the module called "tic" creates the first message, so exactly one message exists.</li>
+          <li><code>handleMessage</code> sends the same message object back on <code>out</code>. Sending transfers the ownership to the receiver, so the object is reused, not leaked.</li>
+          <li>The message bounces forever: tic at 0, toc at 0.1 s, tic at 0.2 s, … The event list is never empty. The run ends only by a time limit, an event limit, or the user.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>Comparing the name is a quick trick. Tictoc4 replaces it with a parameter, <code>sendMsgOnInit</code>, which is cleaner: the role comes from configuration, not from a hard-coded name.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="m-tt4">
+    <div class="q-head"><span class="qid">Q24</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Tictoc4: each node has <code>counter = par("limit")</code> (NED default 2). On each received message it decrements the counter; at 0 it deletes the message, else it sends it back. Link delay is 100 ms. (a) Config <code>Tictoc4</code> sets <code>Tictoc4.toc.limit = 5</code>. Who deletes the message, at what time, and how many sends happen? (b) Config <code>Tictoc5</code> sets <code>**.limit = 5</code>. Same questions.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>tic receives at 0.2, 0.4, 0.6, … s. toc receives at 0.1, 0.3, 0.5, … s.</p>
+        <ol type="a">
+          <li>tic limit = 2, toc limit = 5. toc at 0.1 s: 4, send. tic at 0.2 s: 1, send. toc at 0.3 s: 3, send. tic at 0.4 s: 0 → <b>tic deletes the message at t = 0.4 s</b>. Sends: initial + 3 = <b>4</b>.</li>
+          <li>Both limits are 5. toc reaches 0 at its 5th reception: <b>toc deletes at t = 0.9 s</b> (tic is at 1 after 4 receptions, at 0.8 s). Sends: initial + 8 = <b>9</b>.</li>
+        </ol>
+        <p>When the message is deleted, the event list becomes empty and the simulation ends.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>With equal limits the node that receives first (toc) reaches zero first. The trap in (b) is to count 0.2 s per reception for toc: toc receives every 0.2 s starting at 0.1 s, so the 5th reception is at 0.1 + 4·0.2 = 0.9 s. <code>WATCH(counter)</code> lets you see the counter in Tkenv.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="m-tt5">
+    <div class="q-head"><span class="qid">Q25</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">What does tictoc5 change with respect to tictoc4? Explain <code>simple Tic5 extends Txc5</code> and the difference between <code>sendMsgOnInit = default(false)</code> and <code>sendMsgOnInit = true</code>.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li>tictoc4 sets the parameters of tic and toc inside the network, in the submodule blocks. tictoc5 uses <b>NED inheritance</b>: <code>Tic5</code> and <code>Toc5</code> extend <code>Txc5</code>. They inherit the parameters and gates and only fix <code>sendMsgOnInit</code> and the display icon. The network just writes <code>tic: Tic5; toc: Toc5;</code>.</li>
+          <li><code>default(false)</code> is a default: omnetpp.ini can override it. <code>= true</code> (without default) is a fixed assignment: the ini file cannot change it.</li>
+          <li>The C++ class is the same (Txc5) for both. The NED subtypes change only parameters. In OMNeT++ a derived simple module uses the C++ class of its parent unless you give a new one.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>Inheritance moves the role into a type: a "Tic" is a node that starts. You can now place many Tic5 nodes in other networks without repeating the parameters. The default vs fixed value difference is a common trap in ini questions.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="code" data-id="m-tt8err">
+    <div class="q-head"><span class="qid">Q26</span><span class="tag code">Code</span></div>
+    <p class="prompt">Find the error. This is <code>Tic8::handleMessage</code> as on the slide. Toc8 sends back the same message as acknowledgement, or deletes it with probability 0.1. Explain what the code does, and find the memory problem.</p>
+<pre><code>void Tic8::handleMessage(cMessage *msg) {
+  if (msg == timeoutEvent) {
+    EV &lt;&lt; "Timeout expired, resending message and restarting timer\n";
+    cMessage *msg = new cMessage("tictocMsg"); send(msg, "out");
+    scheduleAt(simTime()+timeout, timeoutEvent);
+  } else {
+    EV &lt;&lt; "Timer cancelled.\n";
+    cancelEvent(timeoutEvent);
+    cMessage *msg = new cMessage("tictocMsg"); send(msg, "out");
+    scheduleAt(simTime()+timeout, timeoutEvent);
+  }
+}</code></pre>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><code>msg == timeoutEvent</code>: the self-message fired, so no reply came in time. Tic sends a new message and schedules the timeout again (the self-message is no longer in the list, so it can be reused).</li>
+          <li>Else a reply arrived. <code>cancelEvent</code> removes the pending timeout from the event list. Tic sends the next message and schedules a new timeout.</li>
+          <li><b>Error:</b> in the else branch the received reply (the parameter <code>msg</code>) is never deleted. The inner <code>cMessage *msg</code> hides the parameter, and the received object is lost. Each successful round leaks one message. At the end OMNeT++ reports undisposed objects. Fix: add <code>delete msg;</code> before creating the new message (and better, use a different name such as <code>newMsg</code>).</li>
+        </ul>
+        <p>In Toc8 the loss is modeled by <code>if (uniform(0,1) &lt; 0.1) { bubble("message lost"); delete msg; }</code>. A deleted message never arrives, so tic sees a timeout.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Rule: the module that receives a message owns it. It must send it on, store it, or delete it. The trap is name shadowing: the code "looks" correct because it uses the name <code>msg</code> in both places, but they are two different objects.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="m-tt8num">
+    <div class="q-head"><span class="qid">Q27</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">In TicToc8, the link delay is 100 ms each way, the timeout is 1 s, and toc loses each message independently with probability 0.1. (a) What is the expected number of messages tic sends per successful reply? (b) What is the expected time per successful exchange? (c) About how many replies does tic get in 100 s of simulated time? (d) Is 1 s a good timeout here?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>Each try succeeds with probability 0.9. The number of tries is geometric: 1 / 0.9 ≈ <b>1.11 messages</b>.</li>
+          <li>A success costs 0.2 s (round trip). Each failure costs 1 s (the timeout, measured from the send). The expected number of failures is 0.1 / 0.9 ≈ 0.111. Expected time = 0.2 + 0.111 · 1 ≈ <b>0.311 s</b>.</li>
+          <li>100 / 0.311 ≈ <b>321 replies</b>.</li>
+          <li>The minimum safe value is the round trip, 0.2 s; with fixed delays there is no jitter. A 1 s timeout is safe but slow: each loss wastes 0.8 s more than needed. A timeout of, for example, 0.3 s gives 0.2 + 0.111 · 0.3 ≈ 0.233 s per exchange.</li>
+        </ol>
+        <p>A quick Monte Carlo run in Python gives 0.311 s, as computed.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>This is the classic timeout trade-off. Too short: the timeout fires before a correct reply, and you send duplicates. Too long: you wait for nothing after a loss. The token ring lab has the same trade-off, with much larger numbers.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="m-5">
+    <div class="q-head"><span class="qid">Q28</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">Compare Tic8 and Tic9. Why does Tic9 keep the original message and send a copy made with <code>dup()</code>? What is <code>seq</code> for? What does Toc9 send back?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li>Tic8 creates a brand-new message for each send, also on a retransmission. It cannot really "resend the same message".</li>
+          <li>Tic9 keeps the current message in the member <code>message</code>. A sent message belongs to the receiver, who may delete it (Toc9 deletes it when it "loses" it, and also after it replies). If tic sent the original, it could not use it again. So <code>sendCopyOf()</code> sends <code>msg-&gt;dup()</code>, and the original stays with tic for a possible retransmission.</li>
+          <li><code>generateNewMessage()</code> names each message <code>tic-1</code>, <code>tic-2</code>, … with <code>++seq</code>. A retransmission keeps the same name, so you can see that it is the same logical message.</li>
+          <li>On the reply, tic deletes the reply and the stored original, cancels the timeout, creates the next message, and sends a copy.</li>
+          <li>Toc9 deletes the received message and sends back a new message "ack". In Toc8 the same object came back as acknowledgement.</li>
+          <li>The destructor <code>~Tic9()</code> calls <code>cancelAndDelete(timeoutEvent)</code> and <code>delete message</code>.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>This is stop-and-wait with retransmission. In a real protocol the sender keeps a copy until it gets the acknowledgement. Ownership in OMNeT++ makes this explicit: once you call <code>send</code>, you must not touch that object again.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="m-build">
+    <div class="q-head"><span class="qid">Q29</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">You have the files of the token ring lab (<code>TRNode.cc</code>, <code>token_ring.ned</code>, <code>omnetpp.ini</code>). Give the steps to build and run the config <code>TokenRingLarge</code> without the GUI. What does each step do? How do you run the same config with a graphical environment?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+<pre><code>opp_makemake             # creates the Makefile from the sources in the folder
+make                     # compiles .msg and .cc files and links the executable
+./token_ring -u Cmdenv -c TokenRingLarge   # runs the config without the GUI</code></pre>
+        <ul>
+          <li><code>opp_makemake</code> builds the Makefile (add <code>-f</code> to overwrite an existing one).</li>
+          <li><code>make</code> runs the message compiler and the C++ compiler, and links the OMNeT++ libraries.</li>
+          <li>Running the executable loads the NED files and <code>omnetpp.ini</code>. <code>-c</code> selects the config; <code>-u Cmdenv</code> selects the command-line environment.</li>
+          <li>For the GUI, use <code>-u Tkenv</code> (Qtenv in recent versions), or run without <code>-u</code> and pick the config in the dialog.</li>
+        </ul>
+        <p>NED and ini changes need no recompilation; C++ changes need <code>make</code> again.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The slide shows only three commands: <code>opp_makemake</code>, <code>make</code>, <code>./tictoc</code>. The useful idea behind them: structure and parameters are loaded at run time, so you can try new configs without a rebuild.</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §6 ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§6</span><h2>Lab: the token ring simulation</h2></div>
+  <div class="core"><p><b>Core idea.</b> The lab simulates token ring mutual exclusion. Each <code>TRNode</code> needs the resource after <code>reqPeriod</code>, waits for the token, keeps it for <code>usePeriod</code>, then forwards it. It records the waiting time (vector) and the number of sends (scalar). The exercises: make the channels lossy (<code>ber</code>/<code>per</code>, <code>hasBitError()</code>), rebuild a lost token with a leader timeout, and measure the protocol performance.</p></div>
+
+  <article class="q" data-type="code" data-id="m-trnode">
+    <div class="q-head"><span class="qid">Q30</span><span class="tag code">Code</span></div>
+    <p class="prompt">This is <code>TRNode</code> (reconstructed from the lab files). Explain what each part does: the members, <code>initialize()</code>, each branch of <code>handleMessage()</code>, and <code>finish()</code>.</p>
+<pre><code>class TRNode : public cSimpleModule {
+  private:
+    cMessage *needResEvt, *finishedUsingResEvt, *token;
+    long numSent;
+    bool needRes;
+    simtime_t startWaitingTime;
+    cOutVector waitingTime;
+  protected:
+    virtual void initialize() override;
+    virtual void handleMessage(cMessage *msg) override;
+    virtual void finish() override;
+};
+Define_Module(TRNode);
+
+void TRNode::initialize() {
+  needResEvt = new cMessage("Need");
+  finishedUsingResEvt = new cMessage("Finish");
+  token = nullptr;
+  numSent = 0; needRes = false;
+  waitingTime.setName("WaitingTime");
+  scheduleAt(simTime() + par("reqPeriod").doubleValue(), needResEvt);
+  if (par("sendMsgOnInit").boolValue()) {
+    token = new cMessage("Token");
+    send(token, "out"); numSent++;
+  }
+}
+
+void TRNode::handleMessage(cMessage *msg) {
+  if (msg == needResEvt) {
+    needRes = true;
+    startWaitingTime = simTime();
+    bubble("Need resource");
+  } else if (msg == finishedUsingResEvt) {
+    needRes = false;
+    send(token, "out"); numSent++;
+    scheduleAt(simTime() + par("reqPeriod").doubleValue(), needResEvt);
+  } else {                                   // the token arrived
+    token = msg;
+    if (needRes) {
+      waitingTime.record(simTime() - startWaitingTime);
+      scheduleAt(simTime() + par("usePeriod").doubleValue(), finishedUsingResEvt);
+    } else {
+      send(token, "out"); numSent++;
+    }
+  }
+}
+
+void TRNode::finish() {
+  recordScalar("#sent", numSent);
+  cancelAndDelete(needResEvt);
+  cancelAndDelete(finishedUsingResEvt);
+}</code></pre>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><b>Members.</b> Two self-messages are the node's timers: <code>needResEvt</code> ("I need the resource now") and <code>finishedUsingResEvt</code> ("I finished using it"). <code>token</code> points to the token while the node holds it. <code>needRes</code> and <code>startWaitingTime</code> are state variables. <code>numSent</code> and <code>waitingTime</code> are performance indicators.</li>
+          <li><b>initialize().</b> Creates the two timers. Schedules the first need after a random <code>reqPeriod</code> (volatile, so each node gets its own value). Only the node with <code>sendMsgOnInit = true</code> (node[0] in the ini) creates the single token and sends it. Names the output vector.</li>
+          <li><b>Need branch.</b> The node now wants the resource. It sets <code>needRes</code> and stores the time when waiting started. <code>bubble</code> only shows a label in the GUI.</li>
+          <li><b>Finish branch.</b> The node releases the resource: it clears <code>needRes</code>, forwards the token, counts the send, and schedules the next need after a new random <code>reqPeriod</code>.</li>
+          <li><b>Token branch.</b> If the node waits, it records the waiting time (now − start) in the vector and keeps the token for a random <code>usePeriod</code>. Else it forwards the token at once.</li>
+          <li><b>finish().</b> Writes the scalar <code>#sent</code> to the .sca file and frees the two timers (<code>cancelAndDelete</code> removes them from the event list if needed, then deletes them).</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>Map it to discrete event simulation: three event types (need, finish, token arrival), state (<code>needRes</code>, who holds the token), indicators (<code>waitingTime</code>, <code>numSent</code>). The node holds the token while using the resource: holding the token is the permission to enter the critical section. Note: a node that gets the need event while the token is far away just waits; the waiting time measures exactly that.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="m-tr-round">
+    <div class="q-head"><span class="qid">Q31</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Use the lab parameters: link delay uniform(90 ms, 110 ms), token transmission time negligible, <code>sim-time-limit = 3600s</code>. Nobody needs the resource (idle ring). (a) What is the token round time for n = 6 and n = 50 (mean, minimum, maximum)? (b) How many token transmissions happen in one hour in total, and per node, for n = 6 and n = 50? (c) A node needs the resource at a random instant. What is its mean waiting time for n = 6 and n = 50?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table>
+          <tr><th></th><th>n = 6</th><th>n = 50</th></tr>
+          <tr><td>Round time, mean = n · 0.1 s</td><td>0.6 s</td><td>5 s</td></tr>
+          <tr><td>Round time, min = n · 0.09 s</td><td>0.54 s</td><td>4.5 s</td></tr>
+          <tr><td>Round time, max = n · 0.11 s</td><td>0.66 s</td><td>5.5 s</td></tr>
+          <tr><td>Transmissions per hour, total ≈ 3600 / 0.1</td><td>≈ 36,000</td><td>≈ 36,000</td></tr>
+          <tr><td>Transmissions per node (≈ 36,000 / n)</td><td>≈ 6,000</td><td>≈ 720</td></tr>
+          <tr><td>Mean waiting time ≈ round / 2</td><td>≈ 0.3 s</td><td>≈ 2.5 s</td></tr>
+        </table></div>
+        <p>A quick Python model of the ring gives about 36,100 sends per hour for both sizes (the sum of the drawn delays is not exactly 0.1 s per hop).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The total number of messages does not depend on n: there is always one token in flight, and one hop takes about 0.1 s. This is the main cost of token ring: it uses the network even when nobody needs the resource. The waiting time grows linearly with n, because the token must visit every node in order.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="m-tr-load">
+    <div class="q-head"><span class="qid">Q32</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Compare the three ini configs (all with <code>usePeriod = uniform(30s,40s)</code>): <code>TokenRingSmall</code> (n = 6, reqPeriod uniform(300 s, 500 s)), <code>TokenRingSmallGreatUsage</code> (n = 6, reqPeriod uniform(60 s, 120 s)), <code>TokenRingLarge</code> (n = 50, reqPeriod uniform(300 s, 500 s)). For each one, estimate the offered load (demanded usage time / available time). Which configs saturate? For the saturated ones, estimate the steady-state waiting time.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>A node uses the resource for 35 s on average, then waits reqPeriod (mean) before it needs it again. Without waiting, one node demands 35 / (35 + reqPeriod) of the time.</p>
+        <div class="tbl"><table>
+          <tr><th>Config</th><th>Load ≈ n · 35 / (35 + req)</th><th>Result</th></tr>
+          <tr><td>Small</td><td>6 · 35 / 435 ≈ 0.48</td><td>Not saturated; short waits</td></tr>
+          <tr><td>SmallGreatUsage</td><td>6 · 35 / 125 ≈ 1.68</td><td>Saturated</td></tr>
+          <tr><td>Large</td><td>50 · 35 / 435 ≈ 4.0</td><td>Strongly saturated</td></tr>
+        </table></div>
+        <p><b>Saturated ring.</b> Every node is ready when the token comes. The token round is about n · (35 + 0.1) s. After use, a node waits reqPeriod, then waits for the rest of the round: wait ≈ round − 35 − req.</p>
+        <ul>
+          <li>SmallGreatUsage: round ≈ 6 · 35.1 = 210.6 s; wait ≈ 210.6 − 35 − 90 ≈ <b>86 s</b>.</li>
+          <li>Large: round ≈ 50 · 35.1 = 1755 s; wait ≈ 1755 − 35 − 400 ≈ <b>1320 s</b> in steady state. But one hour is only about two rounds, so the run stays in the transient. A quick Python model of the lab gives a mean of about 1030 s in one hour.</li>
+        </ul>
+        <p>The same Python model gives about 84 s for SmallGreatUsage and about 13 s for Small.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Above load 1, the resource is the bottleneck and the token round is set by the usage times, not by the link delays. The trap: one hour of simulated time may be too short to reach steady state. Check the waiting-time vector over time; if it still grows at the end, extend <code>sim-time-limit</code> or cut the warm-up.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="m-tr-timeout">
+    <div class="q-head"><span class="qid">Q33</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Node[0] is the leader. It starts a regeneration timer each time it forwards the token, and cancels it when the token comes back. On expiry it creates a new token. Use n = 6, link delay at most 110 ms, usePeriod at most 40 s. (a) What is the smallest safe timeout? (b) Same for n = 50. (c) What goes wrong if the timeout is 60 s with n = 6?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>After the leader forwards the token, the worst case before it comes back: n hops at the maximum delay, and each of the other n − 1 nodes keeps the token for the maximum usage time.</p>
+        <ol type="a">
+          <li>n = 6: 6 · 0.11 + 5 · 40 = 0.66 + 200 = <b>200.66 s</b>. Choose a margin, for example 210 s or more.</li>
+          <li>n = 50: 50 · 0.11 + 49 · 40 = 5.5 + 1960 = <b>1965.5 s</b>.</li>
+          <li>With 60 s, if two nodes use the resource in the same round (up to 80 s), the timer expires while the token is still alive. The leader creates a second token. Two nodes can then be in the critical section at the same time: <b>mutual exclusion is violated</b>.</li>
+        </ol>
+        <p>If the timer started at token arrival instead of forwarding, add the leader's own usage: 40 + 200.66 = 240.66 s for n = 6.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A safe timeout must cover the worst case, not the average. Here the worst case is dominated by usage times (200 s), not by the network (0.66 s). The slides say "a (long enough) timeout": this calculation is what "long enough" means. The price is a slow recovery, which the next question shows.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="m-tr-loss">
+    <div class="q-head"><span class="qid">Q34</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Lossy channels. (a) The token is a packet of 1000 bits and the channel has <code>ber = 1e-5</code>. What is the probability that one transmission has a bit error? (b) Take a per-hop loss probability p = 0.01 (<code>per = 0.01</code>) on an idle ring with n = 6. What is the mean time between two token losses? (c) With a regeneration timeout of 210 s, about how many losses happen in one hour, and what fraction of time does the ring work? (d) What changes with a 5 s timeout, and why is 5 s dangerous?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>P(error) = 1 − (1 − 10<sup>−5</sup>)<sup>1000</sup> ≈ <b>0.00995</b>, about 1%. (<code>per</code> gives this probability directly.)</li>
+          <li>The number of hops before a loss is geometric with mean 1 / p = 100 hops. At 0.1 s per hop: about <b>10 s</b>.</li>
+          <li>One cycle ≈ 10 s of working ring + about 210 s to detect the loss. Losses per hour ≈ 3600 / 220 ≈ <b>16</b>. The ring works only about 10 / 220 ≈ <b>5%</b> of the time. A Python model of this case gives about 17 losses per hour.</li>
+          <li>With 5 s: cycle ≈ 15 s, about 240 losses per hour, and the ring works about two thirds of the time. But 5 s is shorter than one usage period (30–40 s). As soon as any node uses the resource, the leader creates a duplicate token.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>A safe timeout and a fast recovery conflict when usage is long. Options: lower the loss rate (a smaller ber, or retransmission per hop); let the token carry an epoch so a stale token can be discarded; or let a holder tell the leader that the token is alive. The simulation exists exactly to see these effects before building.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="code" data-id="m-6">
+    <div class="q-head"><span class="qid">Q35</span><span class="tag code">Code</span></div>
+    <p class="prompt">Extend TRNode for lossy channels and token loss. Give the NED and ini changes, a message class for the token, and the new C++ logic: drop corrupted tokens, let the leader regenerate the token after a timeout, and discard stale tokens.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+<pre><code>// Token.msg
+packet TokenMsg {
+  int epoch;
+}
+
+// token_ring.ned (changes)
+simple TRNode {
+  parameters:
+    ...                                        // as before
+    bool isLeader = default(false);
+    double regenTimeout @unit(s) = default(210s);
+}
+channel MyChannel extends ned.DatarateChannel {
+  delay = uniform(90ms,110ms);
+  datarate = normal(1024kbps,1kbps);
+  per = 0.001;                                 // or ber = 1e-6
+}
+
+# omnetpp.ini
+**.node[0].isLeader = true
+**.node[0].sendMsgOnInit = true</code></pre>
+<pre><code>// new members: cMessage *regenEvt; int epoch; long numRegen;
+// in initialize(): regenEvt = new cMessage("Regen"); epoch = 0; numRegen = 0;
+//   create the first token with newToken() instead of new cMessage("Token")
+
+TokenMsg *TRNode::newToken() {
+  TokenMsg *t = new TokenMsg("Token");
+  t-&gt;setEpoch(epoch);
+  t-&gt;setBitLength(1000);                       // needed for ber
+  return t;
+}
+
+void TRNode::forwardToken() {
+  send(token, "out"); numSent++;
+  token = nullptr;
+  if (par("isLeader").boolValue()) {
+    cancelEvent(regenEvt);
+    scheduleAt(simTime() + par("regenTimeout").doubleValue(), regenEvt);
+  }
+}
+
+void TRNode::handleMessage(cMessage *msg) {
+  if (msg == needResEvt) { ... as before ... }
+  else if (msg == finishedUsingResEvt) {
+    needRes = false;
+    forwardToken();
+    scheduleAt(simTime() + par("reqPeriod").doubleValue(), needResEvt);
+  }
+  else if (msg == regenEvt) {                  // leader only: token presumed lost
+    epoch++; numRegen++;
+    bubble("Regenerating token");
+    token = newToken();
+    handleToken();                             // use it or forward it
+  }
+  else {
+    TokenMsg *t = check_and_cast&lt;TokenMsg *&gt;(msg);
+    if (t-&gt;hasBitError()) { delete t; return; }       // corrupted = lost
+    if (t-&gt;getEpoch() &lt; epoch) { delete t; return; }  // stale duplicate
+    epoch = t-&gt;getEpoch();
+    if (par("isLeader").boolValue()) cancelEvent(regenEvt);
+    token = t;
+    handleToken();
+  }
+}
+
+void TRNode::handleToken() {
+  if (needRes) {
+    waitingTime.record(simTime() - startWaitingTime);
+    scheduleAt(simTime() + par("usePeriod").doubleValue(), finishedUsingResEvt);
+  } else {
+    forwardToken();
+  }
+}
+// in finish(): recordScalar("#regenerated", numRegen); cancelAndDelete(regenEvt);</code></pre>
+      </div>
+      <div class="why"><h4>Why</h4><ul>
+        <li>The channel does not delete a corrupted packet. It only sets the error flag; the receiver must check <code>hasBitError()</code> and drop it. That is why the token must be a <code>cPacket</code> (keyword <code>packet</code>) with a bit length.</li>
+        <li>Only one node regenerates. If every node had a timer, several nodes could create tokens at the same time.</li>
+        <li>The epoch protects against a timeout that was too short: the old token reaches a node that already saw the newer epoch, and that node deletes it. It is not perfect: a node that has not seen the new epoch yet still accepts the old token. So the timeout must still be safe (see the previous question).</li>
+      </ul></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="m-tr-measure">
+    <div class="q-head"><span class="qid">Q36</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">Your manager asks: "Is token ring good enough for 50 nodes that each need a lock about every 400 s for 35 s?" Plan the simulation study with the lab. Which performance indicators do you measure, how do you record them in OMNeT++, which configs and runs do you use, and what pitfalls do you avoid?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><b>Indicators.</b> Waiting time before access (mean, maximum, distribution); number of token transmissions (network cost); resource utilization (fraction of time some node holds the resource); number of regenerated tokens and duplicate tokens (with lossy channels).</li>
+          <li><b>Recording.</b> Waiting time as an output vector (<code>cOutVector</code>, already in TRNode) and as a histogram or a signal with <code>@statistic(record=vector,mean,max,histogram)</code>. Sends as the scalar <code>#sent</code>. Regenerations as a scalar in <code>finish()</code>.</li>
+          <li><b>Configs.</b> Start from <code>TokenRingLarge</code> (n = 50, usage 30–40 s). Vary n or reqPeriod with several configs (or a parameter study). Keep the same RNG mapping so the runs are comparable.</li>
+          <li><b>Runs.</b> Use several seeds (repetitions) and report means with confidence intervals. Use Cmdenv for speed.</li>
+          <li><b>Pitfalls.</b> One hour is shorter than one saturated round (≈ 1755 s), so extend <code>sim-time-limit</code> and discard the warm-up. Do not trust one seed. Check that the model is valid (for example, the idle-ring sends ≈ 36,000 per hour as computed by hand).</li>
+        </ul>
+        <p><b>Expected answer to the manager:</b> no. The offered load is about 50 · 35 / 435 ≈ 4. The resource cannot serve the demand with any algorithm, and waits reach about 20 minutes. The problem is the demand, not token ring.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A simulation study is an experiment: clear indicators, controlled parameters, repetitions, and a check against a simple hand calculation. The quick load estimate tells you the result before you run anything; the simulation confirms it and gives the distribution.</p></div>
+    </div>
+  </article>
+</section>
+<footer>Source: lecture slides "11 – Simulating Distributed Systems" (Cugola) and the token ring lab files in your course folder. Your "Got it" and "Review again" marks stay only in this browser.</footer>
 </div>
 
 <script>
 (function(){
-  const KEY = "ds-simulation-marks-v1";
+  const KEY = "ds-simulation-marks-v2";
   let marks = {};
   try { marks = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e) { marks = {}; }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(marks)); } catch(e) {} };

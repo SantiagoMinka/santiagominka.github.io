@@ -111,7 +111,7 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
   <a class="eyebrow" href="/courses.html?c=distributed-systems" style="text-decoration:none">← Distributed Systems notes</a>
   <div class="eyebrow">Distributed Systems · Prof. Cugola · Chapter 06</div>
   <h1>Fault tolerance</h1>
-  <p class="lede">Exam drill for the fault tolerance chapter: failure semantics of RPC, process groups, consensus with crashes and traitors, reliable group communication, virtual synchrony, checkpointing and logging.</p>
+  <p class="lede">Exam drill for the fault tolerance chapter: dependability, failure models, RPC failures, process groups and consensus, reliable group communication, virtual synchrony, checkpointing and logging. Answer on paper first, then open the model answer.</p>
 </header>
 <div class="toolbar" role="toolbar" aria-label="Filter and controls">
   <button class="chip" data-filter="all" aria-pressed="true">All</button>
@@ -129,36 +129,139 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
 
 <div class="exam-map">
   <h2>How the exam asks about this chapter</h2>
-  <p>Two fixed items: the <b>recovery line exercise</b> (question 3 in most exams) and an open question on <b>FloodSet</b> or <b>reliable multicast</b>. Real examples:</p>
+  <p>This chapter is in almost every exam. One item is fixed: the <b>recovery line exercise</b> (two diagrams, rollback-dependency graph and checkpoint-dependency graph). A second item is an open question on <b>FloodSet</b>, on <b>reliable multicast</b> or on the <b>failure model</b>. Real examples from your past exams:</p>
   <ul>
-    <li>"Calculate the recovery line for the two diagrams using the rollback-dependency graph for the first one and the checkpoint-dependency graph for the second one. Explain when these graphs are used and how the data to build them is collected." <span class="date">17 Jan 2024</span> <span class="date">14 Feb 2024</span> <span class="date">6 Sep 2024</span> <span class="date">13 Jul 2015</span> <span class="date">3 Dec 2014</span></li>
-    <li>"Describe the FloodSet algorithm. Which problem does it solve? Under which assumptions? Why are they fundamental (counterexamples)? Prove its correctness." <span class="date">17 Jan 2024</span> <span class="date">13 Feb 2015</span> <span class="date">9 Sep 2015</span> <span class="date">1 Feb 2013</span></li>
-    <li>"Describe how to efficiently provide reliable multicast among reliable processes. How do things change if processes may fail?" <span class="date">14 Feb 2024</span> · scalable reliable multicast <span class="date">6 Sep 2024</span> · links unreliable <span class="date">23 Sep 2015</span></li>
-    <li>"Classify the types of failures with a practical example of each." <span class="date">6 Sep 2024</span> (see chapter 02)</li>
+    <li>"Calculate the recovery line for the two diagrams below using the rollback-dependency graph for the first one, the checkpoint dependency graph for the second one. Finally, explain when this kind of graphs are used and how the data to build them is collected." <span class="date">17 Jan 2024</span> <span class="date">14 Feb 2024</span> <span class="date">6 Sep 2024</span> <span class="date">13 Jul 2015</span> <span class="date">3 Dec 2014</span> <span class="date">19 Feb 2013</span></li>
+    <li>"Describe the floodset algorithm. Which problem does it solve? Under which assumptions? Why those assumptions are fundamental (use counterexamples)? Optional: prove its correctness." <span class="date">17 Jan 2024</span> <span class="date">13 Feb 2015</span> <span class="date">9 Sep 2015</span> <span class="date">1 Feb 2013</span></li>
+    <li>"Describe how to efficiently provide reliable group (multicast) communication among a set of reliable processes. How do things change if processes may fail?" <span class="date">14 Feb 2024</span> · "Describe scalable reliable multicast in details" <span class="date">6 Sep 2024</span> · "approaches under the hypothesis of non faulty processes" <span class="date">5 Sep 2013</span> · "processes are reliable but links are not" <span class="date">23 Sep 2015</span></li>
+    <li>"Discuss (classify) the various type of failures that may happen to a distributed system and make a practical example of each of them." <span class="date">6 Sep 2024</span> <span class="date">13 Jul 2015</span> <span class="date">3 Dec 2014</span></li>
   </ul>
 </div>
 
 <section class="topic">
-  <div class="topic-head"><span class="num">§1</span><h2>Basics and client/server failures</h2></div>
-  <div class="core"><p><b>Core idea.</b> A <b>fault</b> causes an <b>error</b>, which can cause a <b>failure</b> (the service is not delivered). Fault tolerance masks faults with <b>redundancy</b>: information (codes), time (retry), physical (replicas, e.g. triple modular redundancy). Even RPC cannot fully hide failures.</p></div>
+  <div class="topic-head"><span class="num">§1</span><h2>Dependability, faults and the failure model</h2></div>
+  <div class="core"><p><b>Core idea.</b> A dependable system is available, reliable, safe and maintainable. A <b>fault</b> causes an <b>error</b>, and an error can cause a <b>failure</b>: the system does not provide its service. The failure model classifies failures as omission, timing or Byzantine. The key technique to mask failures is <b>redundancy</b>: information, time or physical.</p></div>
 
   <article class="q" data-type="describe" data-id="f-b1">
     <div class="q-head"><span class="qid">Q1</span><span class="tag describe">Describe</span></div>
-    <p class="prompt">Define availability, reliability, safety and maintainability. Give an example of a system that is highly available but not reliable. Classify faults by frequency.</p>
+    <p class="prompt">Define availability, reliability, safety and maintainability. Give an example of a system that is highly available but not reliable. Classify faults by the frequency at which they occur.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <ul><li><b>Availability:</b> ready for use when needed.</li><li><b>Reliability:</b> runs continuously for a long time without failure.</li><li><b>Safety:</b> nothing bad happens when it fails.</li><li><b>Maintainability:</b> easy to repair.</li></ul>
-        <p>Example: a system that goes down for 1 ms every hour is 99.999% available, but it is not reliable: it never runs for more than an hour.</p>
-        <p>Faults: <b>transient</b> (happen once and disappear), <b>intermittent</b> (appear and vanish with no clear reason), <b>permanent</b> (stay until repaired).</p>
+        <ul><li><b>Availability:</b> the system is ready for use when we need it.</li><li><b>Reliability:</b> the system runs continuously for a long time without failure.</li><li><b>Safety:</b> nothing bad happens, also when the system fails.</li><li><b>Maintainability:</b> the system is easy to fix.</li></ul>
+        <p>Example from the slides: a system goes down for 1 ms every hour. Its availability is 99.999% (or better), but it is highly unreliable: it never runs for more than one hour.</p>
+        <p>Faults by frequency: <b>transient</b> faults occur once and disappear; <b>intermittent</b> faults appear and vanish with no apparent reason; <b>permanent</b> faults continue to exist until the failed component is repaired.</p>
       </div>
-      <div class="why"><h4>Why</h4><p>Availability is a fraction of time; reliability is the length of uninterrupted operation. The two can differ a lot, so a requirement must say which one matters.</p></div>
+      <div class="why"><h4>Why</h4><p>Availability is a fraction of time. Reliability is the length of uninterrupted operation. Many short outages give high availability and low reliability. A requirement must say which one matters: a web shop wants availability, a long batch computation wants reliability.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="f-b6">
+    <div class="q-head"><span class="qid">Q2</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">System A goes down for 1 ms every hour. System B runs for one full year (8760 h) and then goes down once for 4 hours. (a) Compute the availability of A and B. (b) Which system is more available? Which is more reliable? (c) How many minutes of downtime per year does "five nines" (99.999%) allow?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>A: 1 − 0.001 s / 3600 s = 0.99999972 → <b>99.99997%</b>. B: 1 − 4 h / 8760 h = 0.999543 → <b>99.954%</b>.</li>
+          <li>A is more <b>available</b>. B is more <b>reliable</b>: it runs for one year without failure, A runs for at most one hour.</li>
+          <li>0.00001 × 365 × 24 × 60 = <b>5.26 minutes</b> per year.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>The two numbers measure different things. Availability counts the total downtime. Reliability looks at the time between failures. A system with many tiny outages can beat a system with one long outage on availability and lose badly on reliability.</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>If you quote the slide example, say "99.999%" and then say why it is still unreliable. The point is the contrast, not the exact digits.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="f-b8">
+    <div class="q-head"><span class="qid">Q3</span><span class="tag describe">Describe</span><span class="seen">Exam 6 Sep 2024 · 13 Jul 2015 · 3 Dec 2014</span></div>
+    <p class="prompt">Discuss (classify) the types of failures that may happen in a distributed system (the failure model). Give a practical example of each. Briefly discuss how hard it is to build a correct system under each type of failure.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>Class</th><th>Type</th><th>Example</th></tr>
+          <tr><td rowspan="3">Omission, processes</td><td><b>Fail-safe:</b> the output is sometimes wrong, but the error is easy to detect</td><td>A sensor sends a value with a wrong checksum; the receiver discards it.</td></tr>
+          <tr><td><b>Fail-stop:</b> the process crashes and others can detect the crash</td><td>A server stops; the cluster manager reports "node down" to all.</td></tr>
+          <tr><td><b>Fail-silent:</b> the process crashes and others cannot detect it</td><td>A server freezes; the clients cannot tell if it is dead or only slow.</td></tr>
+          <tr><td>Omission, channels</td><td><b>Send, channel or receive omission</b>: a message is lost</td><td>A router drops a packet because its buffer is full (channel omission). A full socket buffer drops an incoming message (receive omission).</td></tr>
+          <tr><td>Timing</td><td>A time limit of the system is violated. Only for <b>synchronous</b> systems.</td><td>A control system requires a reply within 10 ms; the reply arrives after 50 ms.</td></tr>
+          <tr><td rowspan="2">Byzantine (arbitrary)</td><td>Processes: omit steps or add steps</td><td>A compromised node sends different values to different peers.</td></tr>
+          <tr><td>Channels: corrupt content, deliver non-existent messages, deliver real messages more than once</td><td>A faulty switch duplicates frames; an attacker injects forged messages.</td></tr></table></div>
+        <p><b>Difficulty.</b> It grows from top to bottom. Detectable crashes (fail-stop) are the easiest case. Fail-silent crashes are harder: in an asynchronous system you cannot tell a crash from a slow process, so consensus becomes impossible (FLP). Omissions on channels can be masked with acks and retransmissions, but with arbitrary losses agreement is impossible (coordinated attack). Byzantine failures are the hardest: you need 2k + 1 replicas with voting, and 3m + 1 processes for agreement among the group.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The failure model is an assumption. Every algorithm in the chapter is correct only under its own failure model. FloodSet assumes crashes; Lamport's algorithm assumes Byzantine processes but perfect channels. If you choose a weaker model than the real one, the algorithm can break.</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>Give one concrete example per row. Then end with the "how hard" ranking and link it to the group sizes (k + 1, 2k + 1, 3m + 1). This shows that you connect the model to the rest of the chapter.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="f-b7">
+    <div class="q-head"><span class="qid">Q4</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Classify each event. For (1)–(3) give the fault frequency class. For (4)–(8) give the failure type of the failure model. Then, for (9), name the fault, the error and the failure.<br>(1) A cosmic ray flips one bit in RAM. (2) A loose network connector cuts the link for a few seconds, a few times per day. (3) A power supply burns out. (4) A process crashes, and a heartbeat monitor reliably tells all peers. (5) A process hangs and nobody is notified. (6) A message arrives 2 s after the deadline in a synchronous system. (7) A full router queue drops a packet. (8) A buggy replica answers "balance = 0" for every account. (9) A programmer writes <code>i &lt;= n</code> instead of <code>i &lt; n</code>; the loop writes past an array; the server later returns a wrong total to a client.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol>
+          <li>Transient.</li>
+          <li>Intermittent.</li>
+          <li>Permanent.</li>
+          <li>Fail-stop (detectable crash).</li>
+          <li>Fail-silent (undetectable crash).</li>
+          <li>Timing failure.</li>
+          <li>Channel omission.</li>
+          <li>Byzantine (arbitrary) process failure: the output is wrong and it is not easy to detect.</li>
+          <li><b>Fault:</b> the off-by-one bug. <b>Error:</b> the corrupted memory (a wrong internal state). <b>Failure:</b> the wrong total returned to the client (the service is not delivered correctly).</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>The fault is the cause, the error is the wrong internal state, and the failure is what the user sees. A fault can stay hidden: the bug only causes an error when the loop runs with that input. Case (8) is not fail-safe, because the wrong output looks plausible.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="f-b9">
+    <div class="q-head"><span class="qid">Q5</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Name the three types of redundancy with an example. Then consider triple modular redundancy (TMR): stage A has A1, A2, A3; each A<sub>i</sub> feeds all three voters V1, V2, V3; voter V<sub>i</sub> feeds B<sub>i</sub>. The correct value is 5. (a) A1 = 5, A2 = 7, A3 = 5, and voter V2 is faulty and outputs 9. What do B1, B2, B3 receive, and is the final output (after the next voting stage) correct? (b) A1 = 7, A2 = 7, A3 = 5. (c) A1 = 7, A2 = 8, A3 = 5. (d) Each module works with probability 0.9, voters are perfect. What is the probability that one TMR stage gives the correct value?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Redundancy:</b> <i>information</i> (extra bits, e.g. Hamming codes), <i>time</i> (do it again, e.g. retransmission), <i>physical</i> (extra hardware or processes, e.g. replicas, TMR).</p>
+        <ol type="a">
+          <li>Each voter receives (5, 7, 5). V1 and V3 output 5. V2 is faulty and outputs 9. So B1 and B3 receive 5, B2 receives 9. The next voters receive two correct values and one wrong value. The majority wins: the <b>final output is correct</b>. One faulty element per stage is masked.</li>
+          <li>Each voter receives (7, 7, 5). The majority is 7: the wrong value wins. <b>Not masked.</b> TMR assumes at most one faulty element per stage.</li>
+          <li>Each voter receives (7, 8, 5). There is no majority. The voter can <b>detect</b> the problem, but it cannot mask it.</li>
+          <li>At least 2 of 3 modules must work: p<sup>3</sup> + 3p<sup>2</sup>(1 − p) = 0.729 + 0.243 = <b>0.972</b>. This is better than one module (0.9).</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>TMR replicates also the voters, so a voter is not a single point of failure. The price is the assumption: two equal wrong values defeat the vote. Note that TMR improves reliability only if p &gt; 0.5. With p = 0.4 the stage is worse than a single module.</p></div>
+    </div>
+  </article>
+</section>
+
+<section class="topic">
+  <div class="topic-head"><span class="num">§2</span><h2>Client/server communication and RPC failures</h2></div>
+  <div class="core"><p><b>Core idea.</b> TCP masks omission failures with acks and retransmissions, but it cannot mask crashes. RPC tries to hide the network, and it fails in five ways: server not located, lost request, server crash, lost reply, client crash. You can get <b>at-most-once</b> or <b>at-least-once</b>, but not exactly-once. Idempotent requests, sequence numbers and orphan handling reduce the damage.</p></div>
+
+  <article class="q" data-type="exercise" data-id="f-cs1">
+    <div class="q-head"><span class="qid">Q6</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">What does TCP mask, and what can it not mask? Then list the five RPC failure classes and classify each event: (a) the client uses an obsolete version of the protocol and the binder finds no matching server; (b) a router drops the request; (c) the server process is killed while it executes the call; (d) the router drops the reply; (e) the client laptop shuts down after it sends a long query.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>TCP gives reliable point-to-point communication. It masks <b>omission failures</b> with acks and retransmissions. It does not mask <b>crash failures</b>, e.g. the loss of a connection: the application gets an error and must decide what to do.</p>
+        <p>The five classes: server cannot be located, lost request, server crash, lost reply, client crash.</p>
+        <ol type="a">
+          <li>Server cannot be located. Benign: raise an exception.</li>
+          <li>Lost request. Benign: the client sends it again. After too many losses it concludes that the server is down.</li>
+          <li>Server crash. The client cannot know if the job was done.</li>
+          <li>Lost reply. The client cannot tell it from a lost request.</li>
+          <li>Client crash. The query becomes an <b>orphan</b> on the server.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>The first two cases are benign because nothing happened on the server. The last three are hard because the server state may have changed and the client does not know. This is why "completely masking" communication failures is not feasible.</p></div>
     </div>
   </article>
 
   <article class="q" data-type="exercise" data-id="f-b2">
-    <div class="q-head"><span class="qid">Q2</span><span class="tag exercise">Exercise</span></div>
-    <p class="prompt">A print server does two things: print (P) and send a confirmation (M). It can crash (C) at any moment. The client knows that the server crashed and can choose: always reissue, never reissue, reissue only if it got the confirmation, reissue only if it did not. Which strategy gives exactly-once printing?</p>
+    <div class="q-head"><span class="qid">Q7</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">A print server does two things: print (P) and send a confirmation message (M). It can crash (C) at any moment. The client knows that the server crashed and can choose: always reissue, never reissue, reissue only if it got the confirmation, reissue only if it did not. Build the table of outcomes. Which strategy gives exactly-once printing?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
@@ -173,71 +276,124 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
     </div>
   </article>
 
-  <article class="q" data-type="compare" data-id="f-b3">
-    <div class="q-head"><span class="qid">Q3</span><span class="tag compare">Compare</span></div>
-    <p class="prompt">How do you handle lost replies and client crashes (orphans)? Compare extermination, reincarnation, gentle reincarnation and expiration.</p>
+  <article class="q" data-type="exercise" data-id="f-cs3">
+    <div class="q-head"><span class="qid">Q8</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Use the print server table. (a) The server uses M→P and crashes after M, before P. The client reissues only when it got the confirmation. Result? (b) The server uses P→M and crashes after P, before M. The client always reissues. Result? (c) Which (server, client) combinations guarantee at-least-once (never ZERO)? (d) Which guarantee at-most-once (never DUP)?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p><b>Lost replies.</b> The client cannot tell a lost request from a lost reply. Retrying is safe for <b>idempotent</b> requests. For others, the server caches requests with sequence numbers and detects duplicates (open question: how long to keep them).</p>
-        <p><b>Orphans</b> = computations started by a crashed client.</p>
-        <ul>
-          <li><b>Extermination:</b> the client logs each RPC; after reboot it asks to kill the orphans. Costly logging; problems with grand-orphans and partitions.</li>
-          <li><b>Reincarnation:</b> after reboot the client starts a new <b>epoch</b> and broadcasts it; servers kill computations of old epochs (grand-orphans too); replies with an old epoch are discarded.</li>
-          <li><b>Gentle reincarnation:</b> like reincarnation, but kill only if the owner cannot be found.</li>
-          <li><b>Expiration:</b> each remote computation has a time limit; the client waits that long before rebooting.</li>
-        </ul>
-        <p>None is perfect: killed orphans may leave open files or locks.</p>
+        <ol type="a">
+          <li>Case MC(P): the client got M, so it reissues. The document was not printed before, so it is printed once: <b>OK</b>.</li>
+          <li>Case PC(M): the document was printed, and the client reissues: <b>DUP</b>.</li>
+          <li>At-least-once: M→P with "always" (DUP, OK, OK); P→M with "always" (DUP, DUP, OK); P→M with "only when not ACKed" (OK, DUP, OK).</li>
+          <li>At-most-once: "never" with both server orders; M→P with "only when not ACKed" (OK, ZERO, OK).</li>
+        </ol>
       </div>
-      <div class="why"><h4>Why</h4><p>The lesson: a remote call is not a local call. Some failure cases cannot be masked, only made rarer or less harmful.</p></div>
+      <div class="why"><h4>Why</h4><p>Each row is a bet on where the crash happened. Reissuing protects against ZERO and risks DUP. Not reissuing does the opposite. You choose the bet that matches the application: a duplicate page is cheap, a missing payment is not, a duplicate payment is worse.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="f-cs4">
+    <div class="q-head"><span class="qid">Q9</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">A client calls these remote operations and gets no reply: (1) <code>getBalance(acc)</code>; (2) <code>setAddress(acc, "Via Roma 1")</code>; (3) <code>deposit(acc, 100)</code>; (4) <code>appendLog(line)</code>; (5) <code>deleteFile("x")</code>. For each, is it idempotent? Can the client simply retry? What would you do for the others?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li>(1) getBalance: idempotent (read only). Retry.</li>
+          <li>(2) setAddress: idempotent (sets an absolute value). Retry.</li>
+          <li>(3) deposit: <b>not</b> idempotent. A retry can deposit 200.</li>
+          <li>(4) appendLog: <b>not</b> idempotent. A retry can append the line twice.</li>
+          <li>(5) deleteFile: the effect is idempotent, but the second call may return "file not found". The client must accept that answer as success.</li>
+        </ul>
+        <p>For (3) and (4): add a request identifier (client id + sequence number). The server caches the requests it executed, with their replies, and returns the cached reply for a duplicate. Another option: change the interface to make it idempotent, e.g. <code>setBalance(acc, newValue, expectedOldValue)</code>.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A lost reply and a lost request look the same to the client. Retry is safe only if executing twice gives the same state as executing once. The trap is case (5): the state is idempotent, but the reply is not.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="f-cs5">
+    <div class="q-head"><span class="qid">Q10</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">A bank server keeps, for each client, the last executed sequence number and its reply. The balance is 0. Client C sends: #1 deposit(100): the server executes it, the reply is lost; C retransmits #1. Then #2 withdraw(30): the request is lost; C retransmits #2. (a) What does the server do at each arrival, and what is the final balance? (b) What would the balance be without duplicate detection? (c) When can the server discard the cached reply of #2?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>
+            #1 arrives: new number, execute, balance 100, cache reply #1. The reply is lost.<br>
+            #1 arrives again: 1 ≤ last executed (1), so it is a duplicate. Do not execute; resend the cached reply.<br>
+            #2 (first copy) never arrives.<br>
+            #2 arrives: new number, execute, balance <b>70</b>, cache reply #2.
+          </li>
+          <li>Without detection, #1 runs twice: 100 + 100 − 30 = <b>170</b>.</li>
+          <li>When the client shows that it got the reply, e.g. when request #3 arrives (if the client sends one request at a time, #3 implies that it received reply #2). Without such a sign, the server does not know how long to keep the information: this is the open problem on the slides.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>Sequence numbers turn a non-idempotent operation into an at-most-once operation, and client retries add at-least-once. Together they get close to exactly-once, but only while the server does not crash and lose its cache.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="compare" data-id="f-b3">
+    <div class="q-head"><span class="qid">Q11</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">A client crashes during a call. What is an orphan? Compare extermination, reincarnation, gentle reincarnation and expiration. Which one would you pick if network partitions are frequent?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Orphan</b> = a computation started by a client that crashed. It still uses server resources.</p>
+        <ul>
+          <li><b>Extermination:</b> the client logs each RPC; after the reboot it asks to kill the orphans. Costly (a log write for each call); problems with grand-orphans (calls made by the orphan) and with network partitions (the client cannot reach the orphans).</li>
+          <li><b>Reincarnation:</b> after the reboot the client starts a new <b>epoch</b> and broadcasts it. Servers kill the old computations of that client, grand-orphans included. Replies with an old epoch are discarded.</li>
+          <li><b>Gentle reincarnation:</b> like reincarnation, but a server kills an old computation only if it cannot locate its owner.</li>
+          <li><b>Expiration:</b> each remote computation gets a time limit. The client waits that long before it reboots, so all its computations are gone.</li>
+        </ul>
+        <p>With frequent partitions: <b>expiration</b>. It needs no message to reach the server, only a bound on time. Extermination and reincarnation depend on a message (kill request or epoch broadcast) that may not reach the other side.</p>
+        <p>None is perfect: a killed orphan may leave open files or locks. There is a lot of bookkeeping, and not all issues can be solved.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A remote call is not a local call. Some failure cases cannot be masked, only made rarer or less harmful. Expiration trades a longer reboot (or a renewal protocol for long calls) for independence from the network.</p></div>
     </div>
   </article>
 </section>
 
 <section class="topic">
-  <div class="topic-head"><span class="num">§2</span><h2>Process groups and agreement</h2></div>
-  <div class="core"><p><b>Core idea.</b> Replicate a process in a group, so that the group survives some failures. Size: k + 1 members tolerate k fail-silent faults; 2k + 1 tolerate k Byzantine faults with voting. When members must <b>agree</b> among themselves (no external voter), you need consensus: FloodSet for crashes, Lamport's algorithm with 3m + 1 generals for traitors.</p></div>
+  <div class="topic-head"><span class="num">§3</span><h2>Process resilience and agreement</h2></div>
+  <div class="core"><p><b>Core idea.</b> Replicate a process in a group, so that the group survives some failures. k + 1 members tolerate k fail-silent faults; 2k + 1 tolerate k Byzantine faults when an external client votes. When the members must <b>agree</b> among themselves, you need consensus: FloodSet (f + 1 rounds) for crashes, Lamport's algorithm (3m + 1 generals) for traitors. In an asynchronous system, consensus is impossible even with one crash (FLP).</p></div>
   <a class="simbox" href="/exercises/distributed-systems/sim-floodset.html" target="_blank" rel="noopener"><b>Open the FloodSet simulator</b><span>Run the counterexamples: f rounds, more than f crashes.</span></a>
 
-  <article class="q" data-type="describe" data-id="f-a1">
-    <div class="q-head"><span class="qid">Q4</span><span class="tag describe">Describe</span><span class="seen">Exam 17 Jan 2024 · 13 Feb 2015 · 9 Sep 2015 · 1 Feb 2013</span></div>
-    <p class="prompt">Describe the FloodSet algorithm. Which problem does it solve? Under which assumptions? Why are those assumptions fundamental (use counterexamples)? Optional: prove its correctness.</p>
+  <article class="q" data-type="compare" data-id="f-g1">
+    <div class="q-head"><span class="qid">Q12</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">Compare flat groups and hierarchical groups. How is membership managed in a flat group, and what is the problem with crashes?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p><b>Problem: consensus.</b> Each process starts with a value; all non-faulty processes must decide. <b>Agreement:</b> no two processes decide differently. <b>Validity:</b> if all start with v, v is the only possible decision. <b>Termination:</b> all non-faulty processes eventually decide.</p>
-        <p><b>Assumptions:</b> synchronous rounds (a message is received in the same round); reliable channels; at most f processes fail, by <b>crash</b> (they stop, possibly in the middle of a send).</p>
-        <p><b>Algorithm.</b> Each process keeps W, initially {its value}. For f + 1 rounds: send W to all, add the received sets to W. Then decide: if |W| = 1, its element; else a default v<sub>0</sub> (or the same deterministic function, e.g. max(W)).</p>
-        <p><b>Proof.</b> Lemma 1: if no process fails in round r, all processes active after r have the same W (each received the W of all others). Lemma 2: if all W are equal after r, they stay equal in all later rounds (no new values appear). With at most f crashes, at least one of the f + 1 rounds has no crash. So all W are equal at the end, and the decision is the same. Validity: if all start with v, W = {v} always.</p>
-        <p><b>Counterexamples.</b></p>
         <ul>
-          <li><b>Only f rounds</b> (f = 1, 1 round): P1 = 0, P2 = P3 = 1. P1 crashes after sending only to P2. P2 has {0, 1} → v<sub>0</sub>, P3 has {1} → 1. Disagreement. (Chain of f crashes for general f.)</li>
-          <li><b>Asynchronous system:</b> a process cannot tell a slow message from a crash, so it cannot end a round. FLP says no deterministic algorithm exists.</li>
-          <li><b>Lossy channels:</b> a lost message acts like an extra crash at every round: the two-generals problem shows that agreement is impossible.</li>
-          <li><b>Byzantine processes:</b> a traitor sends {0} to some and {1} to others in the last round; correct processes end with different W.</li>
+          <li><b>Flat group:</b> all members are equal and decide together. No single point of failure. But decisions need agreement among all members, which is slow and complex.</li>
+          <li><b>Hierarchical group:</b> a coordinator receives the requests and distributes the work to the workers. Decisions are simple and fast. But the coordinator is a single point of failure: when it crashes, the group must elect a new one.</li>
         </ul>
-        <p><b>Optimization:</b> broadcast W in round 1, then broadcast again only when you learn a new value.</p>
+        <p><b>Membership.</b> A coordinator (group server) makes it easy, but it is again a single point of failure. In a flat group, membership is distributed: join and leave announcements must be (reliably) multicast to all members. A crashed process does not say "I am dying", so the others must detect the crash. If too many processes crash or leave, the group must be rebuilt.</p>
       </div>
-      <div class="why"><h4>Why</h4><p>The heart of the proof is the clean round. The algorithm does not know which round is clean; it only needs one to exist, and f + 1 rounds guarantee it by the pigeonhole principle.</p></div>
+      <div class="why"><h4>Why</h4><p>It is the usual trade-off between centralized and distributed control: simplicity and speed against robustness. The membership problem is not a detail: every later algorithm (virtual synchrony, voting) needs the members to agree on who is in the group.</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="describe" data-id="f-a2">
-    <div class="q-head"><span class="qid">Q5</span><span class="tag describe">Describe</span></div>
-    <p class="prompt">Describe the Byzantine generals problem and Lamport's algorithm for 4 generals with 1 traitor. Why are 3m + 1 generals needed for m traitors?</p>
+  <article class="q" data-type="exercise" data-id="f-g2">
+    <div class="q-head"><span class="qid">Q13</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">(a) A replicated-write store must survive 3 fail-silent replicas. How many replicas? (b) The same, but 3 replicas can be Byzantine and the client votes on the answers. (c) You have 7 replicas. How many fail-silent faults, Byzantine faults with client voting, and traitors in a Byzantine agreement among the replicas can you tolerate? (d) FloodSet must tolerate f = 3 crashes. How many rounds?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p>n generals announce their troop strengths; communication is perfect; some generals are traitors. <b>Agreement:</b> loyal generals learn the same values. <b>Validity:</b> if a loyal general announces v, all loyal generals learn v for him. <b>Termination.</b></p>
-        <p><b>Algorithm (4 generals, 1 traitor).</b> (1) Each general sends its value to all. (2) Each forms a vector of received values. (3) Each sends its vector to all. (4) For each position, take the majority of the values reported by the others; no majority → "unknown". Loyal generals get the same vector, with correct values for loyal positions.</p>
-        <p><b>3m + 1.</b> With 3 generals and 1 traitor, a loyal general cannot tell "the commander lied" from "the other lieutenant lied": both scenarios give him the same messages. In general, with m traitors you need 2m + 1 loyal generals so that the loyal majority wins every vote: 3m + 1 in total.</p>
+        <ol type="a">
+          <li>k + 1 = <b>4</b>.</li>
+          <li>2k + 1 = <b>7</b>.</li>
+          <li>Fail-silent: <b>6</b> (k + 1 ≤ 7). Byzantine with client voting: <b>3</b> (2k + 1 ≤ 7). Byzantine agreement: 3m + 1 ≤ 7, so <b>m = 2</b>.</li>
+          <li>f + 1 = <b>4</b> rounds. One correct process is enough, so you need at least 4 processes for someone to decide.</li>
+        </ol>
       </div>
-      <div class="why"><h4>Why</h4><p>A traitor can send different values to different processes, so a single report proves nothing. Only a majority of independent reports, from more loyal than traitorous sources, can outvote the lies.</p></div>
+      <div class="why"><h4>Why</h4><p>Fail-silent replicas give no answer or a correct answer, so one survivor is enough. Byzantine replicas give wrong answers, so the correct ones must outnumber them: k + 1 correct against k wrong. Agreement inside the group is harder, because there is no external voter. In practice, you cannot be sure that no more than k processes fail at the same time: k is an assumption.</p></div>
     </div>
   </article>
 
   <article class="q" data-type="compare" data-id="f-a3">
-    <div class="q-head"><span class="qid">Q6</span><span class="tag compare">Compare</span></div>
+    <div class="q-head"><span class="qid">Q14</span><span class="tag compare">Compare</span></div>
     <p class="prompt">How large must a replicated group be? Compare: k fail-silent faults with replicated writes, k Byzantine faults with an external voter, consensus with crashes (FloodSet), consensus with traitors, and consensus in an asynchronous system.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
@@ -245,46 +401,222 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
         <div class="tbl"><table><tr><th>Setting</th><th>Requirement</th></tr>
           <tr><td>k fail-silent faults, client reads from any live replica</td><td>k + 1 replicas</td></tr>
           <tr><td>k Byzantine faults, client votes on the answers</td><td>2k + 1 replicas (majority of correct answers)</td></tr>
-          <tr><td>Consensus, synchronous, f crashes</td><td>f + 1 rounds; any n (even one correct process is enough)</td></tr>
-          <tr><td>Consensus, synchronous, m traitors</td><td>3m + 1 processes, m + 1 rounds</td></tr>
+          <tr><td>Consensus, synchronous, f crashes</td><td>f + 1 rounds; one correct process is enough</td></tr>
+          <tr><td>Consensus, synchronous, m traitors</td><td>3m + 1 processes (2m + 1 loyal)</td></tr>
           <tr><td>Consensus, asynchronous, even 1 crash</td><td>Impossible (FLP); Byzantine is harder, so also impossible</td></tr></table></div>
       </div>
       <div class="why"><h4>Why</h4><p>An external voter (the client) can count answers. When the group must agree among itself, there is no trusted counter, so it needs more processes or more rounds. FLP covers Byzantine too: a traitor can simulate a crash.</p></div>
     </div>
   </article>
-</section>
 
-<section class="topic">
-  <div class="topic-head"><span class="num">§3</span><h2>Reliable group communication</h2></div>
-  <div class="core"><p><b>Core idea.</b> With fixed groups and correct processes, reliable multicast is about efficiency: avoid <b>ack implosion</b>. With faulty processes and changing groups, you need <b>virtual synchrony</b>: a message is delivered to all correct members or to none, and view changes are ordered with respect to messages.</p></div>
-
-  <article class="q" data-type="compare" data-id="f-r1">
-    <div class="q-head"><span class="qid">Q7</span><span class="tag compare">Compare</span><span class="seen">Exam 14 Feb 2024 · 6 Sep 2024 · 5 Sep 2013 · 23 Sep 2015</span></div>
-    <p class="prompt">Describe how to efficiently provide reliable multicast among reliable processes (positive acks, negative acks, scalable reliable multicast, hierarchical feedback control). Which problem does each solve and which assumptions does it make?</p>
+  <article class="q" data-type="describe" data-id="f-g3">
+    <div class="q-head"><span class="qid">Q15</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Define the consensus problem (agreement, validity, termination). Then describe the coordinated attack problem. Why can the two generals never be sure, whatever algorithm they use?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p><b>Setting:</b> fixed group, correct processes, unreliable multicast underneath. Goal: every member receives every message (any order).</p>
-        <ul>
-          <li><b>Positive acks:</b> each receiver acks each message; the sender retransmits until all ack. Problem: <b>ack implosion</b> at the sender with large groups.</li>
-          <li><b>Negative acks:</b> a receiver sends a NACK only when it detects a gap (sequence numbers). Fewer messages, but the sender must buffer messages, without knowing when it can delete them.</li>
-          <li><b>Scalable Reliable Multicast</b> (non-hierarchical feedback control): NACKs are <b>multicast</b> to the group after a <b>random delay</b>. If a receiver hears another NACK for the same message, it suppresses its own. One retransmission serves all. Cost: everyone must process all NACKs, including members that did not lose the message.</li>
-          <li><b>Hierarchical feedback control:</b> receivers form local groups with a coordinator, and coordinators form a tree rooted at the sender. Each coordinator handles retransmissions in its group with any strategy, and asks its parent when it lacks a message. It removes a message from its buffer when all its receivers and child coordinators have acked it. Problem: build and maintain the tree.</li>
-        </ul>
+        <p><b>Consensus.</b> Each process starts with an initial value. All non-faulty processes must decide on a value, based on the initial values. <b>Agreement:</b> no two processes decide on different values. <b>Validity:</b> if all processes start with the same value v, then v is the only possible decision. <b>Termination:</b> all non-faulty processes eventually decide.</p>
+        <p><b>Coordinated attack.</b> Two generals G1 and G2 decide separately whether to attack at dawn. If both attack, they win; if only one attacks, it fails. They communicate with messengers that can be lost, captured or delayed.</p>
+        <p><b>No algorithm works.</b> Suppose that an algorithm exists. Take a run where both attack, and remove the last message that was delivered. The sender of that message cannot see the difference, so it still attacks. The receiver must also attack, otherwise only one attacks. Repeat the argument message by message. You reach a run with no messages delivered, where both generals still attack: but then the decision does not depend on communication, which is absurd (e.g. they attack also when G1 wanted to stay).</p>
       </div>
-      <div class="why"><h4>Why</h4><p>Each step moves the feedback work away from the sender: first by sending less feedback (NACK), then by sharing it (multicast NACK with suppression), then by distributing it (hierarchy). For faulty processes the problem changes completely: see the next question.</p></div>
+      <div class="why"><h4>Why</h4><p>Each confirmation needs a confirmation, forever. The lesson: consensus is impossible with arbitrary communication failures. So the next algorithms assume reliable channels and let only the processes fail.</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="describe" data-id="f-r2">
-    <div class="q-head"><span class="qid">Q8</span><span class="tag describe">Describe</span><span class="seen">Exam 14 Feb 2024 (second part)</span></div>
-    <p class="prompt">How does the problem change if processes may fail? Define virtual synchrony and describe its implementation in ISIS.</p>
+  <article class="q" data-type="describe" data-id="f-a1">
+    <div class="q-head"><span class="qid">Q16</span><span class="tag describe">Describe</span><span class="seen">Exam 17 Jan 2024 · 13 Feb 2015 · 9 Sep 2015 · 1 Feb 2013</span></div>
+    <p class="prompt">Describe the FloodSet algorithm. Which problem does it solve? Under which assumptions? Why are those assumptions fundamental (use counterexamples)? Optional: prove its correctness.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p>Now a message must reach <b>all correct members or none</b>, and the members must agree on who is in the group (<b>atomic multicast</b> also adds the same order everywhere). Close synchrony (instantaneous delivery to all) is impossible with failures.</p>
-        <p><b>Virtual synchrony.</b> Distinguish receive (by the communication layer) and deliver (to the application). A <b>group view</b> is the set of members seen by the sender. View changes are multicast too, and every message is delivered entirely within one view: before or after a view change, never across it. Crashed processes leave the view and must rejoin. Messages of a correct process are delivered to all correct processes; messages of a crashing sender are delivered to all or dropped.</p>
-        <p><b>ISIS implementation</b> (reliable FIFO point-to-point channels). A process keeps each message until it is <b>stable</b> (all members received it). On a view change message: stop sending, multicast all unstable messages to the members of the new view, then multicast a <b>flush</b>. Install the new view after receiving a flush from every member of the new view. So all survivors have the same messages before the new view starts.</p>
+        <p><b>Problem: consensus.</b> Each process starts with a value; all non-faulty processes must decide. <b>Agreement:</b> no two processes decide differently. <b>Validity:</b> if all start with v, v is the only possible decision. <b>Termination:</b> all non-faulty processes eventually decide.</p>
+        <p><b>Assumptions:</b> synchronous system with rounds (a message is received in the same round); reliable channels; at most f processes fail, by <b>crash</b> (they stop, possibly in the middle of a send).</p>
+        <p><b>Algorithm.</b> Each process keeps W, initially {its start value}. For f + 1 rounds: send W to all other processes, add the received sets to W. Then decide: if |W| = 1, its element; else a default v<sub>0</sub> (or the same deterministic function, e.g. max(W)).</p>
+        <p><b>Proof.</b> Lemma 1: if no process fails in round r, all processes active after r have the same W (each received the W of all others). Lemma 2: if all W are equal after round r, they stay equal in all later rounds (no new values appear). With at most f crashes, at least one of the f + 1 rounds has no crash. So all W are equal at the end, and the decision is the same. Validity: if all start with v, W = {v} always.</p>
+        <p><b>Counterexamples.</b></p>
+        <ul>
+          <li><b>Only f rounds</b> (f = 1, 1 round): P1 = 0, P2 = P3 = 1. P1 crashes after it sends only to P2. P2 has {0, 1} → v<sub>0</sub>, P3 has {1} → 1. Disagreement. (A chain of f crashes for general f.)</li>
+          <li><b>Asynchronous system:</b> a process cannot tell a slow message from a crash, so it cannot end a round. FLP says that no deterministic algorithm exists.</li>
+          <li><b>Lossy channels:</b> a lost message acts like a partial crash in every round; the coordinated attack shows that agreement is impossible.</li>
+          <li><b>Byzantine processes:</b> a traitor sends {0} to some and {1} to others in the last round; correct processes end with different W.</li>
+        </ul>
+        <p><b>Optimization:</b> broadcast W in round 1, then broadcast again only when you first learn a new value.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The heart of the proof is the clean round. The algorithm does not know which round is clean; it only needs one to exist, and f + 1 rounds guarantee it by the pigeonhole principle.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="f-g4">
+    <div class="q-head"><span class="qid">Q17</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">FloodSet with n = 4, f = 2, decision rule max(W) when |W| &gt; 1. Start values: P1 = 7, P2 = 4, P3 = 9, P4 = 4. Round 1: P3 crashes after it sends only to P1. Round 3: P1 crashes after it sends only to P2. Give W of every active process after each round and the decisions. Which round is the clean round? (b) How many messages does the basic algorithm send at most with n = 5, f = 3? And the improved version?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>After round</th><th>P1</th><th>P2</th><th>P3</th><th>P4</th></tr>
+          <tr><td>start</td><td>{7}</td><td>{4}</td><td>{9}</td><td>{4}</td></tr>
+          <tr><td>1 (P3 crashes, sends only to P1)</td><td>{4, 7, 9}</td><td>{4, 7}</td><td>crashed</td><td>{4, 7}</td></tr>
+          <tr><td>2 (no crash)</td><td>{4, 7, 9}</td><td>{4, 7, 9}</td><td>—</td><td>{4, 7, 9}</td></tr>
+          <tr><td>3 (P1 crashes)</td><td>crashed</td><td>{4, 7, 9}</td><td>—</td><td>{4, 7, 9}</td></tr></table></div>
+        <p>f + 1 = 3 rounds. P2 and P4 decide max = <b>9</b>. Round 2 is the clean round: after it all W are equal (Lemma 1), and round 3 changes nothing (Lemma 2).</p>
+        <p>(b) Basic: each round, each process sends to n − 1 others: (f + 1) · n · (n − 1) = 4 · 5 · 4 = <b>80</b>. Improved: each process broadcasts at most twice (round 1, and when it first learns a new value): at most 2 · 5 · 4 = <b>40</b>.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Value 9 survives because P3 sent it to P1 before it crashed, and P1 spread it in the clean round. The improved version works because, with the v<sub>0</sub> rule, a process only needs to know whether there is one value or more than one. Two values are enough for that. Note: with the max(W) rule this argument does not hold directly; the slides present the optimization with the basic rule in mind.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="f-g5">
+    <div class="q-head"><span class="qid">Q18</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Show with traces why f + 1 rounds are needed. (a) n = 3, f = 1, P1 = 0, P2 = 1, P3 = 1. In round 1, P1 crashes after it sends only to P2. Run 1 round and then 2 rounds. (b) n = 4, f = 2, P1 = 0, P2 = P3 = P4 = 1. Build a chain of two crashes that breaks 2 rounds, and show that 3 rounds fix it.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>(a) After round 1: P2 = {0, 1}, P3 = {1}. With 1 round: P2 decides v<sub>0</sub>, P3 decides 1: <b>disagreement</b>. With 2 rounds: round 2 has no crash, P2 sends {0, 1} to P3; both have {0, 1} and decide v<sub>0</sub>.</p>
+        <p>(b) Round 1: P1 crashes after it sends only to P2. Round 2: P2 crashes after it sends only to P3.</p>
+        <div class="tbl"><table><tr><th>After round</th><th>P2</th><th>P3</th><th>P4</th></tr>
+          <tr><td>1</td><td>{0, 1}</td><td>{1}</td><td>{1}</td></tr>
+          <tr><td>2</td><td>crashed</td><td>{0, 1}</td><td>{1}</td></tr>
+          <tr><td>3 (clean)</td><td>—</td><td>{0, 1}</td><td>{0, 1}</td></tr></table></div>
+        <p>With 2 rounds, P3 decides v<sub>0</sub> and P4 decides 1: disagreement. With 3 rounds both have {0, 1}.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Each crash can pass the "hidden" value to exactly one new process in the last moment. A chain of f crashes can delay the value for f rounds. Only one more round, with no crash, lets the value reach everybody.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="f-a2">
+    <div class="q-head"><span class="qid">Q19</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Describe the Byzantine generals problem (agreement, validity, termination) and Lamport's algorithm for 4 generals with 1 traitor. Why are 3m + 1 generals needed for m traitors? Why do 3 generals with 1 traitor fail?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>n generals announce their troop strengths; communication is perfect; some generals are traitors and behave arbitrarily. <b>Agreement:</b> no two loyal generals learn different troop strength values. <b>Validity:</b> if a loyal general announces v, all loyal generals learn v for him. <b>Termination:</b> all loyal generals eventually learn the strength of all other loyal generals.</p>
+        <p><b>Algorithm (4 generals, 1 traitor).</b> (1) Each general sends its troop strength to all others. (2) Each forms a vector with the received values. (3) Each sends its vector to all others. (4) For each position, each general takes the majority of the values reported; no majority → "unknown". Loyal generals get the same vector, with the correct values for the loyal positions.</p>
+        <p><b>3 generals, 1 traitor.</b> G1 receives "G2 says x" from G2 and "G2 told me y" from G3. G1 cannot know whether G2 lied or G3 lied: both scenarios give G1 exactly the same messages. There is no majority of 2 against 1, so G1 cannot compute a vector that is both correct and equal to the one of the other loyal general.</p>
+        <p><b>3m + 1.</b> Lamport (1982): with m traitors, 2m + 1 loyal generals are needed, so that the loyal reports always form a majority. Total 3m + 1.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A traitor can send different values to different processes, so a single report proves nothing. Only a majority of independent reports, from more loyal than traitorous sources, can outvote the lies. With 3 generals, each vote is 1 against 1.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="f-g7">
+    <div class="q-head"><span class="qid">Q20</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Lamport's algorithm, 4 generals, G3 is the traitor. Loyal strengths: G1 = 10, G2 = 20, G4 = 40. Step 1: G3 sends 7 to G1, 8 to G2, 9 to G4. Step 3: G3 sends the vector (11, 22, 1, 44) to G1, (5, 6, 2, 8) to G2, (10, 99, 3, 40) to G4. Loyal generals send their true vectors. Compute the vector received in step 2 by each loyal general, and the final vector of each loyal general (majority over the three vectors it receives in step 3).</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Step 2 vectors: G1 = (10, 20, 7, 40); G2 = (10, 20, 8, 40); G4 = (10, 20, 9, 40).</p>
+        <div class="tbl"><table><tr><th>General</th><th>Vectors received in step 3</th><th>Position 1</th><th>2</th><th>3</th><th>4</th></tr>
+          <tr><td>G1</td><td>G2 (10,20,8,40), G3 (11,22,1,44), G4 (10,20,9,40)</td><td>10,11,10 → 10</td><td>20,22,20 → 20</td><td>8,1,9 → unknown</td><td>40,44,40 → 40</td></tr>
+          <tr><td>G2</td><td>G1 (10,20,7,40), G3 (5,6,2,8), G4 (10,20,9,40)</td><td>10,5,10 → 10</td><td>20,6,20 → 20</td><td>7,2,9 → unknown</td><td>40,8,40 → 40</td></tr>
+          <tr><td>G4</td><td>G1 (10,20,7,40), G3 (10,99,3,40), G2 (10,20,8,40)</td><td>10,10,10 → 10</td><td>20,99,20 → 20</td><td>7,3,8 → unknown</td><td>40,40,40 → 40</td></tr></table></div>
+        <p>All loyal generals compute <b>(10, 20, unknown, 40)</b>. Agreement and validity hold.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>For a loyal position, two of the three reports come from loyal generals and carry the true value, so the traitor is always outvoted. For the traitor's position, the result is "unknown" here, the same for all. The trap: if the traitor arranges a majority for one general only (e.g. the same value twice in the reports seen by G2), loyal generals can disagree on the traitor's entry. The robust form (Lamport's OM(1)) uses, for position j, your own direct value plus the values relayed by the other generals except j. Then all loyal generals vote on the same multiset.</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>Write the vectors in a table, one row per general, and vote column by column. Say explicitly that loyal positions are correct because 2 loyal reports beat 1 traitor report.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="f-g9">
+    <div class="q-head"><span class="qid">Q21</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">A colleague runs FloodSet over the Internet. He replaces the synchronous round with a timeout of 2 s: "if no message arrives in 2 s, the sender has crashed". He claims that the algorithm now solves consensus with one crash in an asynchronous system. Find the error. What does FLP state, and does it also hold for Byzantine failures?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Error.</b> In an asynchronous system there is no bound on message delay. A message from a correct but slow process can arrive after 2 s. The receiver treats the sender as crashed and ignores its value, while another process received it in time. The two processes can end with different W and decide differently: agreement is violated. If instead you wait longer, a real crash makes you wait forever: termination is violated.</p>
+        <p><b>FLP</b> (Fischer, Lynch, Paterson): no deterministic algorithm solves consensus in an asynchronous system if even one process can fail by crash.</p>
+        <p><b>Byzantine:</b> also impossible. A Byzantine process can simulate a crash, so an algorithm for Byzantine failures would also solve the crash case.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A timeout is a guess, not a failure detector. The root problem is that a crashed process and a slow process look the same. Practical protocols always keep agreement and give termination only when the network behaves synchronously long enough.</p></div>
+    </div>
+  </article>
+</section>
+
+<section class="topic">
+  <div class="topic-head"><span class="num">§4</span><h2>Reliable group communication: non-faulty processes</h2></div>
+  <div class="core"><p><b>Core idea.</b> Reliable multicast is needed to use replicated groups. With fixed groups and correct processes, every member must receive every message (in any order), on top of an unreliable multicast. The problem is efficiency: positive acks cause <b>ack implosion</b>; NACKs force the sender to buffer; scalable reliable multicast suppresses duplicate NACKs; hierarchical feedback control distributes the work.</p></div>
+
+  <article class="q" data-type="compare" data-id="f-r1">
+    <div class="q-head"><span class="qid">Q22</span><span class="tag compare">Compare</span><span class="seen">Exam 14 Feb 2024 · 6 Sep 2024 · 5 Sep 2013 · 23 Sep 2015</span></div>
+    <p class="prompt">Describe how to efficiently provide reliable multicast among reliable processes over unreliable links (positive acks, negative acks, scalable reliable multicast, hierarchical feedback control). Which problem does each solve and which assumptions does it make?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Setting:</b> fixed group, correct processes, unreliable multicast underneath. Goal: every member receives every message (not necessarily in the same order). Sequence numbers let a receiver detect gaps.</p>
+        <ul>
+          <li><b>Positive acks:</b> each receiver acks each message; the sender retransmits until all ack. Problem: <b>ack implosion</b> at the sender with large groups.</li>
+          <li><b>Negative acks:</b> a receiver sends a NACK only when it detects a gap. Fewer messages, but the sender must cache messages, without knowing when it can delete them.</li>
+          <li><b>Scalable Reliable Multicast</b> (non-hierarchical feedback control): NACKs are <b>multicast</b> to the group after a <b>random delay</b>. If a receiver hears another NACK for the same message, it suppresses its own. One retransmission serves all. Cost: everyone must process all NACKs, including members that did not lose the message.</li>
+          <li><b>Hierarchical feedback control:</b> receivers form local groups with a coordinator, and the groups form a tree rooted at the sender. Each coordinator can use any strategy in its group, and asks its parent coordinator for retransmissions. It removes a message from its buffer when all receivers in its group and all its child coordinators have acked it. Problem: the tree must be built and maintained.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>Each step moves the feedback work away from the sender: first by sending less feedback (NACK), then by sharing it (multicast NACK with suppression), then by distributing it (hierarchy). For faulty processes the problem changes completely: see §5.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="f-r3">
+    <div class="q-head"><span class="qid">Q23</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">A sender multicasts one message to 200 receivers. 6 receivers lose it; the retransmission reaches everybody. Count the feedback messages that the sender receives with (a) positive acks; (b) point-to-point NACKs; (c) scalable reliable multicast, ideal case. (d) In (c), how many processes must handle the NACK?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>194 acks for the first transmission + 6 after the retransmission = <b>200</b>.</li>
+          <li><b>6</b> NACKs.</li>
+          <li><b>1</b> NACK: the first receiver whose timer expires multicasts it; the other 5 hear it and suppress their own.</li>
+          <li>The NACK is multicast, so all <b>200</b> other members receive and process it: the sender and the other 199 receivers, also the 194 receivers that already have the message.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>Positive acks scale with the group size, NACKs scale with the losses. SRM goes further, but it moves part of the cost to all receivers. Hierarchical feedback control fixes that: a NACK stays inside the local group.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="f-r4">
+    <div class="q-head"><span class="qid">Q24</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Scalable reliable multicast. Receivers R1, R2, R3, R4 detect at time 0 that message #7 is missing. Their random NACK timers are R1 = 30 ms, R2 = 12 ms, R3 = 45 ms, R4 = 20 ms. A multicast NACK takes 10 ms to reach every member. Which receivers send a NACK? How many retransmissions does the sender need? What does this tell you about the choice of the random delay?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li>t = 12: R2's timer expires; R2 multicasts NACK(7). It reaches all at t = 22.</li>
+          <li>t = 20: R4's timer expires. R4 has not yet heard R2's NACK (it arrives at 22), so R4 also multicasts NACK(7).</li>
+          <li>t = 22: R1 (timer 30) and R3 (timer 45) hear R2's NACK and <b>suppress</b> their own.</li>
+        </ul>
+        <p>Result: <b>2 NACKs</b> (R2, R4). The sender needs <b>1</b> multicast retransmission: it reaches all four. It can ignore the second NACK for #7 if it arrives shortly after the retransmission.</p>
+        <p>The timers must be spread over an interval clearly larger than the propagation delay. Otherwise many timers expire before the first NACK arrives, and suppression fails.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Suppression works only for timers that expire after the first NACK has arrived. Larger random delays mean better suppression but a slower recovery. This is the basic trade-off of SRM.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="f-r5">
+    <div class="q-head"><span class="qid">Q25</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Hierarchical feedback control. Coordinator C has receivers r1, r2, r3 in its group and child coordinators C4 and C5. For message #12, C has acks from r1, r3, C4 and C5. (a) Can C remove #12 from its buffer? (b) r2 sends a NACK for #12. Who retransmits? (c) C itself never received #13. What does it do?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li><b>No.</b> C needs acks from all receivers in its group (r2 is missing) and from all child coordinators.</li>
+          <li><b>C</b> retransmits to r2 (it still has #12 in its buffer). The sender is not involved.</li>
+          <li>C requests the retransmission of #13 from its <b>parent coordinator</b>.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>Each coordinator acts as a local sender for its subtree. Retransmissions travel only on the branch that lost the message. The cost is the tree: it must be built, and repaired when a coordinator leaves.</p></div>
+    </div>
+  </article>
+</section>
+
+<section class="topic">
+  <div class="topic-head"><span class="num">§5</span><h2>Reliable group communication: faulty processes and virtual synchrony</h2></div>
+  <div class="core"><p><b>Core idea.</b> When processes can crash or join and leave, a message must be delivered to all members or to none, in the same order: <b>atomic multicast</b>. Close synchrony is impossible with failures. <b>Virtual synchrony</b> is the weaker model: crashed processes are purged, every message is delivered between two view changes, and a crashing sender's message reaches all or none. ISIS implements it with stable messages and flush.</p></div>
+
+  <article class="q" data-type="describe" data-id="f-r2">
+    <div class="q-head"><span class="qid">Q26</span><span class="tag describe">Describe</span><span class="seen">Exam 14 Feb 2024 (second part)</span></div>
+    <p class="prompt">How does the reliable multicast problem change if processes may fail? Define virtual synchrony and describe its implementation in ISIS. Give the table of multicast types.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Now a message must reach <b>all non-faulty members or none</b>, and the members must agree on who is in the group. <b>Atomic multicast</b> also requires the same order at all receivers. Close synchrony (instantaneous delivery to all) is impossible with failures.</p>
+        <p><b>Virtual synchrony.</b> Distinguish receive (by the communication layer) and deliver (to the application). A <b>group view</b> is the set of processes to which a message should be delivered, as seen by the sender at sending time. View changes are delivered in a consistent order with respect to other multicasts and to each other. Every message is delivered entirely before or after a view change, never across it. Crashed processes are purged and must rejoin. Messages of a correct process are delivered to all correct processes; messages of a crashing sender are delivered to all or dropped.</p>
+        <p><b>ISIS implementation</b> (reliable FIFO point-to-point channels). A process keeps each message until it is <b>stable</b> (all members received it). On a view change message: stop sending new messages, multicast all unstable messages to the non-faulty members of the old view, mark them stable, then multicast a <b>flush</b>. Install the new view after a flush from every other member of the new view. So all survivors have the same messages before the new view starts.</p>
         <div class="tbl"><table><tr><th>Multicast</th><th>Basic ordering</th><th>Total order</th></tr>
           <tr><td>Reliable</td><td>None</td><td>No</td></tr><tr><td>FIFO</td><td>FIFO</td><td>No</td></tr><tr><td>Causal</td><td>Causal</td><td>No</td></tr>
           <tr><td>Atomic</td><td>None</td><td>Yes</td></tr><tr><td>FIFO atomic</td><td>FIFO</td><td>Yes</td></tr><tr><td>Causal atomic</td><td>Causal</td><td>Yes</td></tr></table></div>
@@ -292,16 +624,119 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
       <div class="why"><h4>Why</h4><p>Because of FLP, you cannot know if a crashed process received a message. Virtual synchrony avoids the question: the crashed process is simply removed, and the survivors make sure they all have the same set of messages before they move on.</p></div>
     </div>
   </article>
+
+  <article class="q" data-type="describe" data-id="f-v1">
+    <div class="q-head"><span class="qid">Q27</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Explain with a replicated database why atomic multicast is needed. What is close synchrony, and why can it not be achieved? Why does virtual synchrony separate "receive" from "deliver"?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Replicated database.</b> Every replica applies the update commands it receives. Everything is fine if all non-faulty replicas receive the same commands in the same order. If one replica misses an update, or applies two updates in another order, the replicas diverge.</p>
+        <p><b>Close synchrony</b> (the ideal): any two processes that receive the same multicasts or observe the same membership changes see them in the same order; a multicast is delivered to the full membership, and send and delivery are one single instantaneous event. With failures this is impossible: a sender can crash in the middle of a multicast, and nobody can know whether the crashed process received or processed a message.</p>
+        <p><b>Receive vs deliver.</b> The communication layer receives a message and buffers it. It delivers it to the application only when a condition holds (e.g. the message is known to all, or its predecessors in the required order have been delivered). This buffer gives the middleware time to agree on what to deliver, without exposing partial states to the application.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The buffer is the tool behind every ordering guarantee. A message can be received early, but it is delivered only when delivering it keeps the promise of the model.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="f-v2">
+    <div class="q-head"><span class="qid">Q28</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">View (p, q, r). p multicasts m and then crashes; the new view is (q, r). For each case, is it allowed by virtual synchrony? (a) q and r deliver m before they install (q, r). (b) Neither q nor r ever delivers m. (c) q delivers m before the view change; r never delivers m. (d) q delivers m before the view change; r delivers m after it installed (q, r).</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li>(a) <b>Allowed.</b> All survivors deliver m in the old view.</li>
+          <li>(b) <b>Allowed.</b> The message of a crashing sender may be dropped, if it is dropped by all.</li>
+          <li>(c) <b>Not allowed.</b> m reaches some correct members and not others: "all or none" is violated.</li>
+          <li>(d) <b>Not allowed.</b> m is delivered in two different views. Every message must be delivered between the same two view changes at all members.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>A view change works like a barrier. Each member must see the same set of messages before the barrier. Case (d) has the right set of receivers but the wrong side of the barrier: r's state in view (q, r) differs from q's.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="f-v3">
+    <div class="q-head"><span class="qid">Q29</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">P1 multicasts m1 and then m2. P2 delivers m1 and then multicasts m3. Q1 and Q2 deliver in these orders. For each case, say if the delivery is FIFO, causal and total. (A) Q1: m1, m2, m3; Q2: m1, m3, m2. (B) Q1: m3, m1, m2; Q2: m1, m2, m3. (C) Q1: m2, m1, m3; Q2: m2, m1, m3. Then pick the multicast type (from the six-row table) for: a replicated database; a chat where replies must follow the question; a stream of readings, one source per sensor.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>Case</th><th>FIFO</th><th>Causal</th><th>Total</th><th>Reason</th></tr>
+          <tr><td>A</td><td>Yes</td><td>Yes</td><td>No</td><td>m1 before m2 and m1 before m3 everywhere; but m2 and m3 have different orders.</td></tr>
+          <tr><td>B</td><td>Yes</td><td>No</td><td>No</td><td>Q1 delivers m3 before m1, and m3 causally depends on m1.</td></tr>
+          <tr><td>C</td><td>No</td><td>No</td><td>Yes</td><td>Same order at both, but m2 before m1 breaks FIFO (and so causal).</td></tr></table></div>
+        <p>Choices: replicated database → <b>atomic</b> (total order; FIFO or causal atomic if the commands of a client depend on each other). Chat → <b>causal</b> multicast. Sensor readings → <b>FIFO</b> multicast.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>FIFO looks at one sender, causal looks at the "happened before" chain, total looks only at "same order everywhere". Total order is independent from the other two: case C is total but not FIFO. Causal implies FIFO, so a FIFO violation is also a causal violation.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="f-v5">
+    <div class="q-head"><span class="qid">Q30</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">ISIS. View G = {P1, P2, P3, P4}. P4 multicasts m4; only P1 receives it, then P4 crashes. P3 multicast m3 earlier: P1 and P2 received it, P4 did not. P2's message m2 is stable. A failure detector announces the view change to G' = {P1, P2, P3}. Describe what P1, P2 and P3 do, step by step. Which messages does each one deliver before it installs G'?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol>
+          <li>Each process receives the view change and stops sending new messages.</li>
+          <li>P1 has m4 unstable: it multicasts m4 to P2 and P3, marks it stable and multicasts a flush.</li>
+          <li>P3 has m3 unstable (P4 never acknowledged it): it multicasts m3 to P1 and P2 (they discard the duplicates), marks it stable and multicasts a flush.</li>
+          <li>P2 has no unstable messages (m2 is stable): it multicasts only a flush.</li>
+          <li>Each process installs G' when it has received a flush from each other member of G'. Thanks to FIFO channels, the flush arrives after the resent messages.</li>
+        </ol>
+        <p>Before G', all three deliver <b>m2, m3 and m4</b> in view G.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Any survivor that holds a message can complete its distribution, so a crashed sender does not leave a message half-delivered. The flush on a FIFO channel is the proof that "everything before me has arrived". The protocol assumes that the membership does not change again during the flush; it can be extended for that case.</p></div>
+    </div>
+  </article>
 </section>
 
 <section class="topic">
-  <div class="topic-head"><span class="num">§4</span><h2>Recovery: checkpointing and logging</h2></div>
-  <div class="core"><p><b>Core idea.</b> <b>Backward recovery</b> returns to a saved correct state; <b>forward recovery</b> moves to a new correct state (e.g. error-correcting codes). Checkpoints must form a <b>recovery line</b>: a consistent cut. Independent checkpoints risk the <b>domino effect</b>; coordinated checkpoints avoid it; logging lets you replay messages.</p></div>
+  <div class="topic-head"><span class="num">§6</span><h2>Recovery: checkpointing and logging</h2></div>
+  <div class="core"><p><b>Core idea.</b> <b>Backward recovery</b> returns to a saved correct state; <b>forward recovery</b> moves to a new correct state. Checkpoints must form a <b>recovery line</b>: the most recent consistent cut. Independent checkpoints risk the <b>domino effect</b> and need dependency tracking; coordinated checkpoints avoid it. Logging lets you replay messages after a checkpoint, if the system is piecewise deterministic.</p></div>
   <a class="simbox" href="/exercises/distributed-systems/sim-recovery-line.html" target="_blank" rel="noopener"><b>Open the recovery line simulator</b><span>Both Sep 2024 diagrams, both graphs, step by step.</span></a>
 
+  <article class="q" data-type="exercise" data-id="f-k1">
+    <div class="q-head"><span class="qid">Q31</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Define backward and forward recovery. Classify: (a) TCP retransmits a lost segment; (b) a video stream uses erasure correction codes to rebuild a lost packet; (c) a process restarts from its last checkpoint; (d) a RAID-5 array rebuilds a lost block from parity. Then explain the difference between checkpointing and logging.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Backward recovery:</b> bring the system back to a previously saved correct state. <b>Forward recovery:</b> bring the system into a new correct state from which it can continue.</p>
+        <ol type="a"><li>Backward (send again what was lost).</li><li>Forward (compute the missing data from redundancy).</li><li>Backward.</li><li>Forward (same idea as erasure correction).</li></ol>
+        <p><b>Checkpointing:</b> periodically save the distributed state to stable storage. It is expensive. <b>Logging:</b> record events (messages) to stable storage, so that you can replay them from a checkpoint.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Forward recovery needs to know in advance which errors can happen, so that you can add the right redundancy. Backward recovery is general, so it is the common choice, but you must save states, and you lose the work done after the save.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="f-c2">
+    <div class="q-head"><span class="qid">Q32</span><span class="tag describe">Describe</span><span class="seen">Exam 17 Jan 2024 · 14 Feb 2024 · 13 Jul 2015 · 3 Dec 2014</span></div>
+    <p class="prompt">When are rollback-dependency and checkpoint-dependency graphs used, how is the data to build them collected, and which general goal does the algorithm solve? Give the rules to build each graph and to compute the recovery line.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Goal:</b> find the recovery line, i.e. the most recent consistent cut made of one checkpoint per process.</p>
+        <p><b>When:</b> with <b>independent (uncoordinated) checkpointing</b>, after a failure.</p>
+        <p><b>Data collection:</b></p>
+        <ul>
+          <li>Each process numbers its checkpoint intervals: I<sub>i,x</sub> lies between c<sub>i,x−1</sub> and c<sub>i,x</sub>.</li>
+          <li>Each message piggybacks the sender's current interval.</li>
+          <li>The receiver records the dependency I<sub>i,x</sub> → I<sub>j,y</sub> with the rest of its recovery information.</li>
+          <li>After a failure, the recovering process broadcasts a dependency request; all processes stop and send their dependency information.</li>
+          <li>The recovering process computes the recovery line and sends the rollback requests.</li>
+        </ul>
+        <p><b>Rollback-dependency graph:</b> an edge c<sub>i,x</sub> → c<sub>j,y</sub> if i = j and y = x + 1, or if i ≠ j and a message is sent from I<sub>i,x</sub> to I<sub>j,y</sub>. Mark the failure states and every node reachable from them. Each process rolls back to its last unmarked checkpoint.</p>
+        <p><b>Checkpoint-dependency graph:</b> an edge from c<sub>i,x−1</sub> (the checkpoint that starts the sending interval) to c<sub>j,y</sub>. Start from the latest checkpoint of the failed process and the current states of the others. While one of these nodes is reachable from another, replace it with its previous checkpoint. The result: the latest checkpoints with no dependencies among them.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Independent checkpoints are cheap to take but expensive to use: you need bookkeeping on every message, you may need a domino rollback, and some checkpoints are useless. That is why coordinated checkpointing is usually preferred.</p></div>
+    </div>
+  </article>
+
   <article class="q" data-type="exercise" data-id="f-c1">
-    <div class="q-head"><span class="qid">Q9</span><span class="tag exercise">Exercise</span><span class="seen">Exam 6 Sep 2024</span></div>
-    <p class="prompt">Exam diagram 1 (P1 crashes; checkpoints 3 per process; messages as in the figure). Compute the recovery line with the rollback-dependency graph. Then diagram 2 (P4 crashes) with the checkpoint-dependency graph.</p>
+    <div class="q-head"><span class="qid">Q33</span><span class="tag exercise">Exercise</span><span class="seen">Exam 6 Sep 2024</span></div>
+    <p class="prompt">Exam diagram 1 (P1 crashes; 3 checkpoints per process; messages as in the figure). Compute the recovery line with the rollback-dependency graph. Then diagram 2 (P4 crashes) with the checkpoint-dependency graph.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
@@ -310,67 +745,236 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
         <p>Open the simulator to see each edge and each marking step.</p>
       </div>
       <div class="why"><h4>Why</h4><p>Rollback-dependency: an edge c<sub>i,x</sub> → c<sub>j,y</sub> says "if the interval ending at c<sub>i,x</sub> is undone, the interval ending at c<sub>j,y</sub> must be undone too", because it received a message from it. Marking follows "undone" through the graph. The checkpoint graph says the same with the edge starting at the checkpoint that <i>begins</i> the sending interval. Both give the same line.</p></div>
-      <div class="tipbox"><h4>Exam tip</h4><p>Name the checkpoints first (c<sub>i,1</sub>, c<sub>i,2</sub>, …) and list the messages as "sent in I<sub>i,x</sub>, received in I<sub>j,y</sub>". Then draw the graph. Finish by checking for orphan messages on your line.</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>Name the checkpoints first (c<sub>i,1</sub>, c<sub>i,2</sub>, …) and list the messages as "sent in I<sub>i,x</sub>, received in I<sub>j,y</sub>". Then draw the graph. Finish by checking for orphan messages on your line and by listing the in-transit messages.</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="describe" data-id="f-c2">
-    <div class="q-head"><span class="qid">Q10</span><span class="tag describe">Describe</span><span class="seen">Exam 17 Jan 2024 · 14 Feb 2024 · 13 Jul 2015 · 3 Dec 2014</span></div>
-    <p class="prompt">When are rollback-dependency and checkpoint-dependency graphs used, and how is the data to build them collected?</p>
+  <article class="q" data-type="exercise" data-id="f-k2">
+    <div class="q-head"><span class="qid">Q34</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Independent checkpointing. Initial checkpoints c<sub>i,0</sub> at time 0. Checkpoints: P1: c<sub>1,1</sub> = 2, c<sub>1,2</sub> = 8, c<sub>1,3</sub> = 14. P2: c<sub>2,1</sub> = 4, c<sub>2,2</sub> = 11, c<sub>2,3</sub> = 17. P3: c<sub>3,1</sub> = 3, c<sub>3,2</sub> = 10, c<sub>3,3</sub> = 16. Messages (sender time → receiver time): a: P1 15 → P2 16; b: P2 12 → P3 14; c: P3 11 → P1 12; d: P1 9 → P2 10; f: P3 5 → P1 10; g: P2 3 → P3 8. P1 crashes at time 18. (1) Write the interval dependency of each message. (2) Build the rollback-dependency graph and compute the recovery line. (3) Which messages are in transit on the line?</p>
+<svg viewBox="0 0 466 190" width="466" height="190" role="img" aria-label="Timeline of P1, P2, P3 with checkpoints and messages a, b, c, d, f, g; P1 crashes at time 18">
+  <line x1="50" y1="30" x2="446" y2="30" stroke="#94a0b4" stroke-width="2"/>
+  <text x="8" y="35" font-size="13" fill="#16202e">P1</text>
+  <rect x="45" y="22" width="10" height="16" fill="#1d4e89"/>
+  <text x="42" y="18" font-size="11" fill="#1d4e89">c1,0</text>
+  <rect x="89" y="22" width="10" height="16" fill="#1d4e89"/>
+  <text x="86" y="18" font-size="11" fill="#1d4e89">c1,1</text>
+  <rect x="221" y="22" width="10" height="16" fill="#1d4e89"/>
+  <text x="218" y="18" font-size="11" fill="#1d4e89">c1,2</text>
+  <rect x="353" y="22" width="10" height="16" fill="#1d4e89"/>
+  <text x="350" y="18" font-size="11" fill="#1d4e89">c1,3</text>
+  <line x1="50" y1="90" x2="446" y2="90" stroke="#94a0b4" stroke-width="2"/>
+  <text x="8" y="95" font-size="13" fill="#16202e">P2</text>
+  <rect x="45" y="82" width="10" height="16" fill="#1d4e89"/>
+  <text x="42" y="78" font-size="11" fill="#1d4e89">c2,0</text>
+  <rect x="133" y="82" width="10" height="16" fill="#1d4e89"/>
+  <text x="130" y="78" font-size="11" fill="#1d4e89">c2,1</text>
+  <rect x="287" y="82" width="10" height="16" fill="#1d4e89"/>
+  <text x="284" y="78" font-size="11" fill="#1d4e89">c2,2</text>
+  <rect x="419" y="82" width="10" height="16" fill="#1d4e89"/>
+  <text x="416" y="78" font-size="11" fill="#1d4e89">c2,3</text>
+  <line x1="50" y1="150" x2="446" y2="150" stroke="#94a0b4" stroke-width="2"/>
+  <text x="8" y="155" font-size="13" fill="#16202e">P3</text>
+  <rect x="45" y="142" width="10" height="16" fill="#1d4e89"/>
+  <text x="42" y="138" font-size="11" fill="#1d4e89">c3,0</text>
+  <rect x="111" y="142" width="10" height="16" fill="#1d4e89"/>
+  <text x="108" y="138" font-size="11" fill="#1d4e89">c3,1</text>
+  <rect x="265" y="142" width="10" height="16" fill="#1d4e89"/>
+  <text x="262" y="138" font-size="11" fill="#1d4e89">c3,2</text>
+  <rect x="397" y="142" width="10" height="16" fill="#1d4e89"/>
+  <text x="394" y="138" font-size="11" fill="#1d4e89">c3,3</text>
+  <line x1="380" y1="30" x2="402" y2="90" stroke="#d85a30" stroke-width="1.5"/>
+  <circle cx="402" cy="90" r="3.5" fill="#d85a30"/>
+  <text x="395" y="64" font-size="12" fill="#d85a30">a</text>
+  <line x1="314" y1="90" x2="358" y2="150" stroke="#d85a30" stroke-width="1.5"/>
+  <circle cx="358" cy="150" r="3.5" fill="#d85a30"/>
+  <text x="340" y="124" font-size="12" fill="#d85a30">b</text>
+  <line x1="292" y1="150" x2="314" y2="30" stroke="#d85a30" stroke-width="1.5"/>
+  <circle cx="314" cy="30" r="3.5" fill="#d85a30"/>
+  <text x="307" y="94" font-size="12" fill="#d85a30">c</text>
+  <line x1="248" y1="30" x2="270" y2="90" stroke="#d85a30" stroke-width="1.5"/>
+  <circle cx="270" cy="90" r="3.5" fill="#d85a30"/>
+  <text x="263" y="64" font-size="12" fill="#d85a30">d</text>
+  <line x1="160" y1="150" x2="270" y2="30" stroke="#d85a30" stroke-width="1.5"/>
+  <circle cx="270" cy="30" r="3.5" fill="#d85a30"/>
+  <text x="219" y="94" font-size="12" fill="#d85a30">f</text>
+  <line x1="116" y1="90" x2="226" y2="150" stroke="#d85a30" stroke-width="1.5"/>
+  <circle cx="226" cy="150" r="3.5" fill="#d85a30"/>
+  <text x="175" y="124" font-size="12" fill="#d85a30">g</text>
+  <text x="440" y="36" font-size="18" fill="#d85a30">✕</text>
+</svg>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p><b>When:</b> with <b>independent (uncoordinated) checkpointing</b>, after a failure, to find the most recent consistent set of checkpoints (the recovery line).</p>
-        <p><b>Data collection:</b></p>
-        <ul>
-          <li>Each process numbers its checkpoint intervals: I<sub>i,x</sub> lies between c<sub>i,x−1</sub> and c<sub>i,x</sub>.</li>
-          <li>Each message piggybacks the sender's current interval.</li>
-          <li>The receiver records the dependency I<sub>i,x</sub> → I<sub>j,y</sub> with its recovery information (on stable storage, with the checkpoint).</li>
-          <li>After a failure, the recovering process broadcasts a dependency request; all processes stop and send their dependency information.</li>
-          <li>The recovering process computes the recovery line and sends the rollback requests.</li>
-        </ul>
+        <p>(1) Interval I<sub>i,x</sub> is between c<sub>i,x−1</sub> and c<sub>i,x</sub>; I<sub>i,4</sub> is after the last checkpoint (it ends in the current or failure state, node c<sub>i,4</sub>).</p>
+        <div class="tbl"><table><tr><th>Msg</th><th>Dependency</th><th>Graph edge</th></tr>
+          <tr><td>a</td><td>I<sub>1,4</sub> → I<sub>2,3</sub></td><td>c<sub>1,4</sub> → c<sub>2,3</sub></td></tr>
+          <tr><td>b</td><td>I<sub>2,3</sub> → I<sub>3,3</sub></td><td>c<sub>2,3</sub> → c<sub>3,3</sub></td></tr>
+          <tr><td>c</td><td>I<sub>3,3</sub> → I<sub>1,3</sub></td><td>c<sub>3,3</sub> → c<sub>1,3</sub></td></tr>
+          <tr><td>d</td><td>I<sub>1,3</sub> → I<sub>2,2</sub></td><td>c<sub>1,3</sub> → c<sub>2,2</sub></td></tr>
+          <tr><td>f</td><td>I<sub>3,2</sub> → I<sub>1,3</sub></td><td>c<sub>3,2</sub> → c<sub>1,3</sub></td></tr>
+          <tr><td>g</td><td>I<sub>2,1</sub> → I<sub>3,2</sub></td><td>c<sub>2,1</sub> → c<sub>3,2</sub></td></tr></table></div>
+        <p>(2) Add the edges c<sub>i,x</sub> → c<sub>i,x+1</sub> on each process. Mark the failure state c<sub>1,4</sub>. Follow the edges: a marks c<sub>2,3</sub> (and c<sub>2,4</sub>); b marks c<sub>3,3</sub> (and c<sub>3,4</sub>); c marks c<sub>1,3</sub>; d marks c<sub>2,2</sub>. From c<sub>2,2</sub> no message edge leaves (P2 sent nothing in I<sub>2,2</sub>). c<sub>3,2</sub> is not reached, so f marks nothing.</p>
+        <p>Marked: c<sub>1,3</sub>, c<sub>1,4</sub>, c<sub>2,2</sub>, c<sub>2,3</sub>, c<sub>2,4</sub>, c<sub>3,3</sub>, c<sub>3,4</sub>. Recovery line: <b>c<sub>1,2</sub> (8), c<sub>2,1</sub> (4), c<sub>3,2</sub> (10)</b>.</p>
+        <p>(3) <b>f</b> is in transit: sent at 5, before c<sub>3,2</sub>; received at 10, after c<sub>1,2</sub>. It must be replayed (or resent). g is sent and received before the line. a, b, c, d are undone on both sides.</p>
       </div>
-      <div class="why"><h4>Why</h4><p>Independent checkpoints are cheap to take but expensive to use: you need this extra bookkeeping on every message, you may need a domino rollback, and some checkpoints are useless. That is why coordinated checkpointing is preferred.</p></div>
+      <div class="why"><h4>Why</h4><p>This is a small domino effect. P1 only lost the work after c<sub>1,3</sub>, but message a forced P2 back, b forced P3 back, c forced P1 behind its own last checkpoint, and d forced P2 back once more. Each undone send makes the matching receive an orphan, so the receiver must undo it too.</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>Check your line with the cut rule: no message may be received before the line and sent after it. Here: d is sent at 9 (after c<sub>1,2</sub> = 8) and received at 10 (after c<sub>2,1</sub> = 4): not an orphan. Good.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="f-k3">
+    <div class="q-head"><span class="qid">Q35</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Same timeline as the previous question. For each cut, say if it is consistent, and list the orphan messages (received before the cut, sent after it) and the in-transit messages (sent before the cut, received after it). (A) c<sub>1,3</sub>, c<sub>2,2</sub>, c<sub>3,3</sub>. (B) c<sub>1,2</sub>, c<sub>2,2</sub>, c<sub>3,2</sub>. (C) c<sub>1,2</sub>, c<sub>2,1</sub>, c<sub>3,2</sub>.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>Cut</th><th>Orphans</th><th>In transit</th><th>Consistent?</th></tr>
+          <tr><td>A (14, 11, 16)</td><td>b (sent 12 &gt; 11, received 14 &lt; 16)</td><td>none</td><td>No</td></tr>
+          <tr><td>B (8, 11, 10)</td><td>d (sent 9 &gt; 8, received 10 &lt; 11)</td><td>f</td><td>No</td></tr>
+          <tr><td>C (8, 4, 10)</td><td>none</td><td>f</td><td>Yes: the recovery line</td></tr></table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>An orphan message means "received but never sent" in the restored state: impossible in a real run, so the cut is inconsistent. An in-transit message is fine: it only says that the channel holds a message, and logging or the sender can replay it.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="f-k4">
+    <div class="q-head"><span class="qid">Q36</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Two processes, initial checkpoints c<sub>1,0</sub>, c<sub>2,0</sub> at 0. P1: c<sub>1,1</sub> = 4, c<sub>1,2</sub> = 14. P2: c<sub>2,1</sub> = 8, c<sub>2,2</sub> = 18. Messages: m1: P2 19 → P1 20; m2: P1 15 → P2 16; m3: P2 9 → P1 10; m4: P1 5 → P2 6; m5: P2 1 → P1 2. P2 crashes at 22. Compute the recovery line with the checkpoint-dependency graph. What happens if m5 is not sent?</p>
+<svg viewBox="0 0 554 130" width="554" height="130" role="img" aria-label="Timeline of P1 and P2 with checkpoints and messages m1 to m5; P2 crashes at time 22">
+  <line x1="50" y1="30" x2="534" y2="30" stroke="#94a0b4" stroke-width="2"/>
+  <text x="8" y="35" font-size="13" fill="#16202e">P1</text>
+  <rect x="45" y="22" width="10" height="16" fill="#1d4e89"/>
+  <text x="42" y="18" font-size="11" fill="#1d4e89">c1,0</text>
+  <rect x="133" y="22" width="10" height="16" fill="#1d4e89"/>
+  <text x="130" y="18" font-size="11" fill="#1d4e89">c1,1</text>
+  <rect x="353" y="22" width="10" height="16" fill="#1d4e89"/>
+  <text x="350" y="18" font-size="11" fill="#1d4e89">c1,2</text>
+  <line x1="50" y1="90" x2="534" y2="90" stroke="#94a0b4" stroke-width="2"/>
+  <text x="8" y="95" font-size="13" fill="#16202e">P2</text>
+  <rect x="45" y="82" width="10" height="16" fill="#1d4e89"/>
+  <text x="42" y="78" font-size="11" fill="#1d4e89">c2,0</text>
+  <rect x="221" y="82" width="10" height="16" fill="#1d4e89"/>
+  <text x="218" y="78" font-size="11" fill="#1d4e89">c2,1</text>
+  <rect x="441" y="82" width="10" height="16" fill="#1d4e89"/>
+  <text x="438" y="78" font-size="11" fill="#1d4e89">c2,2</text>
+  <line x1="468" y1="90" x2="490" y2="30" stroke="#d85a30" stroke-width="1.5"/>
+  <circle cx="490" cy="30" r="3.5" fill="#d85a30"/>
+  <text x="483" y="64" font-size="12" fill="#d85a30">m1</text>
+  <line x1="380" y1="30" x2="402" y2="90" stroke="#d85a30" stroke-width="1.5"/>
+  <circle cx="402" cy="90" r="3.5" fill="#d85a30"/>
+  <text x="395" y="64" font-size="12" fill="#d85a30">m2</text>
+  <line x1="248" y1="90" x2="270" y2="30" stroke="#d85a30" stroke-width="1.5"/>
+  <circle cx="270" cy="30" r="3.5" fill="#d85a30"/>
+  <text x="263" y="64" font-size="12" fill="#d85a30">m3</text>
+  <line x1="160" y1="30" x2="182" y2="90" stroke="#d85a30" stroke-width="1.5"/>
+  <circle cx="182" cy="90" r="3.5" fill="#d85a30"/>
+  <text x="175" y="64" font-size="12" fill="#d85a30">m4</text>
+  <line x1="72" y1="90" x2="94" y2="30" stroke="#d85a30" stroke-width="1.5"/>
+  <circle cx="94" cy="30" r="3.5" fill="#d85a30"/>
+  <text x="87" y="64" font-size="12" fill="#d85a30">m5</text>
+  <text x="528" y="96" font-size="18" fill="#d85a30">✕</text>
+</svg>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Edges from the checkpoint that starts the sending interval to the checkpoint that ends the receiving interval (c<sub>i,3</sub> = current state of a process with 2 checkpoints):</p>
+        <p>m1: c<sub>2,2</sub> → c<sub>1,3</sub>; m2: c<sub>1,2</sub> → c<sub>2,2</sub>; m3: c<sub>2,1</sub> → c<sub>1,2</sub>; m4: c<sub>1,1</sub> → c<sub>2,1</sub>; m5: c<sub>2,0</sub> → c<sub>1,1</sub>. Plus c<sub>i,x</sub> → c<sub>i,x+1</sub>.</p>
+        <ol>
+          <li>Start: {c<sub>1,3</sub> (P1 state), c<sub>2,2</sub> (last checkpoint of P2)}. c<sub>2,2</sub> → c<sub>1,3</sub>: replace with c<sub>1,2</sub>.</li>
+          <li>{c<sub>1,2</sub>, c<sub>2,2</sub>}: c<sub>1,2</sub> → c<sub>2,2</sub>: replace with c<sub>2,1</sub>.</li>
+          <li>{c<sub>1,2</sub>, c<sub>2,1</sub>}: c<sub>2,1</sub> → c<sub>1,2</sub>: replace with c<sub>1,1</sub>.</li>
+          <li>{c<sub>1,1</sub>, c<sub>2,1</sub>}: c<sub>1,1</sub> → c<sub>2,1</sub>: replace with c<sub>2,0</sub>.</li>
+          <li>{c<sub>1,1</sub>, c<sub>2,0</sub>}: c<sub>2,0</sub> → c<sub>1,1</sub>: replace with c<sub>1,0</sub>.</li>
+          <li>{c<sub>1,0</sub>, c<sub>2,0</sub>}: no dependency. Stop.</li>
+        </ol>
+        <p>Recovery line: <b>c<sub>1,0</sub>, c<sub>2,0</sub></b>, the initial states. All checkpoints were useless: a complete <b>domino effect</b>.</p>
+        <p>Without m5: the procedure stops at step 5 with <b>c<sub>1,1</sub>, c<sub>2,0</sub></b>.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Each message crosses a checkpoint of the other process in the "wrong" direction: it is sent after a checkpoint of the sender and received before the next checkpoint of the receiver. This zigzag pattern makes every checkpoint pair inconsistent. Coordinated or communication-induced checkpointing exists to break exactly this pattern.</p></div>
     </div>
   </article>
 
   <article class="q" data-type="compare" data-id="f-c3">
-    <div class="q-head"><span class="qid">Q11</span><span class="tag compare">Compare</span></div>
+    <div class="q-head"><span class="qid">Q37</span><span class="tag compare">Compare</span></div>
     <p class="prompt">Compare independent, coordinated (blocking and snapshot-based), incremental and communication-induced checkpointing.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
         <ul>
-          <li><b>Independent:</b> each process checkpoints alone. Cheap, but domino effect, useless checkpoints, dependency tracking.</li>
-          <li><b>Coordinated, blocking:</b> the coordinator sends CHKP-REQ; each process takes a checkpoint, queues outgoing application messages, and acks; the coordinator sends CHKP-DONE. No useless checkpoints; processes block during the protocol.</li>
-          <li><b>Incremental:</b> ask a checkpoint only from processes that depend on the coordinator's recovery (they received messages causally dependent on one sent by the coordinator after its last checkpoint).</li>
+          <li><b>Independent:</b> each process checkpoints alone. Cheap, but domino effect, useless checkpoints, dependency tracking on every message.</li>
+          <li><b>Coordinated, blocking:</b> the coordinator sends CHKP-REQ; each receiver takes a checkpoint, queues outgoing application messages, and sends an ACK; when all are done the coordinator sends CHKP-DONE. No useless checkpoints; processes block during the protocol.</li>
+          <li><b>Incremental:</b> request a checkpoint only from processes that depend on the recovery of the coordinator: those that received a message causally dependent (directly or indirectly) on one sent by the coordinator after its last checkpoint.</li>
           <li><b>Coordinated with a global snapshot</b> (Chandy–Lamport): processes are not blocked; the algorithm is more complex.</li>
-          <li><b>Communication-induced:</b> independent checkpoints, plus information piggybacked on messages that forces a process to take an extra checkpoint when needed to avoid the domino effect.</li>
+          <li><b>Communication-induced:</b> independent checkpoints, plus information piggybacked on messages that tells a process when it must take an extra checkpoint, to avoid the domino effect.</li>
         </ul>
       </div>
-      <div class="why"><h4>Why</h4><p>The trade-off is coordination cost at checkpoint time vs complexity and lost work at recovery time.</p></div>
+      <div class="why"><h4>Why</h4><p>The trade-off is coordination cost at checkpoint time against complexity and lost work at recovery time.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="f-k5">
+    <div class="q-head"><span class="qid">Q38</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">(a) In blocking coordinated checkpointing, P2 receives CHKP-REQ, takes its checkpoint, and then does not queue its outgoing messages: it sends m to P3 at once. P3 receives m before CHKP-REQ. What goes wrong? (b) Incremental snapshot. Since its last checkpoint, coordinator P1 sent x to P2. Then P2 sent y to P3. P4 sent z to P1. P5 sent w to P3 before P3 received y, and P5 received nothing. Which processes must take a checkpoint?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>(a) m is sent after P2's checkpoint and received before P3's checkpoint. It is an <b>orphan</b> message: the cut {P2's checkpoint, P3's checkpoint} is inconsistent. Queuing outgoing messages until CHKP-DONE prevents this.</p>
+        <p>(b) <b>P1, P2, P3.</b> P2 received x from the coordinator; P3 received y, which causally depends on x. P4 only sent to P1: it does not depend on P1. P5 only sent: it does not depend on P1.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Dependency flows with received messages, not with sent messages. A process that only sent to the coordinator does not need to roll back when the coordinator rolls back; its message becomes an in-transit message, which can be replayed.</p></div>
     </div>
   </article>
 
   <article class="q" data-type="compare" data-id="f-c4">
-    <div class="q-head"><span class="qid">Q12</span><span class="tag compare">Compare</span></div>
-    <p class="prompt">Describe message logging. Define stable message, DEP(m), COPY(m) and orphan process. Compare pessimistic and optimistic logging.</p>
+    <div class="q-head"><span class="qid">Q39</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">Describe message logging. Define piecewise deterministic, stable message, DEP(m), COPY(m) and orphan process. Compare pessimistic and optimistic logging.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p>Start from a checkpoint and replay logged messages. It works if the system is <b>piecewise deterministic</b>: execution between two receipts is deterministic.</p>
+        <p>Start from a checkpoint and replay the logged messages. Each message header contains the information to replay it. It works if the system is <b>piecewise deterministic</b>: execution proceeds deterministically between the receipt of two messages.</p>
         <ul>
           <li><b>Stable</b> message: written to stable storage; it can no longer be lost.</li>
-          <li><b>DEP(m):</b> processes to which m, or a message that depends on m, was delivered.</li>
-          <li><b>COPY(m):</b> processes that hold a copy of m, not yet in stable storage.</li>
+          <li><b>DEP(m):</b> processes to which m, or a message m' that depends on m, has been delivered.</li>
+          <li><b>COPY(m):</b> processes that have a copy of m, not yet in stable storage; they could hand it over to replay it.</li>
           <li><b>Orphan:</b> a surviving process Q in DEP(m) when every process in COPY(m) has crashed. m can never be replayed, but Q depends on it.</li>
         </ul>
-        <p>To avoid orphans: every process in DEP(m) must also be in COPY(m).</p>
-        <p><b>Pessimistic:</b> an unstable message is delivered to at most one process, and the receiver sends nothing until it writes m to stable storage. No orphans ever; slower. (A variant logs at the sender.)</p>
-        <p><b>Optimistic:</b> log asynchronously, hoping it finishes before a crash. If COPY(m) all crash, roll back DEP(m) until they no longer depend on m. Faster in normal operation; complex recovery.</p>
-        <p>Combining coordinated checkpointing with logging gives the best performance.</p>
+        <p>To avoid orphans: every process in DEP(m) must also be in COPY(m); a process that becomes dependent on m keeps a copy of m.</p>
+        <p><b>Pessimistic:</b> an unstable message is delivered to at most one process; the receiver is in COPY(m), and it sends no other message until it writes m to stable storage. No orphans ever; slower. A variant logs messages at the sender.</p>
+        <p><b>Optimistic:</b> log asynchronously, hoping it finishes before a crash. If all of COPY(m) crash, roll back DEP(m) until they no longer depend on m (like uncoordinated checkpointing). Faster in normal operation; complex recovery.</p>
+        <p>Logging was designed for uncoordinated checkpointing, but coordinated checkpointing with logging gives better performance.</p>
       </div>
       <div class="why"><h4>Why</h4><p>The same trade-off as pessimistic vs optimistic concurrency control: pay always to prevent the problem, or pay only when it happens.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="f-k6">
+    <div class="q-head"><span class="qid">Q40</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">P1 sends m to P2 and keeps a copy in memory. m is not yet on stable storage. P2 delivers m, then sends m' to P3; P3 delivers m'. (a) Give DEP(m) and COPY(m). (b) P1 and P2 crash. Is any process an orphan? (c) Only P2 crashes. Is any process an orphan? (d) What would pessimistic logging change? What does optimistic logging do in case (b)?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>DEP(m) = {P2, P3} (P3 got m', which depends on m). COPY(m) = {P1, P2}.</li>
+          <li>All of COPY(m) crashed, and P3 survives in DEP(m): <b>P3 is an orphan</b>. m can never be replayed.</li>
+          <li>No orphan: P1 still has m, so P2 can recover from its checkpoint and replay m.</li>
+          <li>Pessimistic: P2 must write m to stable storage before it sends m'. Then m is stable before anyone else depends on it, and no orphan can appear. Optimistic: in case (b) P3 is rolled back to a state before it delivered m', so that it is no longer in DEP(m).</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>An orphan is a process whose state depends on something that nobody can rebuild. Pessimistic logging keeps the rule "if you depend on m, m is safe" at every step. P3 is the trap: it never received m, but it depends on m through m'.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="f-k7">
+    <div class="q-head"><span class="qid">Q41</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">A server recovers with checkpoint + message logging. Between two messages, it reads the local clock to timestamp records and calls <code>rand()</code> to choose a worker thread. After a crash, the replayed state differs from the lost state. Why? How do you fix it?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Logging assumes a <b>piecewise deterministic</b> system: the execution between two receipts depends only on the state and on the received message. Reading the clock and calling <code>rand()</code> (and thread scheduling) are non-deterministic events. During replay they give other values, so the process reaches another state, and the messages it sent before the crash may no longer match its new state.</p>
+        <p><b>Fix:</b> treat each non-deterministic event as an input and log it like a message (the clock value, the random seed or the chosen value). During replay, read the values from the log. Alternatively, remove the non-determinism (seed the generator from the checkpointed state, use logical timestamps).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Replay rebuilds a state only if the same inputs give the same outputs. Every hidden input breaks that promise, so it must become a logged input.</p></div>
     </div>
   </article>
 </section>
@@ -379,7 +983,7 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
 
 <script>
 (function(){
-  const KEY = "ds-faulttol-marks-v1";
+  const KEY = "ds-faulttol-marks-v2";
   let marks = {};
   try { marks = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e) { marks = {}; }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(marks)); } catch(e) {} };

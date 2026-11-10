@@ -111,7 +111,7 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
   <a class="eyebrow" href="/courses.html?c=distributed-systems" style="text-decoration:none">← Distributed Systems notes</a>
   <div class="eyebrow">Distributed Systems · Prof. Cugola · Chapter 05</div>
   <h1>Synchronization</h1>
-  <p class="lede">Exam drill for the synchronization chapter: physical clocks, logical clocks, mutual exclusion, election, global state, distributed transactions and deadlocks. Answer on paper first, then open the model answer.</p>
+  <p class="lede">Exam drill for the synchronization chapter: physical clocks, logical clocks, mutual exclusion, leader election, global state, termination detection, distributed transactions and deadlocks. Answer on paper first, then open the model answer.</p>
 </header>
 <div class="toolbar" role="toolbar" aria-label="Filter and controls">
   <button class="chip" data-filter="all" aria-pressed="true">All</button>
@@ -129,45 +129,149 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
 
 <div class="exam-map">
   <h2>How the exam asks about this chapter</h2>
-  <p>This is the most tested chapter. Almost every exam has the <b>distributed snapshot exercise</b> (question 3) and one open question (question 2 or 4). Real examples:</p>
+  <p>This is the most tested chapter. Almost every exam has the <b>distributed snapshot exercise</b> (question 3) and one open question (question 2 or 4). Real examples from your past exams:</p>
   <ul>
-    <li>Distributed snapshot on a figure of processes A–F: "show the state captured by every node". <span class="date">18 Nov 2023</span> <span class="date">18 Jun 2024</span> <span class="date">12 Jul 2024</span> and most exams since 2013</li>
-    <li>"Describe how scalar clocks can be used to implement totally ordered multicast. Compare with a centralized sequencer: traffic and assumptions." <span class="date">18 Nov 2023</span> <span class="date">12 Jul 2024</span> <span class="date">13 Jul 2015</span></li>
-    <li>"Describe mutual exclusion and how to solve it with scalar clocks. Which properties? Which assumptions?" <span class="date">18 Jun 2024</span> <span class="date">19 Feb 2013</span> · compare all techniques <span class="date">25 Feb 2015</span></li>
-    <li>"Describe and compare the approaches to synchronize clocks." <span class="date">14 Feb 2024</span> <span class="date">6 Sep 2024</span> · with an earthquake-sensor scenario <span class="date">14 Feb 2024</span></li>
+    <li>"Consider the system in figure, which is running a distributed snapshot… Show the state captured by every node (local state and messages recorded for each link)." <span class="date">18 Jun 2024</span> <span class="date">12 Jul 2024</span> · with a "spurious" message to find <span class="date">18 Nov 2023</span> · older figures with speed assumptions ("channels exiting from B are much faster") <span class="date">1 Feb 2013</span> <span class="date">27 Jun 2013</span> <span class="date">5 Sep 2013</span> <span class="date">13 Feb 2015</span> <span class="date">25 Feb 2015</span> <span class="date">23 Sep 2015</span></li>
+    <li>"Describe how scalar clocks can be used to implement a totally ordered multicast. Clarify the assumptions." <span class="date">12 Jul 2024</span> <span class="date">13 Jul 2015</span> <span class="date">3 Dec 2014</span> <span class="date">19 Sep 2013</span> · plus a comparison with a centralized server (traffic, assumptions) <span class="date">18 Nov 2023</span></li>
+    <li>"Describe mutual exclusion and how to solve it with scalar clocks. Which properties? Which assumptions?" <span class="date">18 Jun 2024</span> <span class="date">19 Feb 2013</span> · "Describe and compare the techniques to guarantee mutual exclusion" <span class="date">25 Feb 2015</span></li>
+    <li>"Describe and compare the approaches to synchronize clocks in a distributed system." <span class="date">14 Feb 2024</span> <span class="date">6 Sep 2024</span> <span class="date">13 Feb 2015</span> <span class="date">23 Sep 2015</span> · with an earthquake-sensor scenario <span class="date">14 Feb 2024</span></li>
     <li>"Describe pessimistic timestamp ordering… few requests and a large dataset: pessimistic or optimistic?" <span class="date">18 Nov 2023</span></li>
-    <li>"Write the vector clock values for the figure, then describe an algorithm that uses vector clocks." <span class="date">9 Sep 2015</span></li>
+    <li>"Write the vector clock values for the situation in figure, then describe an algorithm that uses vector clocks." <span class="date">9 Sep 2015</span></li>
   </ul>
 </div>
 
+<!-- ===== §1 PHYSICAL CLOCKS ===== -->
 <section class="topic">
   <div class="topic-head"><span class="num">§1</span><h2>Physical clocks</h2></div>
-  <div class="core"><p><b>Core idea.</b> Computer clocks are timers that drift (ρ ≈ 10<sup>−6</sup> s/s). Two clocks drifting in opposite directions grow apart by 2ρΔt, so to keep the skew below δ you must resynchronize every δ/2ρ seconds. Goals: <b>accuracy</b> (close to UTC) or <b>agreement</b> (close to each other). Time must never run backwards.</p></div>
+  <div class="core"><p><b>Core idea.</b> Computer clocks are timers that drift (ρ ≈ 10<sup>−6</sup> s/s). Two clocks drifting in opposite directions grow apart by 2ρΔt, so to keep the skew below δ you must resynchronize every δ/2ρ seconds. The goal is <b>accuracy</b> (close to UTC) or <b>agreement</b> (close to each other). Time must never run backwards.</p></div>
+
+  <article class="q" data-type="describe" data-id="s-p4">
+    <div class="q-head"><span class="qid">Q1</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">What are TAI and UTC? What is a leap second, and how is UTC disseminated? Why do the slides say that "computer clocks are not clocks"?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><b>Astronomical time</b> (up to 1940): 1 s = 1/86400 of a mean solar day. The Earth slows down, so this second is not constant.</li>
+          <li><b>TAI</b> (International Atomic Time, since 1948): 1 s = 9,192,631,770 transitions of a Cesium-133 atom. About 50 laboratories send their values to Paris, which averages them.</li>
+          <li><b>UTC</b> (Coordinated Universal Time) follows TAI, but adds a <b>leap second</b> when the skew between TAI and the solar day becomes greater than 800 ms. About 30 leap seconds were added since 1958. GMT is only astronomical.</li>
+          <li><b>Dissemination:</b> radio stations (DCF77 in Europe, WWV in the US), GPS and GEOS satellites.</li>
+        </ul>
+        <p>A computer "clock" is a <b>timer</b>: a quartz crystal generates interrupts, and the OS counts them. The crystal frequency is not exact, so the counter drifts from real time.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Two problems exist. The first: what is the "true" time (TAI vs UTC). The second: how a machine stays close to it (drift and synchronization). The rest of the section is about the second problem. The UTC sources above are the "external, accurate time" that accuracy-based algorithms use.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="s-p3">
+    <div class="q-head"><span class="qid">Q2</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Quartz clocks drift at most ρ = 10<sup>−6</sup> s/s. You need a maximum skew δ = 2 ms between any two machines. How often must you resynchronize? How much does one clock drift in one day? Why does Cristian's algorithm not set the clock back directly?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Two clocks drifting in opposite directions diverge by 2ρΔt. Require 2ρΔt ≤ δ: Δt ≤ δ/(2ρ) = 0.002 / (2 × 10<sup>−6</sup>) = <b>1000 s</b> (about 17 minutes).</p>
+        <p>One day: 10<sup>−6</sup> × 86400 s = 86.4 ms. So 1 s of drift takes about 11.6 days, as the slides say.</p>
+        <p>Setting a clock back makes time run backwards. A file created later could get an older timestamp (the <code>make</code> problem). Instead, slow down the clock: e.g. advance it 9 ms instead of 10 ms per tick until it is correct. Monotonicity is preserved.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The factor 2 is the trap. The bound δ is on the difference between two clocks, and each one can drift ρ in a different direction. With "accuracy" against a perfect UTC source, only one clock drifts, and the interval would be δ/ρ.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="s-p5">
+    <div class="q-head"><span class="qid">Q3</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Explain how a GPS receiver computes both its position and its clock error. How many satellites does it need, and why? If the receiver ignored a clock error Δ<sub>r</sub> = 1 μs, how large would the error on each measured distance be?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Satellite i sends its position and timestamp T<sub>i</sub> (atomic clock). The receiver gets it at local time T<sub>r</sub>. The real time is T<sub>now</sub> = T<sub>r</sub> − Δ<sub>r</sub>. The measured delay is Δ<sub>i</sub> = T<sub>r</sub> − T<sub>i</sub>, so the measured distance is</p>
+        <p>c·Δ<sub>i</sub> = c·(T<sub>now</sub> − T<sub>i</sub>) + c·Δ<sub>r</sub></p>
+        <p>This must equal the real distance √((x<sub>i</sub> − x<sub>r</sub>)² + (y<sub>i</sub> − y<sub>r</sub>)² + (z<sub>i</sub> − z<sub>r</sub>)²). The unknowns are x<sub>r</sub>, y<sub>r</sub>, z<sub>r</sub> and Δ<sub>r</sub>: four unknowns. So the receiver needs <b>4 satellites</b> (4 equations). The solution gives the position and the clock skew Δ<sub>r</sub>.</p>
+        <p>Error: c × 1 μs = 3 × 10<sup>8</sup> m/s × 10<sup>−6</sup> s = <b>300 m</b> on each distance.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The 300 m shows why the clock error cannot be ignored: it is the fourth unknown, not a detail. Time comes "for free" as a side effect of positioning. Real systems are harder (the Earth is not a sphere, satellite clocks are not perfectly in sync, signal speed is not constant), but cheap receivers still reach a few meters and a few tens of nanoseconds.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="s-p6">
+    <div class="q-head"><span class="qid">Q4</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Cristian's algorithm. A client sends a request at local time T<sub>0</sub> = 10:00:00.000 and gets the reply at T<sub>1</sub> = 10:00:00.020. The server spent I = 4 ms to handle the request, and its reply says C<sub>UTC</sub> = 09:59:59.900. Which time does the client compute? The clock ticks every 10 ms. How does the client correct its clock?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol>
+          <li>T<sub>round</sub> = T<sub>1</sub> − T<sub>0</sub> − I = 20 − 0 − 4 = 16 ms.</li>
+          <li>New time = C<sub>UTC</sub> + T<sub>round</sub>/2 = 09:59:59.900 + 8 ms = <b>09:59:59.908</b>.</li>
+          <li>The local clock shows 10:00:00.020. It is <b>112 ms ahead</b>.</li>
+          <li>The client must not jump back. It advances the clock by 9 ms instead of 10 ms on each tick. It recovers 1 ms per tick, so it needs 112 ticks (1.12 s of real time).</li>
+        </ol>
+        <p>To reduce the error, the client repeats the measurement several times and averages the results.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>T<sub>round</sub>/2 assumes that the request and the reply take the same time. If the network is not symmetric, the error can be up to T<sub>round</sub>/2. The "major" problem in the slides is not the delay: it is time running backwards. A late clock can jump forward; an early clock must slow down.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="s-p7">
+    <div class="q-head"><span class="qid">Q5</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Berkeley algorithm. The time server shows 3:00. It polls two machines, which answer 2:50 and 3:25 (ignore transmission delays). Which messages does the server send back? Does the result agree with UTC?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol>
+          <li>The server computes the differences: server 0, machine 1 −10 min, machine 2 +25 min.</li>
+          <li>Average: (0 − 10 + 25)/3 = <b>+5 min</b>. The target time is 3:05.</li>
+          <li>The server sends each machine its <b>adjustment</b>, not the time: server +5, machine 1 <b>+15</b>, machine 2 <b>−20</b>.</li>
+          <li>Machine 2 must slow down its clock to absorb −20, because time must not run backwards.</li>
+        </ol>
+        <p>No relation with UTC. Berkeley gives <b>agreement</b> (all clocks equal), not accuracy. The server can be set by hand.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The server sends an adjustment and not an absolute time, because the adjustment does not age while the message travels. In Cristian the server is passive (clients ask). In Berkeley the server is <b>active</b>: it polls the clients.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="s-p8">
+    <div class="q-head"><span class="qid">Q6</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">NTP, procedure-call or symmetric mode. A sends a message at T<sub>i−3</sub> = 100 (A's clock). B receives it at T<sub>i−2</sub> = 130 and replies at T<sub>i−1</sub> = 135 (B's clock). A receives the reply at T<sub>i</sub> = 125 (A's clock). Compute the offset estimate o<sub>i</sub>, the delay d<sub>i</sub>, and the interval for the true offset o of B relative to A. Then describe the strata and the three modes of NTP.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li>d<sub>i</sub> = T<sub>i−2</sub> − T<sub>i−3</sub> + T<sub>i</sub> − T<sub>i−1</sub> = 30 + (−10) = <b>20</b>.</li>
+          <li>o<sub>i</sub> = (T<sub>i−2</sub> − T<sub>i−3</sub> + T<sub>i−1</sub> − T<sub>i</sub>)/2 = (30 + 10)/2 = <b>20</b>.</li>
+          <li>o<sub>i</sub> − d<sub>i</sub>/2 ≤ o ≤ o<sub>i</sub> + d<sub>i</sub>/2, so <b>10 ≤ o ≤ 30</b>.</li>
+        </ul>
+        <p>Check: with t = t′ = 10 and o = 20, T<sub>i−2</sub> = 100 + 10 + 20 = 130 and T<sub>i</sub> = 135 + 10 − 20 = 125. The data are consistent.</p>
+        <p><b>Strata.</b> NTP is a hierarchy. Stratum-1 servers connect directly to a UTC source. Each lower stratum synchronizes with the stratum above; leaf servers run on user workstations. Connections and strata change over time. NTP runs on UDP. Accuracy: about 1 ms on a LAN, 1–50 ms on the Internet.</p>
+        <p><b>Modes.</b> Multicast (on a LAN, servers periodically multicast their time); procedure-call (like Cristian); symmetric (pairs of servers exchange messages, for the highest accuracy).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The formula comes from T<sub>i−2</sub> = T<sub>i−3</sub> + t + o and T<sub>i</sub> = T<sub>i−1</sub> + t′ − o. The unknown part is (t′ − t)/2, and it is at most d<sub>i</sub>/2 because t, t′ ≥ 0. So d<sub>i</sub> measures the quality of the estimate. NTP keeps several pairs and trusts the one with the smallest d<sub>i</sub>.</p></div>
+    </div>
+  </article>
 
   <article class="q" data-type="compare" data-id="s-p1">
-    <div class="q-head"><span class="qid">Q1</span><span class="tag compare">Compare</span><span class="seen">Exam 14 Feb 2024 · 6 Sep 2024 · 13 Feb 2015 · 23 Sep 2015</span></div>
+    <div class="q-head"><span class="qid">Q7</span><span class="tag compare">Compare</span><span class="seen">Exam 14 Feb 2024 · 6 Sep 2024 · 13 Feb 2015 · 23 Sep 2015</span></div>
     <p class="prompt">Describe and compare the various approaches to synchronize the clocks of the nodes of a distributed system.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
         <ul>
-          <li><b>GPS.</b> A receiver gets timestamps from 4 satellites with atomic clocks. Four equations (distance = c × (T<sub>now</sub> − T<sub>i</sub> + Δr)) give four unknowns: x, y, z and the clock deviation Δr. Accuracy: tens of nanoseconds. Needs a receiver with sky view.</li>
-          <li><b>Cristian.</b> A client asks a time server (with UTC) and sets T = C<sub>UTC</sub> + T<sub>round</sub>/2, where T<sub>round</sub> = T<sub>1</sub> − T<sub>0</sub> − I (I = server processing time). Average several measurements. Never move the clock backwards: slow it down gradually. Accuracy depends on the round-trip symmetry.</li>
-          <li><b>Berkeley.</b> The server is active: it polls all machines, averages their times, and sends each one the <b>adjustment</b>. It gives agreement, not accuracy (no UTC source needed).</li>
-          <li><b>NTP.</b> Internet scale, over UDP, hierarchical <b>strata</b> (stratum 1 = connected to UTC). Modes: multicast (LAN), procedure-call (like Cristian), symmetric. From a pair of messages it computes the offset estimate o<sub>i</sub> = (T<sub>i−2</sub> − T<sub>i−3</sub> + T<sub>i−1</sub> − T<sub>i</sub>)/2 and the delay d<sub>i</sub>; the true offset is in [o<sub>i</sub> − d<sub>i</sub>/2, o<sub>i</sub> + d<sub>i</sub>/2]. Accuracy: ~1 ms on a LAN, 1–50 ms on the Internet.</li>
+          <li><b>GPS.</b> A receiver gets timestamps from 4 satellites with atomic clocks. Four equations give four unknowns: x, y, z and the clock deviation Δ<sub>r</sub>. Accuracy: tens of nanoseconds. Needs a receiver with sky view.</li>
+          <li><b>Cristian.</b> A client asks a time server (with UTC) and sets T = C<sub>UTC</sub> + T<sub>round</sub>/2, where T<sub>round</sub> = T<sub>1</sub> − T<sub>0</sub> − I (I = server processing time). Average several measurements. Never move the clock backwards: slow it down gradually.</li>
+          <li><b>Berkeley.</b> The server is active: it polls all machines, averages their times, and sends each one the <b>adjustment</b>. It gives agreement, not accuracy.</li>
+          <li><b>NTP.</b> Internet scale, over UDP, hierarchical <b>strata</b> (stratum 1 = connected to UTC). Modes: multicast (LAN), procedure-call (like Cristian), symmetric. It computes the offset estimate o<sub>i</sub> = (T<sub>i−2</sub> − T<sub>i−3</sub> + T<sub>i−1</sub> − T<sub>i</sub>)/2 and the delay d<sub>i</sub>; the true offset is in [o<sub>i</sub> − d<sub>i</sub>/2, o<sub>i</sub> + d<sub>i</sub>/2].</li>
         </ul>
         <div class="tbl"><table><tr><th></th><th>Goal</th><th>Scale</th><th>Accuracy</th></tr>
           <tr><td>GPS</td><td>Accuracy</td><td>Global, needs hardware</td><td>~10–100 ns</td></tr>
-          <tr><td>Cristian</td><td>Accuracy</td><td>Small, one server</td><td>~RTT/2</td></tr>
+          <tr><td>Cristian</td><td>Accuracy</td><td>Small, one server</td><td>~T<sub>round</sub>/2</td></tr>
           <tr><td>Berkeley</td><td>Agreement</td><td>LAN</td><td>Internal only</td></tr>
-          <tr><td>NTP</td><td>Accuracy</td><td>Internet, hierarchical</td><td>1–50 ms</td></tr></table></div>
+          <tr><td>NTP</td><td>Accuracy</td><td>Internet, hierarchical</td><td>1 ms (LAN) – 50 ms (Internet)</td></tr></table></div>
       </div>
-      <div class="why"><h4>Why</h4><p>All message-based methods have the same limit: the unknown transmission delay. They estimate it as half the round trip, so the error is at most half the round trip. NTP improves this by filtering many samples and picking the one with the smallest delay. GPS avoids it, because satellites send from known positions and the receiver solves for its own clock error.</p></div>
+      <div class="why"><h4>Why</h4><p>All message-based methods have the same limit: the unknown transmission delay. They estimate it as half the round trip, so the error is at most half the round trip. NTP improves this with many samples and keeps the one with the smallest delay. GPS avoids the problem: satellites send from known positions, and the receiver solves for its own clock error.</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>Start with the two goals (accuracy vs agreement) and the resync interval δ/2ρ. Then give one paragraph per algorithm and end with the table. The grader looks for the formulas of Cristian and NTP.</p></div>
     </div>
   </article>
 
   <article class="q" data-type="scenario" data-id="s-p2">
-    <div class="q-head"><span class="qid">Q2</span><span class="tag scenario">Scenario</span><span class="seen">Exam 14 Feb 2024</span></div>
+    <div class="q-head"><span class="qid">Q8</span><span class="tag scenario">Scenario</span><span class="seen">Exam 14 Feb 2024</span></div>
     <p class="prompt">You correlate readings of geographically distributed vibration sensors to locate the origin of an earthquake with a precision below 1 km. Seismic waves travel at most at 10 km/s. Which clock synchronization approach would you use and why?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
@@ -175,62 +279,176 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
         <p>1 km at 10 km/s is 0.1 s = <b>100 ms</b>. The location comes from the differences of arrival times, so the clock error between any two sensors must be well below 100 ms (say ≤ 10 ms to keep a margin, since errors add up).</p>
         <ul>
           <li>NTP over the Internet gives 1–50 ms: borderline, and not guaranteed.</li>
-          <li>Berkeley gives only agreement inside a LAN; sensors are far apart.</li>
+          <li>Berkeley gives only agreement inside a LAN; the sensors are far apart.</li>
           <li><b>GPS</b> gives tens of nanoseconds everywhere, and the sensors are outdoors anyway. It is the right choice. NTP can be the fallback if a sensor loses the GPS signal.</li>
         </ul>
       </div>
       <div class="why"><h4>Why</h4><p>Always convert the requirement into a time bound first: distance precision ÷ speed = allowed clock error. Then compare the bound with the accuracy of each method. This turns an open question into a calculation.</p></div>
     </div>
   </article>
+</section>
 
-  <article class="q" data-type="exercise" data-id="s-p3">
-    <div class="q-head"><span class="qid">Q3</span><span class="tag exercise">Exercise</span></div>
-    <p class="prompt">Quartz clocks drift at most ρ = 10<sup>−6</sup> s/s. You need a maximum skew δ = 2 ms between any two machines. How often must you resynchronize? Why does Cristian's algorithm not set the clock back directly?</p>
+<!-- ===== §2 LOGICAL CLOCKS ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§2</span><h2>Logical clocks, ordered multicast, causal delivery</h2></div>
+  <div class="core"><p><b>Core idea.</b> Often you need only the <b>order</b> of events, not the real time. Happens-before (→): same process order, send → receive, transitive. Scalar clocks give e → e′ ⇒ L(e) &lt; L(e′), and process ids make the order total. Vector clocks give the equivalence e → e′ ⇔ V(e) &lt; V(e′), so they also detect concurrency.</p></div>
+  <a class="simbox" href="/exercises/distributed-systems/sim-clocks.html" target="_blank" rel="noopener"><b>Open the clocks simulator</b><span>Step through scalar and vector clocks and test causality between events.</span></a>
+
+  <article class="q" data-type="exercise" data-id="s-l5">
+    <div class="q-head"><span class="qid">Q9</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Define happens-before. Then use the slides' example: P1 has A (local) and B (send to P2); P2 has C (receive B's message) and D (send to P3); P3 has E (local) and F (receive D's message). (a) Which pairs of events are concurrent? (b) Give the scalar clock of every event. (c) Give the total order obtained with process ids.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p>Two clocks drifting in opposite directions diverge by 2ρΔt. Require 2ρΔt ≤ δ: Δt ≤ δ/(2ρ) = 0.002 / (2 × 10<sup>−6</sup>) = <b>1000 s</b> (about 17 minutes).</p>
-        <p>Setting a clock back makes time run backwards: a file created later could get an older timestamp (the <code>make</code> problem). Instead, slow down the clock: e.g. advance it 9 ms instead of 10 ms per tick until it is correct. Monotonicity is preserved.</p>
+        <p><b>Happens-before.</b> e → e′ if (1) e and e′ are in the same process and e comes first, or (2) e = send(m) and e′ = recv(m), or (3) by transitivity. If neither e → e′ nor e′ → e, then e ∥ e′ (concurrent).</p>
+        <p>(a) A → B → C → D → F and E → F. E is concurrent with A, B, C and D. All other pairs are ordered.</p>
+        <p>(b) Rule: increment before each event; on receipt L = max(ts, L) + 1.</p>
+        <div class="tbl"><table><tr><th>Event</th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th></tr>
+          <tr><td>L</td><td>1</td><td>2</td><td>3</td><td>4</td><td>1</td><td>5</td></tr>
+          <tr><td>L.id</td><td>1.1</td><td>2.1</td><td>3.2</td><td>4.2</td><td>1.3</td><td>5.3</td></tr></table></div>
+        <p>(c) Order by L, then by process id: <b>A (1.1), E (1.3), B (2.1), C (3.2), D (4.2), F (5.3)</b>.</p>
       </div>
-      <div class="why"><h4>Why</h4><p>The factor 2 is the trap: the bound is on the difference between two clocks, and each one can drift ρ in a different direction.</p></div>
+      <div class="why"><h4>Why</h4><p>Look at E and B: L(E) = 1 &lt; L(B) = 2, but E ∥ B. A smaller scalar clock does <b>not</b> mean "happened before". This is the reason for vector clocks. Also note that happens-before is <i>potential</i> causality: B → C even if C does not use B's data, and two events may be really related through a channel outside the messages (e.g. a phone call).</p></div>
     </div>
   </article>
-</section>
 
-<section class="topic">
-  <div class="topic-head"><span class="num">§2</span><h2>Logical clocks</h2></div>
-  <div class="core"><p><b>Core idea.</b> Often you need only the <b>order</b> of events, not the real time. Happens-before (→): same process order, send → receive, transitive. Scalar clocks give e → e′ ⇒ L(e) &lt; L(e′). Vector clocks give the equivalence: e → e′ ⇔ V(e) &lt; V(e′).</p></div>
-  <a class="simbox" href="/exercises/distributed-systems/sim-clocks.html" target="_blank" rel="noopener"><b>Open the clocks simulator</b><span>Step through scalar and vector clocks and test causality between events.</span></a>
+  <article class="q" data-type="exercise" data-id="s-l6">
+    <div class="q-head"><span class="qid">Q10</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Four processes exchange messages as in the figure (the events of each process, in local order, are listed below it). Give the Lamport scalar clock of every event and the value of each clock at the end.</p>
+    <svg viewBox="0 0 480 210" width="100%" role="img" aria-label="Space-time diagram of four processes">
+      <defs><marker id="arrS" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1d4e89"/></marker></defs>
+      <line x1="30" y1="30" x2="470" y2="30" stroke="#94a0b4" stroke-width="2"/>
+      <line x1="30" y1="80" x2="470" y2="80" stroke="#94a0b4" stroke-width="2"/>
+      <line x1="30" y1="130" x2="470" y2="130" stroke="#94a0b4" stroke-width="2"/>
+      <line x1="30" y1="180" x2="470" y2="180" stroke="#94a0b4" stroke-width="2"/>
+      <text x="4" y="34" font-size="12" fill="#16202e">P1</text>
+      <text x="4" y="84" font-size="12" fill="#16202e">P2</text>
+      <text x="4" y="134" font-size="12" fill="#16202e">P3</text>
+      <text x="4" y="184" font-size="12" fill="#16202e">P4</text>
+      <line x1="90" y1="30" x2="140" y2="80" stroke="#1d4e89" marker-end="url(#arrS)"/>
+      <line x1="190" y1="80" x2="230" y2="130" stroke="#1d4e89" marker-end="url(#arrS)"/>
+      <line x1="90" y1="180" x2="270" y2="130" stroke="#1d4e89" marker-end="url(#arrS)"/>
+      <line x1="300" y1="130" x2="330" y2="30" stroke="#1d4e89" marker-end="url(#arrS)"/>
+      <line x1="340" y1="130" x2="430" y2="80" stroke="#1d4e89" marker-end="url(#arrS)"/>
+      <line x1="380" y1="30" x2="430" y2="180" stroke="#1d4e89" marker-end="url(#arrS)"/>
+      <circle cx="40" cy="30" r="4" fill="#d85a30"/><text x="36" y="22" font-size="11" fill="#16202e">a</text>
+      <circle cx="90" cy="30" r="4" fill="#d85a30"/><text x="86" y="22" font-size="11" fill="#16202e">b</text>
+      <circle cx="330" cy="30" r="4" fill="#d85a30"/><text x="326" y="22" font-size="11" fill="#16202e">c</text>
+      <circle cx="380" cy="30" r="4" fill="#d85a30"/><text x="376" y="22" font-size="11" fill="#16202e">d</text>
+      <circle cx="140" cy="80" r="4" fill="#d85a30"/><text x="136" y="72" font-size="11" fill="#16202e">e</text>
+      <circle cx="190" cy="80" r="4" fill="#d85a30"/><text x="186" y="72" font-size="11" fill="#16202e">f</text>
+      <circle cx="240" cy="80" r="4" fill="#d85a30"/><text x="236" y="72" font-size="11" fill="#16202e">g</text>
+      <circle cx="430" cy="80" r="4" fill="#d85a30"/><text x="436" y="72" font-size="11" fill="#16202e">h</text>
+      <circle cx="40" cy="130" r="4" fill="#d85a30"/><text x="36" y="122" font-size="11" fill="#16202e">i</text>
+      <circle cx="230" cy="130" r="4" fill="#d85a30"/><text x="220" y="148" font-size="11" fill="#16202e">j</text>
+      <circle cx="270" cy="130" r="4" fill="#d85a30"/><text x="262" y="148" font-size="11" fill="#16202e">q</text>
+      <circle cx="300" cy="130" r="4" fill="#d85a30"/><text x="296" y="148" font-size="11" fill="#16202e">k</text>
+      <circle cx="340" cy="130" r="4" fill="#d85a30"/><text x="336" y="148" font-size="11" fill="#16202e">l</text>
+      <circle cx="40" cy="180" r="4" fill="#d85a30"/><text x="36" y="198" font-size="11" fill="#16202e">n</text>
+      <circle cx="90" cy="180" r="4" fill="#d85a30"/><text x="86" y="198" font-size="11" fill="#16202e">o</text>
+      <circle cx="430" cy="180" r="4" fill="#d85a30"/><text x="426" y="198" font-size="11" fill="#16202e">p</text>
+    </svg>
+    <ul>
+      <li>P1: a local; b send m1 to P2; c receive m3; d send m4 to P4.</li>
+      <li>P2: e receive m1; f send m2 to P3; g local; h receive m5.</li>
+      <li>P3: i local; j receive m2; q receive m6; k send m3 to P1; l send m5 to P2.</li>
+      <li>P4: n local; o send m6 to P3; p receive m4.</li>
+    </ul>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>Process</th><th>Events and L</th><th>Final L</th></tr>
+          <tr><td>P1</td><td>a 1, b 2 (m1 ts 2), c max(7,2)+1 = 8, d 9 (m4 ts 9)</td><td>9</td></tr>
+          <tr><td>P2</td><td>e max(2,0)+1 = 3, f 4 (m2 ts 4), g 5, h max(8,5)+1 = 9</td><td>9</td></tr>
+          <tr><td>P3</td><td>i 1, j max(4,1)+1 = 5, q max(2,5)+1 = 6, k 7 (m3 ts 7), l 8 (m5 ts 8)</td><td>8</td></tr>
+          <tr><td>P4</td><td>n 1, o 2 (m6 ts 2), p max(9,2)+1 = 10</td><td>10</td></tr></table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>Work in causal order, not left to right on one line: you cannot compute c before you know the timestamp of m3, which needs k, which needs j and q. A useful habit: write the timestamp on each arrow as soon as you compute the send event. Common trap: at q the message timestamp (2) is smaller than the local clock (5), so the clock just becomes 5 + 1.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="s-l8">
+    <div class="q-head"><span class="qid">Q11</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Same figure as the previous question. Give the vector clock of every event and of each process at the end. Then classify these pairs as causally related or concurrent: (b, i), (n, k), (g, l), (g, d). For which pair do scalar clocks mislead you?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>Process</th><th>Events and V</th></tr>
+          <tr><td>P1</td><td>a (1,0,0,0) · b (2,0,0,0) · c (3,2,4,2) · d (4,2,4,2)</td></tr>
+          <tr><td>P2</td><td>e (2,1,0,0) · f (2,2,0,0) · g (2,3,0,0) · h (2,4,5,2)</td></tr>
+          <tr><td>P3</td><td>i (0,0,1,0) · j (2,2,2,0) · q (2,2,3,2) · k (2,2,4,2) · l (2,2,5,2)</td></tr>
+          <tr><td>P4</td><td>n (0,0,0,1) · o (0,0,0,2) · p (4,2,4,3)</td></tr></table></div>
+        <p>Final: P1 (4,2,4,2), P2 (2,4,5,2), P3 (2,2,5,2), P4 (4,2,4,3).</p>
+        <ul>
+          <li>(b, i): (2,0,0,0) vs (0,0,1,0): neither ≤ → <b>concurrent</b>.</li>
+          <li>(n, k): (0,0,0,1) &lt; (2,2,4,2) → <b>n → k</b> (through m6).</li>
+          <li>(g, l): (2,3,0,0) vs (2,2,5,2): → <b>concurrent</b>.</li>
+          <li>(g, d): (2,3,0,0) vs (4,2,4,2): → <b>concurrent</b>.</li>
+        </ul>
+        <p>Scalar clocks give L(g) = 5 &lt; L(l) = 8 and L(g) = 5 &lt; L(d) = 9, but both pairs are concurrent. Only the vectors show it.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Rules: increment V<sub>i</sub>[i] on every local or send event; on receipt take the component-wise max with the timestamp, then increment V<sub>i</sub>[i]. V &lt; V′ means every component ≤ and at least one &lt;. To prove concurrency, find one component where the first vector is bigger and another where the second is bigger: for (g, l), g[2] = 3 &gt; 2 and l[3] = 5 &gt; 0.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="s-l3">
+    <div class="q-head"><span class="qid">Q12</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Three processes run a distributed algorithm. At the end their vector clocks are P1: (4, 5, 6), P2: (5, 6, 6), P3: (3, 2, 7). Is this possible? Why?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>No.</b> V<sub>i</sub>[i] is the number of events at P<sub>i</sub>, and V<sub>j</sub>[i] is the number of events of P<sub>i</sub> that P<sub>j</sub> knows. Nobody can know more events of P<sub>i</sub> than P<sub>i</sub> itself: V<sub>j</sub>[i] ≤ V<sub>i</sub>[i]. Here V<sub>2</sub>[1] = 5 &gt; V<sub>1</sub>[1] = 4. Impossible.</p>
+        <p>The other entries are fine: P1 knows 5 ≤ 6 events of P2 and 6 ≤ 7 events of P3; P3 knows 3 ≤ 4 and 2 ≤ 6; P2 knows 6 ≤ 7 events of P3.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Check the columns: in column i, the diagonal element must be the maximum. Information about P<sub>i</sub>'s events can only come from P<sub>i</sub>.</p></div>
+    </div>
+  </article>
 
   <article class="q" data-type="describe" data-id="s-l1">
-    <div class="q-head"><span class="qid">Q4</span><span class="tag describe">Describe</span><span class="seen">Exam 12 Jul 2024 · 13 Jul 2015 · 3 Dec 2014 · 19 Sep 2013</span></div>
+    <div class="q-head"><span class="qid">Q13</span><span class="tag describe">Describe</span><span class="seen">Exam 18 Nov 2023 · 12 Jul 2024 · 13 Jul 2015 · 3 Dec 2014 · 19 Sep 2013</span></div>
     <p class="prompt">Describe scalar clocks and how they can be used to implement a totally ordered multicast. Clarify the assumptions required for the protocol to work.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p><b>Scalar clocks (Lamport).</b> Each process keeps L<sub>i</sub> = 0. Increment it before each event; timestamp each message with L<sub>i</sub>; on receipt set L<sub>i</sub> = max(ts, L<sub>i</sub>) + 1. Ties are broken with the process id, which gives a total order (L.i).</p>
+        <p><b>Scalar clocks (Lamport).</b> Each process keeps L<sub>i</sub> = 0. Increment it before each event; timestamp each message with L<sub>i</sub>; on receipt set L<sub>i</sub> = max(ts, L<sub>i</sub>) + 1. Then e → e′ ⇒ L(e) &lt; L(e′). Ties are broken with the process id, which gives a total order (L.i).</p>
         <p><b>Totally ordered multicast.</b></p>
         <ol>
           <li>The sender multicasts the message, with its timestamp, to all members, itself included.</li>
-          <li>Each receiver puts the message in a local queue ordered by timestamp, and multicasts an <b>ack</b> (also timestamped) to all.</li>
-          <li>A process delivers the message at the head of its queue only when it has received the acks for it from all processes.</li>
+          <li>Each receiver puts the message in a local queue ordered by timestamp. It multicasts an <b>ack</b> (also timestamped) to all.</li>
+          <li>A process delivers the message at the head of its queue only when it has the acks for it from all processes.</li>
         </ol>
-        <p>All queues eventually contain the same messages in the same timestamp order, so all processes deliver in the same order.</p>
+        <p>Eventually all queues contain the same messages in the same timestamp order, so all processes deliver in the same order.</p>
         <p><b>Assumptions:</b> reliable channels, <b>FIFO</b> channels, no process failures, known group.</p>
       </div>
-      <div class="why"><h4>Why</h4><p>Why the acks: when P has an ack from Q with timestamp larger than m's, FIFO guarantees that no earlier message from Q (with a smaller timestamp) is still on the way. With acks from everybody, nothing with a smaller timestamp can arrive later, so the head of the queue is final. Without FIFO, an older message could arrive after a newer ack. Without reliability or with crashes, a missing ack blocks delivery forever.</p></div>
-      <div class="tipbox"><h4>Exam tip</h4><p>Example to cite: a replicated bank account. Deposit $100 and add 1% interest. If the replicas apply them in different orders, they get $1111 vs $1110.</p></div>
+      <div class="why"><h4>Why</h4><p>Why the acks: when P has an ack from Q with a timestamp larger than m's, FIFO guarantees that no earlier message from Q (with a smaller timestamp) is still on the way. With acks from everybody, nothing with a smaller timestamp can arrive later, so the head of the queue is final. Without FIFO, an older message could arrive after a newer ack. Without reliability, or with crashes, a missing ack blocks delivery forever.</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>Cite the slides' example: a replicated bank account. Deposit $100 and add 1% interest. If the replicas apply them in different orders, they get $1111 vs $1110. The next question works it out.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="s-l7">
+    <div class="q-head"><span class="qid">Q14</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">A bank account with $1000 is replicated on P1 and P2. At the same time, P1 multicasts "deposit $100" with timestamp 1 and P2 multicasts "add 1% interest" with timestamp 1. (a) Which balances are possible if each replica applies the updates in arrival order? (b) With the totally ordered multicast, which update is applied first? (c) At P2 the interest message is at the head of the queue before the deposit arrives. Why does P2 not deliver it?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li>Deposit first: (1000 + 100) × 1.01 = <b>$1111</b>. Interest first: 1000 × 1.01 + 100 = <b>$1110</b>. If P1 sees its deposit first and P2 sees its interest first, the replicas diverge.</li>
+          <li>Both timestamps are 1. The tie is broken by process id: 1.1 &lt; 1.2. Both replicas apply the <b>deposit first</b>, and both get $1111.</li>
+          <li>P2 needs the ack of the interest message from P1. P1 sent the deposit (ts 1) before it received the interest message, so it sent the deposit before its ack. The channel is FIFO, so the deposit reaches P2 before P1's ack. When the ack arrives, the deposit (1.1) is already at the head of P2's queue.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>Case (c) is the heart of the protocol. "Head of the queue" alone is not enough, because a message with a smaller timestamp may still be in transit. The ack from every process, plus FIFO, proves that nothing smaller can still arrive. Any order is fine for the bank; the requirement is the <b>same</b> order everywhere.</p></div>
     </div>
   </article>
 
   <article class="q" data-type="compare" data-id="s-l2">
-    <div class="q-head"><span class="qid">Q5</span><span class="tag compare">Compare</span><span class="seen">Exam 18 Nov 2023</span></div>
+    <div class="q-head"><span class="qid">Q15</span><span class="tag compare">Compare</span><span class="seen">Exam 18 Nov 2023</span></div>
     <p class="prompt">Compare the scalar-clock totally ordered multicast with a centralized server that receives messages over point-to-point links and forwards them to every member. Focus on traffic and assumptions. Use N group members.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
         <div class="tbl"><table><tr><th></th><th>Scalar clocks (distributed)</th><th>Central sequencer</th></tr>
-          <tr><td>Messages per multicast</td><td>N − 1 copies of the message + each of the N processes acks to the others: about N(N − 1), i.e. O(N²)</td><td>1 to the server + N − 1 (or N) from the server: O(N)</td></tr>
+          <tr><td>Messages per multicast</td><td>N − 1 copies of the message + each of the N processes acks to the others: about N(N − 1) acks, i.e. O(N²)</td><td>1 to the server + N − 1 (or N) from the server: O(N)</td></tr>
           <tr><td>Latency</td><td>Wait for acks from everybody</td><td>Two hops</td></tr>
           <tr><td>Assumptions</td><td>Reliable FIFO channels; all processes correct (one crash blocks everybody)</td><td>Reliable FIFO channels from the server; the server must not fail</td></tr>
           <tr><td>Weak point</td><td>Traffic grows quadratically</td><td>Bottleneck and single point of failure</td></tr></table></div>
@@ -239,115 +457,234 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
     </div>
   </article>
 
-  <article class="q" data-type="exercise" data-id="s-l3">
-    <div class="q-head"><span class="qid">Q6</span><span class="tag exercise">Exercise</span></div>
-    <p class="prompt">Three processes run a distributed algorithm. At the end their vector clocks are P1: (4, 5, 6), P2: (5, 6, 6), P3: (3, 2, 7). Is this possible? Why?</p>
-    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
-    <div class="answer" hidden>
-      <div><h4>Model answer</h4>
-        <p><b>No.</b> V<sub>i</sub>[i] is the number of events at P<sub>i</sub>, and V<sub>j</sub>[i] is the number of events of P<sub>i</sub> that P<sub>j</sub> knows. Nobody can know more events of P<sub>i</sub> than P<sub>i</sub> itself: V<sub>j</sub>[i] ≤ V<sub>i</sub>[i]. Here V<sub>2</sub>[1] = 5 &gt; V<sub>1</sub>[1] = 4. Impossible.</p>
-        <p>The other entries are fine: P1 knows 5 ≤ 6 events of P2 and 6 ≤ 7 events of P3; P3 knows 3 ≤ 4 and 2 ≤ 6.</p>
-      </div>
-      <div class="why"><h4>Why</h4><p>Check the columns: in column i, the diagonal element must be the maximum. Information about P<sub>i</sub>'s events can only come from P<sub>i</sub>.</p></div>
-    </div>
-  </article>
-
   <article class="q" data-type="describe" data-id="s-l4">
-    <div class="q-head"><span class="qid">Q7</span><span class="tag describe">Describe</span><span class="seen">Exam 9 Sep 2015</span></div>
+    <div class="q-head"><span class="qid">Q16</span><span class="tag describe">Describe</span><span class="seen">Exam 9 Sep 2015</span></div>
     <p class="prompt">Why do we need vector clocks if we have scalar clocks? Describe an algorithm that uses vector clocks: causal delivery of messages (e.g. a bulletin board).</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p>Scalar clocks: e → e′ ⇒ L(e) &lt; L(e′), but L(e) &lt; L(e′) does not imply e → e′. You cannot tell if two events are concurrent. Vector clocks give e → e′ ⇔ V(e) &lt; V(e′), and e ∥ e′ ⇔ neither vector is ≤ the other.</p>
-        <p><b>Causal delivery.</b> Messages and replies are multicast over reliable FIFO channels. Only replies must follow their messages; total order is too strong. Variant of vector clocks: increment V<sub>i</sub>[i] only when sending; on receipt just merge. P<sub>k</sub> delivers a message r from P<sub>j</sub> only when:</p>
+        <p>Scalar clocks: e → e′ ⇒ L(e) &lt; L(e′), but L(e) &lt; L(e′) does not imply e → e′. You cannot tell if two events are concurrent. Vector clocks give e → e′ ⇔ V(e) &lt; V(e′), and e ∥ e′ ⇔ V(e) ∥ V(e′).</p>
+        <p><b>Causal delivery.</b> Messages and replies are multicast to all boards over reliable FIFO channels. Only replies must follow their messages; total order is too strong. Variant of vector clocks: increment V<sub>i</sub>[i] only when sending; on receipt just merge (no increment). P<sub>k</sub> delivers a message r from P<sub>j</sub> only when:</p>
         <ul>
-          <li>ts(r)[j] = V<sub>k</sub>[j] + 1 (it is the next message from P<sub>j</sub>), and</li>
+          <li>ts(r)[j] = V<sub>k</sub>[j] + 1 (r is the next message from P<sub>j</sub>), and</li>
           <li>ts(r)[i] ≤ V<sub>k</sub>[i] for all i ≠ j (P<sub>k</sub> has seen everything P<sub>j</sub> had seen).</li>
         </ul>
         <p>Otherwise P<sub>k</sub> holds r until the missing messages arrive.</p>
       </div>
-      <div class="why"><h4>Why</h4><p>The second condition is the core: if the reply's timestamp shows that its sender had seen message m from P<sub>i</sub>, but P<sub>k</sub> has not seen m yet, delivering the reply would show an answer before its question.</p></div>
+      <div class="why"><h4>Why</h4><p>The second condition is the core. If the reply's timestamp shows that its sender had seen message m from P<sub>i</sub>, but P<sub>k</sub> has not seen m yet, delivering the reply would show an answer before its question. With the "increment only on send" variant, V[i] counts the messages sent by P<sub>i</sub>, so "+1" means "the next one".</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="s-l10">
+    <div class="q-head"><span class="qid">Q17</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Causal delivery with vector clocks (increment only on send). P2 starts with V<sub>2</sub> = (0,0,0). It receives, in this order: a from P1 with ts (1,1,0); b from P1 with ts (1,2,0); c from P0 with ts (1,0,0); d from P0 with ts (2,2,0). When is each message delivered? Give V<sub>2</sub> after each delivery.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol>
+          <li>a arrives: ts[1] = 1 = V[1] + 1 ✓, but ts[0] = 1 &gt; V[0] = 0 ✗. <b>Hold a</b> (P1 had seen a message of P0 that P2 has not seen).</li>
+          <li>b arrives: ts[1] = 2 ≠ V[1] + 1 = 1 ✗. <b>Hold b</b> (a from P1 is missing).</li>
+          <li>c arrives: ts[0] = 1 = 0 + 1 ✓, ts[1] = 0 ≤ 0, ts[2] = 0 ≤ 0 ✓. <b>Deliver c</b>; V = (1,0,0).
+            <ul><li>Retry a: ts[1] = 1 = 0 + 1 ✓, ts[0] = 1 ≤ 1 ✓. <b>Deliver a</b>; V = (1,1,0).</li>
+            <li>Retry b: ts[1] = 2 = 1 + 1 ✓, ts[0] = 1 ≤ 1 ✓. <b>Deliver b</b>; V = (1,2,0).</li></ul></li>
+          <li>d arrives: ts[0] = 2 = 1 + 1 ✓, ts[1] = 2 ≤ 2 ✓. <b>Deliver d</b>; V = (2,2,0).</li>
+        </ol>
+        <p>Delivery order: <b>c, a, b, d</b>.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>After each delivery, check the held messages again: one delivery can unblock a chain. The two conditions test two different things. The first one is FIFO from the sender; the second one is "everything the sender had seen". Note that d would be held if it arrived before b: P0 had seen two messages of P1.</p></div>
     </div>
   </article>
 </section>
 
+<!-- ===== §3 MUTUAL EXCLUSION AND ELECTION ===== -->
 <section class="topic">
   <div class="topic-head"><span class="num">§3</span><h2>Mutual exclusion and leader election</h2></div>
-  <div class="core"><p><b>Core idea.</b> Mutual exclusion needs <b>safety</b> (at most one process in the critical section) and <b>liveness</b> (no deadlock, no starvation); optionally happened-before ordering. Election makes all live processes agree on the live process with the highest id.</p></div>
+  <div class="core"><p><b>Core idea.</b> Mutual exclusion needs <b>safety</b> (at most one process in the critical section) and <b>liveness</b> (no deadlock, no starvation); optionally, requests are granted in happened-before order. Three solutions: a central coordinator, a distributed protocol with scalar clocks, a token ring. Election makes all live processes agree that the live process with the highest id is the leader (bully or ring).</p></div>
 
   <article class="q" data-type="describe" data-id="s-m1">
-    <div class="q-head"><span class="qid">Q8</span><span class="tag describe">Describe</span><span class="seen">Exam 18 Jun 2024 · 19 Feb 2013</span></div>
+    <div class="q-head"><span class="qid">Q18</span><span class="tag describe">Describe</span><span class="seen">Exam 18 Jun 2024 · 19 Feb 2013</span></div>
     <p class="prompt">Describe the problem of mutual exclusion and how you could solve it using scalar clocks. Which properties does this protocol satisfy? Under which assumptions does it operate correctly?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p><b>Problem.</b> Processes share a resource without shared memory. Requirements: safety, liveness, and optionally ordering (if request 1 happened before request 2, grant 1 first).</p>
-        <p><b>Protocol (Ricart–Agrawala style, from the slides).</b></p>
+        <p><b>Problem.</b> Processes share a resource without shared memory (the critical section problem of operating systems). Requirements: safety, liveness, and optionally ordering (if request 1 happened before request 2, grant 1 first).</p>
+        <p><b>Protocol (from the slides; also known as Ricart–Agrawala).</b></p>
         <ol>
           <li>To request, P<sub>i</sub> multicasts a request with timestamp T<sub>m</sub> to all processes.</li>
           <li>A receiver P<sub>j</sub>:
             <ul><li>not holding and not interested → sends an ack at once;</li>
-            <li>holding the resource → queues the request;</li>
-            <li>also requesting → compares timestamps: if T<sub>m</sub> is lower (ties broken by id) it acks, else it queues.</li></ul></li>
+            <li>holding the resource → queues the request (ordered by T<sub>m</sub>, ties broken by process id);</li>
+            <li>also requesting → compares T<sub>m</sub> with its own request: if T<sub>m</sub> is lower it acks, else it queues.</li></ul></li>
           <li>P<sub>i</sub> enters when it has acks from all other processes.</li>
           <li>On release, P<sub>i</sub> acks all queued requests.</li>
         </ol>
-        <p><b>Properties.</b> Safety: two processes cannot both get all acks, because the one with the larger timestamp waits. Liveness: timestamps give a total order, so no cycle of waiting (no deadlock) and every request eventually becomes the smallest (no starvation). Ordering: if req1 → req2 then T<sub>1</sub> &lt; T<sub>2</sub>, so req1 is served first.</p>
+        <p><b>Properties.</b> Safety: two processes cannot both get all acks, because the one with the larger timestamp waits. Liveness: timestamps give a total order, so there is no cycle of waiting (no deadlock), and every request eventually becomes the smallest (no starvation). Ordering: if req1 → req2 then T<sub>1</sub> &lt; T<sub>2</sub>, so req1 is served first.</p>
         <p><b>Assumptions.</b> Reliable channels and reliable processes; all processes known. Cost: 2(n − 1) messages per entry. Any crash blocks everybody: n points of failure instead of one.</p>
       </div>
-      <div class="why"><h4>Why</h4><p>The scalar clock plus process id is a total order that all processes compute the same way. So every conflict between two requests is resolved identically everywhere, without a coordinator.</p></div>
+      <div class="why"><h4>Why</h4><p>The scalar clock plus process id is a total order that all processes compute in the same way. So every conflict between two requests is resolved identically everywhere, without a coordinator.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="s-m4">
+    <div class="q-head"><span class="qid">Q19</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Three processes use mutual exclusion with scalar clocks. P1 requests the resource with timestamp 5 and P2 requests it with timestamp 3, at about the same time. P3 is not interested. Trace the messages. Who enters first? When does the other one enter? How many messages in total? What changes if both timestamps are 4?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol>
+          <li>P1 sends REQ(5.1) to P2 and P3. P2 sends REQ(3.2) to P1 and P3.</li>
+          <li>P3 is not interested: it acks both at once.</li>
+          <li>P1 gets REQ(3.2). P1 is also requesting, with 5.1. Since 3.2 &lt; 5.1, P1 <b>acks</b> P2.</li>
+          <li>P2 gets REQ(5.1). Its own request 3.2 is lower, so P2 <b>queues</b> P1's request.</li>
+          <li>P2 has acks from P1 and P3: <b>P2 enters</b>.</li>
+          <li>P2 releases and acks the queued request of P1. Now P1 has acks from P2 and P3: <b>P1 enters</b>.</li>
+        </ol>
+        <p>Messages: 4 requests + 4 acks = <b>8</b> = 2 × 2(n − 1) with n = 3.</p>
+        <p>Both timestamps 4: compare 4.1 and 4.2. P1 has the lower id, so <b>P1 enters first</b>.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Each process makes its decision alone, but all use the same rule on the same pair (T, id). So P1 and P2 cannot both decide "I win". The ack of the waiting process is only delayed, never lost; this gives liveness.</p></div>
     </div>
   </article>
 
   <article class="q" data-type="compare" data-id="s-m2">
-    <div class="q-head"><span class="qid">Q9</span><span class="tag compare">Compare</span><span class="seen">Exam 25 Feb 2015</span></div>
+    <div class="q-head"><span class="qid">Q20</span><span class="tag compare">Compare</span><span class="seen">Exam 25 Feb 2015</span></div>
     <p class="prompt">Describe and compare the techniques to guarantee mutual exclusion when accessing a remote resource.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
         <ul>
-          <li><b>Centralized:</b> a coordinator holds a token; request, grant, release messages. Simple and fair.</li>
-          <li><b>Distributed with scalar clocks:</b> the previous question.</li>
-          <li><b>Token ring:</b> processes form a logical ring; a token circulates; you may use the resource only while holding the token.</li>
+          <li><b>Centralized:</b> a coordinator manages the lock with a "token". Request, grant and release are messages to the coordinator. Easy to guarantee mutual exclusion and fairness.</li>
+          <li><b>Distributed with scalar clocks:</b> see the first question of this section.</li>
+          <li><b>Token ring:</b> processes form a logical ring, regardless of the physical network. A token circulates in one direction. A process not interested forwards the token; a process uses the resource only while it keeps the token; it releases by forwarding the token.</li>
         </ul>
-        <div class="tbl"><table><tr><th>Algorithm</th><th>Messages per entry/exit</th><th>Delay before entry (message times)</th><th>Problems</th></tr>
-          <tr><td>Centralized</td><td>3 (request, grant, release)</td><td>2</td><td>Coordinator crash; bottleneck</td></tr>
+        <div class="tbl"><table><tr><th>Algorithm</th><th>Messages per entry</th><th>Delay before entry (message times)</th><th>Problems</th></tr>
+          <tr><td>Centralized</td><td>2 (request, grant), + 1 release on exit</td><td>2</td><td>Coordinator crash; bottleneck</td></tr>
           <tr><td>Distributed (Lamport clocks)</td><td>2(n − 1)</td><td>2(n − 1)</td><td>Crash of any process</td></tr>
           <tr><td>Token ring</td><td>1 to ∞</td><td>0 to n − 1</td><td>Lost token; process crash</td></tr></table></div>
         <p>Token ring: "∞" because the token circulates even when nobody wants it.</p>
       </div>
-      <div class="why"><h4>Why</h4><p>The distributed solution is not more robust than the centralized one: it replaces one point of failure with n. Its advantage is no bottleneck. The token ring has the lowest cost under high load and wastes messages under low load.</p></div>
+      <div class="why"><h4>Why</h4><p>The distributed solution is not more robust than the centralized one: it replaces one point of failure with n. Its advantage is no bottleneck. The token ring has the lowest cost under high load and wastes messages under low load. A lost token is hard to detect: a long silence can also mean that a process is using the resource.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="s-m5">
+    <div class="q-head"><span class="qid">Q21</span><span class="tag scenario">Scenario</span></div>
+    <p class="prompt">Pick a mutual exclusion algorithm and justify. (a) 200 workstations on a LAN rarely print to a shared printer; a reliable print server exists. (b) 5 processes on a fast cluster compete all the time for one shared log file. (c) 10 processes, no machine is more reliable than the others, and you cannot accept a bottleneck.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol type="a">
+          <li><b>Centralized.</b> Only 2 messages per entry; the print server is the natural coordinator and is reliable. A token ring would circulate the token among 200 machines for nothing; the distributed protocol would cost 2 × 199 messages per print.</li>
+          <li><b>Token ring.</b> Under high load almost every token pass serves a request, so the cost is about 1 message per entry. The ring is short (n − 1 = 4 hops of maximum wait).</li>
+          <li><b>Distributed with scalar clocks.</b> No coordinator and no bottleneck. Cost: 2(n − 1) = 18 messages per entry. But remember: a crash of any of the 10 processes blocks everybody, so the processes and channels must be reliable.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>Decide with the comparison table: messages per entry depend on the load (token ring) or on n (distributed). Then check the failure assumption. No solution in this chapter tolerates crashes; they only move the point of failure.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="s-m7">
+    <div class="q-head"><span class="qid">Q22</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Bully algorithm, slides example. Processes 0–7; the leader 7 fails and process 4 notices it first. List the messages until a new leader is known. Count them. Then 7 comes back: what happens?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol>
+          <li>4 sends ELECT to 5, 6, 7 (3 messages). 7 is down.</li>
+          <li>5 and 6 answer OK to 4: 4 stops (2 messages).</li>
+          <li>5 sends ELECT to 6, 7 (2). 6 sends ELECT to 7 (1).</li>
+          <li>6 answers OK to 5: 5 stops (1).</li>
+          <li>Nobody answers 6 (timeout). 6 wins and sends COORD to 0, 1, 2, 3, 4, 5 (6 messages).</li>
+        </ol>
+        <p>Total: 3 + 2 + 2 + 1 + 1 + 6 = <b>15 messages</b>.</p>
+        <p>7 comes back and holds an election. No process has a higher id, so nobody can answer: 7 wins and sends COORD to 0–6 (7 messages). 7 "bullies" its way back to the leader role.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>"Nobody answers" is a decision based on a timeout. It is correct only in a synchronous system with reliable links. If 7 is just slow, two leaders can exist. The worst case is when the lowest id starts: every process starts its own election, so the cost is O(n²).</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="s-m8">
+    <div class="q-head"><span class="qid">Q23</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Ring election, slides example. Processes 0–7 form a ring in increasing order (7 is followed by 0). The leader 7 crashes. Processes 2 and 5 detect it at the same time. Show the content of each ELECT message, the leader, and the number of messages.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Message started by 2: [2] → 3: [2,3] → 4: [2,3,4] → 5: [2,3,4,5] → 6: [2,3,4,5,6] → 7 is dead, 6 skips to 0: [2,3,4,5,6,0] → 1: [2,3,4,5,6,0,1] → back to 2. 2 finds itself in the list: the type changes to COORD, and the message goes around again.</p>
+        <p>Message started by 5: [5] → [5,6] → [5,6,0] → [5,6,0,1] → [5,6,0,1,2] → [5,6,0,1,2,3] → [5,6,0,1,2,3,4] → back to 5 → COORD.</p>
+        <p>Both lists contain the same set {0,…,6}. Every node picks the highest id: <b>6 is the leader</b>, and every node also learns the live members.</p>
+        <p>Messages: 7 live nodes, so each ELECT round costs 7 messages and each COORD round about 7. Per initiator about 2 × 7 = 14; with two initiators about <b>28</b>.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Several messages can circulate at the same time, but they converge to the same content, so they give the same leader. The extra cost is only traffic. Skipping a dead neighbor is again failure detection, so the ring also relies on timeouts.</p></div>
     </div>
   </article>
 
   <article class="q" data-type="compare" data-id="s-m3">
-    <div class="q-head"><span class="qid">Q10</span><span class="tag compare">Compare</span></div>
+    <div class="q-head"><span class="qid">Q24</span><span class="tag compare">Compare</span></div>
     <p class="prompt">Compare the bully and the ring election algorithms: number of messages, assumptions, and how easy it is to guarantee the assumptions.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p><b>Bully.</b> P sends ELECT to all higher ids. If nobody answers, P wins and sends COORD to all lower ids. A process that gets ELECT answers (stops the sender) and starts its own election. A recovered process holds an election and wins if it has the highest id. Messages: O(n²) in the worst case (the lowest id starts), n − 2 + … in the best case (the second highest starts). <b>Assumptions:</b> reliable links and a <b>synchronous</b> system, to decide that "nobody answers" means crashed.</p>
-        <p><b>Ring.</b> P sends ELECT with its id to the next live neighbor. Each process adds its id and forwards. When the message comes back to a process already in the list, it becomes COORD and goes around once more; the highest id is the leader. Messages: 2n per election (more if several start). <b>Assumptions:</b> a ring topology and the ability to skip dead neighbors (also a form of failure detection).</p>
-        <p>Both need failure detection, so both rely on timeouts. The ring needs fewer messages but is slower (sequential), and a crash during the election must be handled.</p>
+        <p><b>Common assumptions.</b> Nodes are distinguishable (ids). Closed system: processes know each other's ids, but not who is alive. At the end, the live process with the highest id wins, and all live processes agree.</p>
+        <p><b>Bully.</b> P sends ELECT to all higher ids. If nobody answers, P wins and sends COORD to all lower ids. A process that gets ELECT answers (stops the sender) and starts its own election. A recovered process holds an election and wins if it has the highest id. Messages: O(n²) in the worst case (the lowest id starts); about n − 1 in the best case (the second highest starts: 1 ELECT + n − 2 COORD). <b>Assumptions:</b> reliable links and a <b>synchronous</b> system, to decide that "nobody answers" means crashed.</p>
+        <p><b>Ring.</b> P sends ELECT with its id to the next live neighbor. Each process adds its id and forwards. When the message comes back to a process already in the list, it becomes COORD and goes around once more; the highest id is the leader. Messages: 2n per initiator (more if several start). <b>Assumptions:</b> a ring topology (physical or logical) and the ability to skip dead neighbors.</p>
+        <p>Both need failure detection, so both rely on timeouts. The ring needs fewer messages in the worst case but is slower (sequential), and a crash during the election must be handled.</p>
       </div>
-      <div class="why"><h4>Why</h4><p>Both algorithms assume a closed system: processes know each other's ids, but not who is alive. The difficult assumption is always "detect who crashed", which is impossible in an asynchronous system (chapter 02).</p></div>
+      <div class="why"><h4>Why</h4><p>The difficult assumption is always "detect who crashed", which is impossible in an asynchronous system. Bully depends on it more directly: a wrong timeout creates two leaders. The ring only needs to skip a neighbor that does not answer.</p></div>
     </div>
   </article>
 </section>
 
+<!-- ===== §4 GLOBAL STATE ===== -->
 <section class="topic">
-  <div class="topic-head"><span class="num">§4</span><h2>Global state and termination</h2></div>
-  <div class="core"><p><b>Core idea.</b> The global state is the local states plus the messages in transit. With no global clock, record a <b>consistent cut</b>: if a receive is in the cut, the send must be too. Chandy–Lamport does it with markers (tokens), without stopping the computation.</p></div>
+  <div class="topic-head"><span class="num">§4</span><h2>Global state and termination detection</h2></div>
+  <div class="core"><p><b>Core idea.</b> The global state is the local state of each process plus the messages in transit. With no global clock, we record each process at a different time, but we must record a <b>consistent cut</b>: if a receive is in the cut, the send must be in it too. Chandy–Lamport does it with tokens (markers), without stopping the computation. Termination detection is a special use of global state.</p></div>
   <a class="simbox" href="/exercises/distributed-systems/sim-snapshot.html" target="_blank" rel="noopener"><b>Open the snapshot simulator</b><span>The June/July 2024 exam figure, step by step, with three delivery orders.</span></a>
 
+  <article class="q" data-type="exercise" data-id="s-g0">
+    <div class="q-head"><span class="qid">Q25</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Define a cut and a consistent cut formally. Then take three banks with a constant total of 120. P1 sends m1 ($10) to P2; P2 receives m1, then sends m2 ($5) to P3; P3 receives m2. Cut C1 includes P1 up to the send of m1, P2 up to the send of m2, and nothing of P3. Cut C2 includes nothing of P1, P2 up to the receive of m1, and nothing of P3. Which cut is consistent? What goes wrong with the money in the other one?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Cut:</b> the union of a prefix of the history of every process, C = h<sub>1</sub><sup>k1</sup> ∪ h<sub>2</sub><sup>k2</sup> ∪ … ∪ h<sub>n</sub><sup>kn</sup>, where h<sub>i</sub><sup>ki</sup> = &lt;e<sub>i</sub><sup>0</sup>, …, e<sub>i</sub><sup>ki</sup>&gt;.</p>
+        <p><b>Consistent cut:</b> it contains every event that happened before any of its events: ∀e, f: e ∈ C ∧ f → e ⇒ f ∈ C.</p>
+        <ul>
+          <li><b>C1 is consistent.</b> It contains send(m2) but not recv(m2). This is allowed: m2 is a message in transit, and its $5 must be recorded in the channel P2→P3. Total = 120.</li>
+          <li><b>C2 is not consistent.</b> It contains recv(m1) but not send(m1). P1's balance still has the $10, and P2's balance also has it. The total is 130: the money is counted twice.</li>
+        </ul>
+      </div>
+      <div class="why"><h4>Why</h4><p>A consistent cut is a state in which the system <i>might</i> have been. A message can be sent and not yet received, but it cannot be received before it is sent. The banking example (constant total) makes the check easy: a wrong cut creates or destroys money.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="describe" data-id="s-g2">
+    <div class="q-head"><span class="qid">Q26</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">Describe the Chandy–Lamport snapshot algorithm and prove that it selects a consistent cut. What happens if two processes start a snapshot at the same time? What is an incremental snapshot?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Assumptions:</b> FIFO reliable links, reliable nodes, strongly connected graph.</p>
+        <ul>
+          <li>The initiator records its state, sends a token on every outgoing channel, and starts recording all incoming channels.</li>
+          <li>On a token on channel c: if the process has not recorded yet, it records its state, sends tokens on all outgoing channels, and starts recording its incoming channels (c is recorded as empty). In any case, it stops recording c.</li>
+          <li>A message that arrives on a channel being recorded is added to that channel's record, then processed normally.</li>
+          <li>A process is done when it has a token on every incoming channel. The results can be sent to a collector (this step is not part of the algorithm).</li>
+        </ul>
+        <p><b>Proof.</b> Take e<sub>i</sub> → e<sub>j</sub>, with e<sub>j</sub> in the cut. Suppose e<sub>i</sub> is not in the cut. Then p<sub>i</sub> recorded its state before e<sub>i</sub>, so it sent its tokens before e<sub>i</sub>, and so before the messages m<sub>1</sub>…m<sub>h</sub> that create the chain e<sub>i</sub> → e<sub>j</sub>. By FIFO and the token rule, p<sub>j</sub> receives a token before m<sub>1</sub>…m<sub>h</sub>, so it records its state before e<sub>j</sub>. Contradiction: e<sub>j</sub> would not be in the cut. (If p<sub>i</sub> = p<sub>j</sub>, the case is trivial.)</p>
+        <p><b>Observations.</b> The algorithm does not block the computation. Concurrent snapshots are told apart with an identifier set by the initiator. <b>Incremental snapshot:</b> take a first full snapshot; each node remembers the links where it sent or received messages; the next snapshot includes only those links.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The token is a separator in each FIFO channel: everything before it was sent before the sender's snapshot, everything after it was sent after. This is why FIFO is essential. Without FIFO, a post-snapshot message could overtake the token and be counted in the receiver's state.</p></div>
+    </div>
+  </article>
+
   <article class="q" data-type="exercise" data-id="s-g1">
-    <div class="q-head"><span class="qid">Q11</span><span class="tag exercise">Exercise</span><span class="seen">Exam 18 Jun 2024 · 12 Jul 2024</span></div>
+    <div class="q-head"><span class="qid">Q27</span><span class="tag exercise">Exercise</span><span class="seen">Exam 18 Jun 2024 · 12 Jul 2024</span></div>
     <p class="prompt">Consider the system in the exam figure (processes A–F, channels with queued messages). Each process adds the value of each received message to its state S. A started the snapshot, recorded S = 2 and sent tokens to B and E, which already processed them and sent out their own tokens. Show the state captured by every node (local state and messages recorded for each link). Clarify your assumptions.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p><b>Channels in the figure</b> (first to arrive first): A→B [3], B→C [9, 3, T, 4], C→A [5], E→A [2, T], C→E [5], C→D [3, 2], D→B [4, 5], D→F [3, 9], E→F [3, T, 4], F→C [9], A→E [].</p>
-        <p><b>Assumptions.</b> FIFO reliable channels; no new application messages during the snapshot; messages already in a channel arrive before the tokens that are sent later.</p>
+        <p><b>Channels in the figure</b> (first to arrive first): A→B [3], B→C [9, 3, T, 4], C→A [5], E→A [2, T], C→E [5], C→D [3, 2], D→B [4, 5], D→F [3, 9], E→F [3, T, 4], F→C [9], A→E []. Initial S: A 2 (recorded), B 1 (recorded), C 0, D 3, E 2 (recorded), F 5.</p>
+        <p><b>Assumptions.</b> FIFO reliable channels; no new application messages during the snapshot; messages already in a channel arrive before the tokens that are sent later ("messages first").</p>
         <div class="tbl"><table><tr><th>Node</th><th>Recorded S</th><th>Incoming channels</th></tr>
           <tr><td>A</td><td>2</td><td>C→A {5}, E→A {2}</td></tr>
           <tr><td>B</td><td>1</td><td>A→B {}, D→B {4, 5}</td></tr>
@@ -355,99 +692,317 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
           <tr><td>D</td><td>3 + 3 + 2 = 8</td><td>C→D {}</td></tr>
           <tr><td>E</td><td>2</td><td>A→E {}, C→E {5}</td></tr>
           <tr><td>F</td><td>5 + 3 + 9 + 3 = 20</td><td>D→F {}, E→F {}</td></tr></table></div>
-        <p>Notes: the 3 on A→B, the 4 after the token on B→C, and the 4 after the token on E→F were sent after the sender recorded its state, so they are not in the snapshot. Check: 2 + 1 + 21 + 8 + 2 + 20 + 5 + 2 + 4 + 5 + 5 = <b>75</b> = total money (86) − post-snapshot messages (3 + 4 + 4).</p>
+        <p>The 3 on A→B, the 4 after the token on B→C, and the 4 after the token on E→F were sent after the sender recorded its state, so they are not in the snapshot. Check: 2 + 1 + 21 + 8 + 2 + 20 + (5 + 2 + 4 + 5 + 5) = <b>75</b> = total value (86) − post-snapshot messages (3 + 4 + 4).</p>
       </div>
-      <div class="why"><h4>Why</h4><p>C, D, F record when their first token arrives, so all messages they got before it are in their state. A, B, E recorded earlier, so every message that reaches them on an open channel goes into that channel's record. The result depends on the delivery order; any consistent cut is accepted if you state the assumptions. Try the "Tokens first" order in the simulator to see another valid answer with the same total.</p></div>
-      <div class="tipbox"><h4>Exam tip</h4><p>The 18 Nov 2023 version has almost the same figure, plus a note: "there is a spurious message". It is the token on D→F. D can send a token only after it records its state, and D records only when it gets a token. D's only incoming channel is C→D, and C has not recorded yet. So no token can be on D→F: remove it first. In general, check that every token in the figure comes from a process that already recorded</p></div>
+      <div class="why"><h4>Why</h4><p>C, D and F record when their first token arrives, so all messages they got before it are in their state. A, B and E recorded earlier, so every message that reaches them on an open channel goes into that channel's record. The result depends on the delivery order; any consistent cut is accepted if you state the assumptions. The total is always the same, and it is your best self-check.</p></div>
+      <div class="tipbox"><h4>Exam tip</h4><p>Before you start, mark which messages are "after a token" in each channel: they never count. Then decide, for each process that has not recorded, which of its incoming channels delivers the first token.</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="describe" data-id="s-g2">
-    <div class="q-head"><span class="qid">Q12</span><span class="tag describe">Describe</span></div>
-    <p class="prompt">Describe the Chandy–Lamport snapshot algorithm and prove that it selects a consistent cut.</p>
+  <article class="q" data-type="exercise" data-id="s-g1b">
+    <div class="q-head"><span class="qid">Q28</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Older exams add speed assumptions to the same kind of figure. Take the June 2024 figure (channels as in the previous question). Now assume that the channels leaving B, C and D are fast, and the channels leaving E and F are slow. Show the new snapshot.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p><b>Assumptions:</b> FIFO reliable channels, reliable processes, strongly connected graph.</p>
-        <ul>
-          <li>The initiator records its state, sends a token on every outgoing channel, and starts recording all incoming channels.</li>
-          <li>On a token on channel c: if the process has not recorded yet, it records its state, sends tokens on all outgoing channels, and starts recording all other incoming channels; channel c is recorded as empty. In any case, it stops recording c.</li>
-          <li>A message that arrives on a channel being recorded is added to that channel's record, then processed normally.</li>
-          <li>A process is done when it has a token on every incoming channel. The results go to a collector.</li>
-        </ul>
-        <p><b>Proof.</b> Take e<sub>i</sub> → e<sub>j</sub>, with e<sub>j</sub> in the cut. Suppose e<sub>i</sub> is not in the cut: p<sub>i</sub> recorded its state before e<sub>i</sub>, so it sent its tokens before e<sub>i</sub>, and before the messages m<sub>1</sub>…m<sub>h</sub> that create the chain e<sub>i</sub> → e<sub>j</sub>. By FIFO and the token rule, each process along the chain receives a token before those messages, so p<sub>j</sub> records its state before e<sub>j</sub>. Contradiction: e<sub>j</sub> would not be in the cut.</p>
+        <ol>
+          <li>B→C is fast: C gets 9, 3, then B's token, before F's 9. C records <b>0 + 9 + 3 = 12</b> and starts recording F→C. Then F's 9 arrives on F→C: recorded {9}.</li>
+          <li>C sends tokens to A, D, E. C→D is fast: D gets 3, 2, then the token. D records <b>3 + 3 + 2 = 8</b>.</li>
+          <li>D→F is fast: F gets 3, 9, then D's token, before E→F's 3. F records <b>5 + 3 + 9 = 17</b> and starts recording E→F. Then 3 arrives: E→F {3}. Then E's token closes it.</li>
+          <li>A, B and E record as before: A {C→A 5, E→A 2}, B {D→B 4, 5}, E {C→E 5}.</li>
+        </ol>
+        <div class="tbl"><table><tr><th>Node</th><th>S</th><th>Channels</th></tr>
+          <tr><td>A</td><td>2</td><td>C→A {5}, E→A {2}</td></tr>
+          <tr><td>B</td><td>1</td><td>A→B {}, D→B {4, 5}</td></tr>
+          <tr><td>C</td><td>12</td><td>B→C {}, F→C {9}</td></tr>
+          <tr><td>D</td><td>8</td><td>C→D {}</td></tr>
+          <tr><td>E</td><td>2</td><td>A→E {}, C→E {5}</td></tr>
+          <tr><td>F</td><td>17</td><td>D→F {}, E→F {3}</td></tr></table></div>
+        <p>Total: 9 + 10 + 21 + 8 + 7 + 20 = <b>75</b>, the same as before.</p>
       </div>
-      <div class="why"><h4>Why</h4><p>The token is a separator in each FIFO channel: everything before it was sent before the sender's snapshot, everything after it was sent after. This is why FIFO is essential. The algorithm does not block the computation; concurrent snapshots are told apart with an id set by the initiator.</p></div>
+      <div class="why"><h4>Why</h4><p>Speed changes only <b>which token arrives first</b> at a process, and so which values go into its state and which go into a channel record. FIFO still holds inside each channel: a token never overtakes a message in front of it on the same channel. Two different answers, one total: both are consistent cuts. In the simulator this order is called "Tokens first".</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="s-g1c">
+    <div class="q-head"><span class="qid">Q29</span><span class="tag exercise">Exercise</span><span class="seen">Exam 18 Nov 2023</span></div>
+    <p class="prompt">The November 2023 version of the snapshot exercise has a figure like the 2024 one, but D→F also contains a token. The text says: "There is a spurious message in the figure: which one? Identify and remove it before running the snapshot." Find it and justify.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>The spurious message is the <b>token on D→F</b>.</p>
+        <ol>
+          <li>A process sends tokens only after it records its state.</li>
+          <li>A process that is not the initiator records its state only when it receives its first token.</li>
+          <li>D has only one incoming channel: C→D. It contains no token.</li>
+          <li>C has not recorded yet (no token has reached C: B's token is still in B→C, F has not recorded). So C cannot have sent a token to D.</li>
+          <li>So D cannot have recorded, and cannot have sent a token on D→F.</li>
+        </ol>
+        <p>Remove it and solve as usual. If the rest of the figure is the same as in 2024, the result is the same as in the June 2024 exercise.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Every token has a "cause": a recorded sender, which in turn received a token from a recorded process, back to the initiator. Follow this chain backwards for every token in the figure. A token whose sender cannot have recorded is impossible.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="s-g1d">
+    <div class="q-head"><span class="qid">Q30</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Find the error. For the June 2024 figure a classmate wrote: A 2 {C→A 5, E→A 2}; B 1 {A→B 3, D→B 4, 5}; C 25 {}; D 8 {}; E 2 {C→E 5}; F 20 {}. What is wrong? How can you detect the error quickly?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ul>
+          <li><b>A→B {3} is wrong.</b> A sent the 3 after it recorded its state, so after its token. B received A's token before the 3 and stopped recording A→B. The correct record is A→B {}.</li>
+          <li><b>C = 25 is wrong.</b> 25 = 21 + 4: the 4 on B→C comes after B's token. When it arrives, C has already recorded. The correct value is 21.</li>
+        </ul>
+        <p>Quick check: the classmate's total is 9 + 13 + 25 + 8 + 7 + 20 = <b>82</b>, but the correct total is 75. Extra value 7 = 3 + 4: two post-snapshot messages were counted.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The conservation check finds the error even when you do not know where it is. Compute it once: the sum of all initial states and all queued messages, minus the messages that are behind a token or were sent after the sender's snapshot. If your answer gives a different total, look for a message on the wrong side of a token.</p></div>
     </div>
   </article>
 
   <article class="q" data-type="compare" data-id="s-g3">
-    <div class="q-head"><span class="qid">Q13</span><span class="tag compare">Compare</span></div>
-    <p class="prompt">How do you detect termination of a distributed computation? Compare the snapshot-based approach with Dijkstra–Scholten.</p>
+    <div class="q-head"><span class="qid">Q31</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">How do you detect termination of a distributed computation? Describe the snapshot-based approach (DONE/CONTINUE) and Dijkstra–Scholten for diffusing computations, then compare them.</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p>Termination: all processes idle and no messages in transit.</p>
-        <p><b>Snapshot-based (Tanenbaum).</b> The predecessor of p is the process that sent p its first marker. When p finishes its part, it sends DONE to its predecessor only if all its successors sent DONE and p received no message between recording its state and getting markers on all incoming channels. Otherwise CONTINUE. If the initiator gets only DONE, the computation is over; otherwise run another snapshot. Cost: one message per link plus collection, repeated until success.</p>
-        <p><b>Dijkstra–Scholten</b> (diffusing computations: one initiator, processes activated only by messages). Build a tree of active processes: a process woken by a message becomes the child of the sender; if it was already active, it acks at once. An idle leaf leaves the tree and notifies its parent. When only the idle root remains, the computation is over. Cost depends on the number of application messages; never-activated processes are not involved; termination is detected as soon as the last ack arrives.</p>
+        <p>Termination (or deadlock): all processes idle and <b>no messages in transit</b> (a message would make a process active again).</p>
+        <p><b>Snapshot-based (from Tanenbaum).</b> The predecessor of p is the process that sent p its first marker; its successors are the processes p sent markers to. When p finishes its part, it sends DONE to its predecessor only if (1) all its successors returned DONE and (2) p received no message between recording its state and getting markers on all incoming channels. Otherwise it sends CONTINUE. If the initiator gets only DONE, the computation is over; otherwise it runs another snapshot.</p>
+        <p><b>Dijkstra–Scholten.</b> Diffusing computation: at the start only the initiator is active, and a process becomes active only when it receives a message. Build a tree of active processes: a process woken by a message becomes a child of the sender. If it was already active, it is already in the tree and it acks at once. An idle process with no children leaves the tree and tells its parent. When only the root remains and it is idle, the computation has terminated.</p>
+        <div class="tbl"><table><tr><th></th><th>Snapshot</th><th>Dijkstra–Scholten</th></tr>
+          <tr><td>Overhead</td><td>One marker per link + collection; repeat if not terminated</td><td>One ack per application message (variable)</td></tr>
+          <tr><td>Who is involved</td><td>All processes</td><td>Only processes that were activated</td></tr>
+          <tr><td>Detection</td><td>At the end of a successful snapshot</td><td>As soon as the last ack arrives</td></tr>
+          <tr><td>Scope</td><td>Any computation</td><td>Diffusing computations</td></tr></table></div>
       </div>
-      <div class="why"><h4>Why</h4><p>The snapshot approach checks periodically and may need many runs. Dijkstra–Scholten tracks the computation continuously, so it detects termination at once, but it costs one ack per message.</p></div>
+      <div class="why"><h4>Why</h4><p>Condition (2) of DONE means "my incoming channels were empty in the snapshot". A message received in that window is a message in transit, so the system was not terminated. The snapshot checks periodically and may need many runs; Dijkstra–Scholten follows the computation continuously, so it detects termination at once.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="s-g6">
+    <div class="q-head"><span class="qid">Q32</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Dijkstra–Scholten. R is the initiator; A, B, C are idle. Events: (1) R sends m1 to A; (2) R sends m2 to B; (3) A sends m3 to B; (4) A sends m4 to C; (5) B becomes idle; (6) C sends m5 to B; (7) A becomes idle; (8) B becomes idle; (9) C becomes idle; (10) R becomes idle. Show the tree after each step, the control messages, and when termination is detected.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol>
+          <li>A wakes up: parent R. Tree: R{A}.</li>
+          <li>B wakes up: parent R. Tree: R{A, B}.</li>
+          <li>B is already active: it is in the tree, so it <b>acks m3 at once</b>. Tree unchanged.</li>
+          <li>C wakes up: parent A. Tree: R{A{C}, B}.</li>
+          <li>B is idle with no children: it leaves and tells R (acks m2). Tree: R{A{C}}.</li>
+          <li>B is idle, so m5 wakes it again: parent C. Tree: R{A{C{B}}}.</li>
+          <li>A is idle but has the child C: <b>A stays</b> in the tree.</li>
+          <li>B leaves and tells C (acks m5). Tree: R{A{C}}.</li>
+          <li>C is idle with no children: it leaves and tells A (acks m4). A is idle with no children: it leaves and tells R (acks m1). Tree: R.</li>
+          <li>R is idle with no children: <b>termination detected</b>.</li>
+        </ol>
+        <p>Control messages: 5, one for each application message (m1…m5).</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A node can join the tree more than once (B in steps 2 and 6), so the overhead depends on the traffic, not on the number of processes. A node that is idle but still has children must stay: one of its descendants is active and can still send messages.</p></div>
     </div>
   </article>
 </section>
 
+<!-- ===== §5 TRANSACTIONS ===== -->
 <section class="topic">
-  <div class="topic-head"><span class="num">§5</span><h2>Distributed transactions and deadlocks</h2></div>
-  <div class="core"><p><b>Core idea.</b> Transactions are ACID. Atomicity uses a private workspace or a write-ahead log. Isolation needs a scheduler: <b>locks</b> (2PL) or <b>timestamps</b> (pessimistic or optimistic). Deadlocks can be ignored, detected, or prevented.</p></div>
+  <div class="topic-head"><span class="num">§5</span><h2>Distributed transactions and concurrency control</h2></div>
+  <div class="core"><p><b>Core idea.</b> Transactions are ACID. Atomicity uses a private workspace or a write-ahead log. Isolation needs a scheduler that orders conflicting operations so that the result is <b>serializable</b>. Two families: <b>locks</b> (2PL, pessimistic) and <b>timestamps</b> (pessimistic or optimistic).</p></div>
 
-  <article class="q" data-type="scenario" data-id="s-t1">
-    <div class="q-head"><span class="qid">Q14</span><span class="tag scenario">Scenario</span><span class="seen">Exam 18 Nov 2023</span></div>
-    <p class="prompt">Describe pessimistic timestamp ordering: which problem does it address and how does it work? In a system with few requests per second and a large dataset, would you use pessimistic or optimistic timestamp ordering, and why?</p>
+  <article class="q" data-type="describe" data-id="s-t0">
+    <div class="q-head"><span class="qid">Q33</span><span class="tag describe">Describe</span></div>
+    <p class="prompt">What is a transaction? List the primitives and the ACID properties. Describe flat, nested and distributed transactions. Which components control concurrency (transaction manager, scheduler, data manager)?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p><b>Problem:</b> concurrency control (isolation/serializability) of transactions without locks, and so without deadlocks.</p>
-        <p><b>How it works.</b> Each transaction T gets a timestamp ts (e.g. from logical clocks). Writes create tentative versions x<sub>i</sub> with ts<sub>wr</sub>(x<sub>i</sub>) until commit. Each item keeps ts<sub>rd</sub>(x) and the committed ts<sub>wr</sub>(x).</p>
+        <p>A transaction is a sequence of operations that protects a shared resource from concurrent access. Primitives: BEGIN_TRANSACTION, END_TRANSACTION (try to commit), ABORT_TRANSACTION (restore the old values), READ, WRITE.</p>
         <ul>
-          <li><b>write(T, x):</b> if ts &gt; ts<sub>rd</sub>(x) and ts &gt; ts<sub>wr</sub>(x), make a tentative write; else abort T (it arrives too late).</li>
-          <li><b>read(T, x):</b> if ts &gt; ts<sub>wr</sub>(x), select the latest version with write timestamp &lt; ts. If it is committed, read it and set ts<sub>rd</sub>(x) = max(ts, ts<sub>rd</sub>(x)); else wait for that writer to commit or abort. If ts &lt; ts<sub>wr</sub>(x), abort T.</li>
-          <li>Aborted transactions restart with a new timestamp. No deadlock: waits go only from younger to older.</li>
+          <li><b>Atomic:</b> to the outside world, the transaction happens indivisibly (all or nothing).</li>
+          <li><b>Consistent:</b> it does not violate system invariants.</li>
+          <li><b>Isolated</b> (serializable): concurrent transactions do not interfere.</li>
+          <li><b>Durable:</b> after commit, the changes are permanent.</li>
         </ul>
-        <p><b>Choice: optimistic.</b> Few requests over a large dataset means conflicts are rare. Optimistic ordering lets transactions run freely in private workspaces and checks for conflicts only at commit, so it has no checking overhead during execution and maximum parallelism. Rollbacks would be expensive only under heavy load with many conflicts, which is not the case here.</p>
+        <p><b>Flat:</b> ACID as above. <b>Nested:</b> built from sub-transactions, typically on different hosts. A committed sub-transaction is undone if its parent aborts, so durability applies only to the top level. Each sub-transaction works on a private copy: if it aborts the copy disappears; if it commits the copy goes to the next sub-transaction. <b>Distributed:</b> a flat transaction on distributed data; it needs distributed locking.</p>
+        <p><b>Components.</b> The <b>transaction manager</b> transforms high-level operations into scheduling requests (in distributed transactions, usually one acts as coordinator). The <b>scheduler</b> guarantees consistency and isolation: it decides which transaction passes an operation to the data manager, and when; it can be distributed. The <b>data manager</b> executes reads and writes and knows nothing about transactions.</p>
       </div>
-      <div class="why"><h4>Why</h4><p>The choice depends on the probability of conflict. Pessimistic methods pay a cost on every operation to prevent conflicts; optimistic methods pay only when a conflict really happens. Rare conflicts → optimistic wins.</p></div>
+      <div class="why"><h4>Why</h4><p>Nested and distributed are different shapes. Nested is hierarchical (logical decomposition into services); distributed is flat (the data is spread). The separation into three managers makes the scheduler the only place where the concurrency control policy lives.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="s-t4">
+    <div class="q-head"><span class="qid">Q34</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Write-ahead log, slides example. x = 0; y = 0; BEGIN_TRANSACTION; x = x + 1; y = y + 2; x = y * y; END_TRANSACTION. Write the log after each statement. The transaction aborts just before END_TRANSACTION: show the rollback. How would a private workspace handle the same abort?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol>
+          <li>x = x + 1 → log [x = 0/1]; then x becomes 1.</li>
+          <li>y = y + 2 → log [x = 0/1] [y = 0/2]; then y becomes 2.</li>
+          <li>x = y * y → log [x = 0/1] [y = 0/2] [x = 1/4]; then x becomes 4.</li>
+        </ol>
+        <p>Each record is "old/new" value, with the transaction and the file/block. The record is written <b>before</b> the data is modified.</p>
+        <p><b>Rollback</b>, from the end of the log: [x = 1/4] → x = 1; [y = 0/2] → y = 0; [x = 0/1] → x = 0. Final state: <b>x = 0, y = 0</b>. On success, a commit record is written to the log, and nothing else is needed.</p>
+        <p><b>Private workspace:</b> the transaction modifies shadow copies of the blocks (or of the index). On abort, the workspace is simply deleted; the original data was never touched. On commit, the copies replace the originals in the parent's workspace.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>Undo must go backwards: x appears twice, and only the oldest record holds the original value 0. The trade-off: the log modifies in place, so commit is fast and abort is slow; the private workspace makes abort free, but commit must copy (or switch) the blocks.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="s-t7">
+    <div class="q-head"><span class="qid">Q35</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Three transactions: T1 = {x = 0; x = x + 1}, T2 = {x = 0; x = x + 2}, T3 = {x = 0; x = x + 3}. Classify each schedule as legal (serializable) or illegal: S1 = x=0; x=x+1; x=0; x=x+2; x=0; x=x+3. S2 = x=0; x=0; x=x+1; x=x+2; x=0; x=x+3. S3 = x=0; x=0; x=x+1; x=0; x=x+2; x=x+3. S4 = x=0; x=0; x=0; x=x+1; x=x+2; x=x+3.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Every serial order ends with the last transaction, which resets x to 0 and adds its value. So the only serial results are <b>1, 2 or 3</b>.</p>
+        <div class="tbl"><table><tr><th>Schedule</th><th>Final x</th><th>Verdict</th></tr>
+          <tr><td>S1</td><td>3</td><td>Legal (it is the serial order T1, T2, T3)</td></tr>
+          <tr><td>S2</td><td>3</td><td>Legal (same result as a serial order ending with T3)</td></tr>
+          <tr><td>S3</td><td>5</td><td>Illegal</td></tr>
+          <tr><td>S4</td><td>6</td><td>Illegal</td></tr></table></div>
+      </div>
+      <div class="why"><h4>Why</h4><p>A schedule is legal only if it corresponds to some linearization of the transactions. Interleaving is allowed; the result must be as if the transactions ran one after another. The scheduler must order the conflicting operations: read-write and write-write conflict, read-read does not. Here every operation writes x, so every pair conflicts.</p></div>
     </div>
   </article>
 
   <article class="q" data-type="describe" data-id="s-t2">
-    <div class="q-head"><span class="qid">Q15</span><span class="tag describe">Describe</span></div>
+    <div class="q-head"><span class="qid">Q36</span><span class="tag describe">Describe</span></div>
     <p class="prompt">Describe two-phase locking and strict 2PL. What are centralized, primary and distributed 2PL?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p><b>2PL.</b> A transaction asks the scheduler for a lock before each access; conflicting operations (read-write, write-write) wait. Once T releases a lock, it can no longer acquire any (growing phase, then shrinking phase). 2PL guarantees serializability but can deadlock.</p>
-        <p><b>Strict 2PL:</b> release all locks together, after the transaction ends. This prevents cascaded aborts (nobody reads uncommitted data).</p>
+        <p><b>2PL.</b> A transaction asks the scheduler for a lock before each access. If the operation conflicts with one that already has a lock, it is delayed. Once T releases a lock, it can no longer acquire any lock (growing phase, then shrinking phase). 2PL guarantees serializability, but it can deadlock. It is widely used.</p>
+        <p><b>Strict 2PL:</b> release all locks at the same time, after the transaction ends. This prevents cascaded aborts.</p>
         <ul>
-          <li><b>Centralized 2PL:</b> one lock manager; the transaction manager gets locks there and talks to the data managers directly.</li>
-          <li><b>Primary 2PL:</b> each data item has a primary copy; the lock manager on that host grants its locks.</li>
-          <li><b>Distributed 2PL:</b> data may be replicated; the lock manager on each host grants locks on its local replica and talks to the local data manager.</li>
+          <li><b>Centralized 2PL:</b> one lock manager. The transaction manager gets the lock there, talks directly to the data manager, then returns the lock.</li>
+          <li><b>Primary 2PL:</b> several lock managers. Each data item has a primary copy on one host; the lock manager on that host grants its locks. The transaction manager talks to the data managers.</li>
+          <li><b>Distributed 2PL:</b> data may be replicated on several hosts. The lock manager on each host grants locks on its local replica and talks to the local data manager.</li>
         </ul>
       </div>
-      <div class="why"><h4>Why</h4><p>The two phases guarantee that each transaction has a "lock point" where it holds all its locks; ordering transactions by lock points gives an equivalent serial schedule.</p></div>
+      <div class="why"><h4>Why</h4><p>The two phases give each transaction a "lock point" where it holds all its locks. Ordering transactions by lock points gives an equivalent serial schedule. The three variants answer one question: where do the lock managers live? One place (simple, bottleneck), one per item (primary copy), one per replica.</p></div>
     </div>
   </article>
 
-  <article class="q" data-type="compare" data-id="s-t3">
-    <div class="q-head"><span class="qid">Q16</span><span class="tag compare">Compare</span></div>
-    <p class="prompt">Compare centralized deadlock detection, Chandy–Misra–Haas, and the wait-die / wound-wait prevention schemes.</p>
+  <article class="q" data-type="exercise" data-id="s-t8">
+    <div class="q-head"><span class="qid">Q37</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">(a) Is this sequence 2PL? T1: lock(x), lock(y), unlock(x), lock(z), unlock(y), unlock(z). (b) T1 writes x and releases the lock on x before it commits. T2 then reads x and commits. T1 aborts. What is the problem, and which variant prevents it? (c) T1 holds x and asks for y; T2 holds y and asks for x. What happens under 2PL?</p>
     <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
     <div class="answer" hidden>
       <div><h4>Model answer</h4>
-        <p><b>Centralized detection.</b> Each machine sends its wait-for graph to a coordinator (on every change, periodically, or on demand). Problem: <b>false deadlocks</b>, because updates from different hosts can arrive in an inconsistent order.</p>
-        <p><b>Chandy–Misra–Haas.</b> A blocked process sends a probe (initiator, sender, receiver) to the holders of the resources it wants; they forward it. If the probe returns to the initiator, there is a cycle. Recovery: the initiator kills itself (several initiators may kill too many), or the probe collects ids and the highest id is killed.</p>
-        <p><b>Prevention with global timestamps.</b> <b>Wait-die:</b> an older process may wait for a younger one; a younger one that wants a resource held by an older one dies. <b>Wound-wait</b> (preemption): an older process preempts (wounds) a younger holder; a younger process waits for an older one. In both, waits follow timestamps in one direction, so no cycle. Wound-wait avoids the repeated deaths of young processes of wait-die.</p>
+        <ol type="a">
+          <li><b>No.</b> T1 releases x and then acquires z. After the first unlock, no new lock is allowed. Fix: lock z before unlock(x).</li>
+          <li>T2 read a value that never existed in a committed state (a dirty read). T2 must abort too: a <b>cascaded abort</b>. If T2 already committed, the result is wrong. <b>Strict 2PL</b> prevents it: T1 keeps all locks until it terminates, so T2 cannot read x before T1 commits or aborts.</li>
+          <li>Each one waits for the other: <b>deadlock</b>. 2PL does not prevent it. The system must detect it (and abort one transaction) or prevent it (see the next section).</li>
+        </ol>
       </div>
-      <div class="why"><h4>Why</h4><p>A cycle needs a wait in both directions of age. Allowing waits only from old to young (or only young to old) breaks every possible cycle. Transactions make killing acceptable: an abort is a clean rollback.</p></div>
+      <div class="why"><h4>Why</h4><p>Plain 2PL gives serializability of operations, not recoverability: it allows early unlocks in the shrinking phase. Strict 2PL removes the shrinking phase before the end, and so removes the dirty reads. Neither variant removes deadlocks, because both still wait on locks.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="scenario" data-id="s-t1">
+    <div class="q-head"><span class="qid">Q38</span><span class="tag scenario">Scenario</span><span class="seen">Exam 18 Nov 2023</span></div>
+    <p class="prompt">Describe pessimistic timestamp ordering: which problem does it address and how does it work? In a system with few requests per second and a large dataset, would you use pessimistic or optimistic timestamp ordering, and why?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Problem:</b> concurrency control (isolation, serializability) of transactions without locks, and so without deadlocks.</p>
+        <p><b>How it works.</b> Each transaction T gets a timestamp ts (e.g. from logical clocks). Writes create tentative versions x<sub>i</sub> with ts<sub>wr</sub>(x<sub>i</sub>) until commit. Each item keeps ts<sub>rd</sub>(x) (last transaction that read it) and the committed ts<sub>wr</sub>(x).</p>
+        <ul>
+          <li><b>write(T, x):</b> if ts &gt; ts<sub>rd</sub>(x) and ts &gt; ts<sub>wr</sub>(x), make a tentative write; else abort T (it arrives too late).</li>
+          <li><b>read(T, x):</b> if ts &gt; ts<sub>wr</sub>(x), select the latest version with write timestamp &lt; ts. If it is committed, read it and set ts<sub>rd</sub>(x) = max(ts, ts<sub>rd</sub>(x)); else wait for that writer to commit or abort, then apply the rule again. If ts &lt; ts<sub>wr</sub>(x), abort T.</li>
+          <li>Aborted transactions restart with a new timestamp. No deadlock.</li>
+        </ul>
+        <p><b>Optimistic</b> ordering: transactions run freely (best in private workspaces); data items are stamped with the start time of the transaction; at commit, if an item changed since the start, the transaction aborts.</p>
+        <p><b>Choice: optimistic.</b> Few requests over a large dataset means conflicts are rare. Optimistic ordering has no checking overhead during execution and maximum parallelism. Rollbacks are expensive only under heavy load with many conflicts, which is not the case here.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The choice depends on the probability of conflict. Pessimistic methods pay a cost on every operation to prevent conflicts; optimistic methods pay only when a conflict really happens. Rare conflicts: optimistic wins. Note the slides' remark: optimistic ordering is not widely used, especially in distributed systems, because of the rollbacks under load.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="s-t9">
+    <div class="q-head"><span class="qid">Q39</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Pessimistic timestamp ordering. Item x has a committed version with ts<sub>wr</sub>(x) = 5 and ts<sub>rd</sub>(x) = 8. Apply these requests in order and give the result of each: (1) write(T7, x); (2) write(T10, x); (3) read(T9, x); (4) read(T12, x); (5) read(T4, x); (6) write(T8, x); (7) T10 commits; (8) write(T11, x).</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <ol>
+          <li>write(T7): 7 &gt; ts<sub>rd</sub> = 8? No → <b>abort T7</b> (a younger transaction already read x).</li>
+          <li>write(T10): 10 &gt; 8 and 10 &gt; 5 → <b>tentative version x<sub>10</sub></b>.</li>
+          <li>read(T9): 9 &gt; 5. Latest version with write ts &lt; 9: the committed x<sub>5</sub> → <b>read x<sub>5</sub></b>; ts<sub>rd</sub> = max(9, 8) = 9.</li>
+          <li>read(T12): 12 &gt; 5. Latest version with write ts &lt; 12: x<sub>10</sub>, tentative → <b>T12 waits</b> for T10.</li>
+          <li>read(T4): 4 &gt; 5? No → <b>abort T4</b>.</li>
+          <li>write(T8): 8 &gt; ts<sub>rd</sub> = 9? No → <b>abort T8</b> (T9 already read the old value).</li>
+          <li>T10 commits: ts<sub>wr</sub>(x) = 10. T12 retries: it selects the committed x<sub>10</sub> → <b>reads x<sub>10</sub></b>; ts<sub>rd</sub> = 12.</li>
+          <li>write(T11): 11 &gt; ts<sub>rd</sub> = 12? No → <b>abort T11</b>.</li>
+        </ol>
+      </div>
+      <div class="why"><h4>Why</h4><p>The rule makes the result equal to the serial order of the timestamps. A write is "too late" if a younger transaction already read or committed x: it should have seen this write. A read is "too late" if a younger write is already committed. Waiting happens only from younger to older (T12 waits for T10), so no cycle and no deadlock.</p></div>
+    </div>
+  </article>
+</section>
+
+<!-- ===== §6 DEADLOCKS ===== -->
+<section class="topic">
+  <div class="topic-head"><span class="num">§6</span><h2>Distributed deadlocks</h2></div>
+  <div class="core"><p><b>Core idea.</b> Four approaches: ignore, detect (and recover), prevent, avoid. Avoidance needs a priori knowledge and is never used. Detection can be centralized (risk of false deadlocks) or distributed (Chandy–Misra–Haas probes). Prevention with global timestamps: wait-die and wound-wait. Transactions help, because an abort is a clean rollback.</p></div>
+
+  <article class="q" data-type="compare" data-id="s-d1">
+    <div class="q-head"><span class="qid">Q40</span><span class="tag compare">Compare</span></div>
+    <p class="prompt">List the approaches to distributed deadlocks. Then compare centralized deadlock detection, Chandy–Misra–Haas, and the wait-die / wound-wait prevention schemes.</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p><b>Approaches.</b> Ignore (most common, meaningful in many settings); detection and recovery (usually kill a process); prevention (make deadlocks impossible by design); avoidance (never used: it needs a priori knowledge of resource usage). With transactions, recovery is an abort and rollback, less disruptive than killing a process.</p>
+        <p><b>Centralized detection.</b> Each machine keeps the wait-for graph of its own resources and reports it to a coordinator: at every change, periodically, or on demand. Problem: <b>false deadlocks</b>, because updates from different hosts can arrive in an inconsistent order.</p>
+        <p><b>Chandy–Misra–Haas.</b> No coordinator; a process can request several resources at once. A blocked process sends a probe (initiator, sender, receiver) to the holders of the resources it wants; blocked receivers forward it. If the probe comes back to the initiator, there is a cycle. Recovery: the initiator kills itself (several initiators may kill too many), or each process adds its id to the probe and the highest id is killed.</p>
+        <p><b>Prevention with global timestamps.</b> <b>Wait-die:</b> an older process may wait for a younger one; a younger one that wants a resource held by an older one dies. <b>Wound-wait:</b> needs preemption; an older process preempts (wounds) a younger holder, which aborts; a younger process waits for an older one. In both, waits follow timestamps in one direction, so no cycle. In wait-die a young process may die many times; in wound-wait it does not.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A cycle needs a wait in both directions of age. Allowing waits only from old to young (or only from young to old) breaks every possible cycle. In practice about 90% of deadlock cycles involve only 2 processes (Gray, 1981, for databases), so short probes are usually enough.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="s-d3">
+    <div class="q-head"><span class="qid">Q41</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Centralized detection, slides example. Host 1: A holds S and wants R; R is held by B. Host 2: C holds T and wants S. Now B releases R (reported by host 1) and then asks for T (reported by host 2). The coordinator receives host 2's message first. What does it see? Is there a real deadlock?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>The coordinator's graph, before host 1's update: A wants R, R held by B; B wants T, T held by C; C wants S, S held by A. That is the cycle <b>A → B → C → A</b>: it declares a deadlock.</p>
+        <p>In reality B has already released R, so A can get R, finish, and release S. Then C gets S, finishes, and releases T for B. <b>No real deadlock: it is a false deadlock.</b></p>
+      </div>
+      <div class="why"><h4>Why</h4><p>The coordinator builds the global graph from messages that arrive in an order different from the order of the events. It is the global state problem again: the coordinator observes an inconsistent cut (the "wants T" without the earlier "releases R"). Timestamps on the updates (logical clocks) can let the coordinator check that it has all earlier messages before it decides.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="s-d4">
+    <div class="q-head"><span class="qid">Q42</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Chandy–Misra–Haas, slides example. Host 1 has processes 0, 1, 2; host 2 has 3, 4, 5; host 3 has 6, 7, 8. Process 0 blocks. Wait-for edges: 0→1, 1→2, 2→3, 3→4, 3→5, 4→6, 5→7, 6→8, 8→0. Process 7 is not blocked. List the probes. Is there a deadlock? Which process is killed with the "highest id" rule?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <p>Probes (initiator, sender, receiver): (0,0,1), (0,1,2), <b>(0,2,3)</b>, (0,3,4), (0,3,5), <b>(0,4,6)</b>, <b>(0,5,7)</b>, (0,6,8), <b>(0,8,0)</b>. The slide shows the bold ones: the probes that cross hosts.</p>
+        <ul>
+          <li>7 is not blocked, so the probe (0,5,7) stops there.</li>
+          <li>(0,8,0) reaches the initiator: <b>deadlock</b>. The cycle is 0 → 1 → 2 → 3 → 4 → 6 → 8 → 0.</li>
+        </ul>
+        <p>If each process adds its id to the probe, the initiator knows the cycle members and kills the highest: <b>8</b>. (5 and 7 are not in the cycle.)</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>A probe follows only wait-for edges, so returning to the initiator proves a cycle that contains the initiator. The "initiator kills itself" rule is simpler, but if several processes of the same cycle start probes, all of them die. The "highest id" rule picks one victim that every initiator agrees on.</p></div>
+    </div>
+  </article>
+
+  <article class="q" data-type="exercise" data-id="s-d5">
+    <div class="q-head"><span class="qid">Q43</span><span class="tag exercise">Exercise</span></div>
+    <p class="prompt">Three transactions with timestamps T5 (oldest), T10, T15. T10 holds resource R. First T5 requests R, then T15 requests R. What happens under wait-die? And under wound-wait?</p>
+    <div class="q-actions"><button class="reveal" aria-expanded="false">Show answer</button><button class="mark k" aria-pressed="false">Got it</button><button class="mark r" aria-pressed="false">Review again</button></div>
+    <div class="answer" hidden>
+      <div><h4>Model answer</h4>
+        <div class="tbl"><table><tr><th>Request</th><th>Wait-die</th><th>Wound-wait</th></tr>
+          <tr><td>T5 wants R (held by T10)</td><td>T5 is older → <b>T5 waits</b></td><td>T5 is older → <b>T5 wounds T10</b>: T10 aborts, releases R, T5 gets R</td></tr>
+          <tr><td>T15 wants R</td><td>Holder T10 is older → <b>T15 dies</b> (aborts, retries later)</td><td>Holder is now T5, older → <b>T15 waits</b></td></tr></table></div>
+        <p>Rule summary. Wait-die: old waits for young; young dies. Wound-wait: old preempts young; young waits for old.</p>
+      </div>
+      <div class="why"><h4>Why</h4><p>In both schemes, a chain of waiting processes has monotonic timestamps (increasing in wait-die, decreasing in wound-wait), so it cannot close a cycle. The difference is who pays: in wait-die the young requester dies, possibly many times while the old holder keeps the resource; in wound-wait the young <i>holder</i> is aborted once, and when it retries it waits.</p></div>
     </div>
   </article>
 </section>
@@ -456,7 +1011,7 @@ footer{margin-top:56px;color:var(--muted);font-size:13px;border-top:1px solid va
 
 <script>
 (function(){
-  const KEY = "ds-synch-marks-v1";
+  const KEY = "ds-synch-marks-v2";
   let marks = {};
   try { marks = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e) { marks = {}; }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(marks)); } catch(e) {} };
